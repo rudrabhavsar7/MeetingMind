@@ -17,15 +17,16 @@ This document tracks major feature releases and platform updates. For detailed c
 ## [v1.0.0] - Upcoming (Target: Q3 2026)
 **"The Foundation Release"**
 
-Our initial public launch focusing on core transcription, summarization, and data security.
+Our initial public launch focusing on extension-based live capture, core transcription, summarization, and data security.
 
 ### Features
-* **AI Processing Pipeline:** Fully asynchronous pipeline extracting audio, running Whisper transcription, and Pyannote diarization.
+* **Chrome Extension Capture:** Google Meet capture with explicit tab-audio permission and live backend streaming.
+* **AI Processing Pipeline:** Real-time and batch pipelines for Whisper-compatible transcription, Pyannote diarization, and structured meeting intelligence.
 * **Smart Summaries:** LLM-generated executive summaries, action items, and key decisions.
 * **Transcript Viewer:** Virtualized, interactive transcript with speaker identification and clickable timestamps synced to audio playback.
 * **RAG Search:** "Ask AI" chat interface allowing users to query their past meetings using semantic search.
 * **Workspaces:** Multi-tenant architecture with Role-Based Access Control (Admin, Member, Viewer).
-* **Direct Uploads:** Support for up to 2GB MP4/WAV uploads directly to secure cloud storage.
+* **Recording Import Fallback:** Support for up to 2GB MP4/WAV imports directly to secure cloud storage.
 
 ### Security & Infrastructure
 * JWT-based authentication.
@@ -43,7 +44,7 @@ Our initial public launch focusing on core transcription, summarization, and dat
 * Implemented `KnowledgeCard` UI component (mock data only).
 
 ### Known Issues
-* Files over 500MB occasionally timeout during upload. (Fix: Moving to Presigned URLs in v1.0).
+* Large recording imports occasionally timeout. (Fix: Moving to presigned URLs in v1.0).
 * Search is currently keyword-based only; `pgvector` migration pending.
 
 ---

@@ -30,15 +30,26 @@ from myapp.main import app
 @pytest.mark.asyncio
 async def test_create_meeting_flow(db_session, auth_headers):
     async with AsyncClient(app=app, base_url="http://test") as client:
-        # 1. Upload Meeting Request
-        response = await client.post("/api/v1/meetings", headers=auth_headers, json={"title": "Q3 Planning"})
+        # 1. Create Live Extension Capture Session
+        response = await client.post(
+            "/api/v1/workspaces/ws_123/meetings/live",
+            headers=auth_headers,
+            json={
+                "title": "Q3 Planning",
+                "client_type": "chrome_extension",
+                "source_app": "google_meet",
+                "source_url": "https://meet.google.com/abc-defg-hij",
+                "source_title": "Q3 Planning - Google Meet",
+            },
+        )
         assert response.status_code == 201
         meeting_id = response.json()["data"]["id"]
         
         # 2. Verify Database State
-        response = await client.get(f"/api/v1/meetings/{meeting_id}", headers=auth_headers)
+        response = await client.get(f"/api/v1/workspaces/ws_123/meetings/{meeting_id}", headers=auth_headers)
         assert response.status_code == 200
         assert response.json()["data"]["title"] == "Q3 Planning"
+        assert response.json()["data"]["source_app"] == "google_meet"
 ```
 
 ## 3. Frontend Integration Testing

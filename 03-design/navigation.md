@@ -37,7 +37,7 @@ Because power users (engineers, PMs) prefer keyboards, MeetingMind features a gl
 
 ### Functionality
 * **Fuzzy Search:** Typing "sync" will surface recent meetings titled "Weekly Sync" or "Marketing Sync".
-* **Quick Actions:** Typing ">" shifts the palette into command mode (e.g., "> Upload Meeting", "> Toggle Dark Mode", "> Go to Settings").
+* **Quick Actions:** Typing ">" shifts the palette into command mode (e.g., "> Connect Extension", "> Import Recording", "> Toggle Dark Mode", "> Go to Settings").
 * **Implementation:** Built using `cmdk` (wrapped by shadcn/ui `<Command>`).
 
 ## 3. Breadcrumbs (Tertiary)

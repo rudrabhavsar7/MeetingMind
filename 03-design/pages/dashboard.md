@@ -18,7 +18,7 @@ To immediately answer two questions for the user:
 
 ## 2. Layout Structure
 
-* **Header:** "Welcome back, [Name]". Includes a primary "Upload Meeting" CTA button.
+* **Header:** "Welcome back, [Name]". Includes a primary "Connect Extension" or "Open Extension" CTA button depending on connection state.
 * **Top Row (Metrics Cards):** 
   * "Action Items Due Soon" (count)
   * "Meetings Processed This Week" (count)
@@ -34,7 +34,7 @@ To immediately answer two questions for the user:
 * Uses the `MeetingCard` component.
 * States:
   * **Loading:** `MeetingCardSkeleton` (x3).
-  * **Empty:** "No meetings processed yet. [Upload your first meeting]".
+  * **Empty:** "No meetings captured yet. [Connect the Chrome extension]".
   * **Error:** Standard error boundary with retry button.
 * Includes a "View All Meetings" link at the bottom navigating to `/meetings`.
 

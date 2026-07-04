@@ -33,17 +33,17 @@ This changelog adheres to [Keep a Changelog v1.1.0](https://keepachangelog.com/e
 ### Changed
 - Upgraded `@radix-ui/*` to `v2.1.x` across all primitive components (#309)
 - Improved Celery task retry strategy: exponential backoff (1s, 4s, 16s) for Whisper failures (#305)
-- Refactored embedding pipeline to use BAAI BGE-M3 1024-dim model, replacing nomic-embed-text (#301)
+- Refactored embedding pipeline to use the default local BAAI BGE 768-dimensional model, replacing nomic-embed-text (#301)
 
 ### Fixed
-- Fixed race condition in concurrent meeting uploads causing duplicate Celery tasks (#318)
+- Fixed race condition in concurrent recording imports causing duplicate Celery tasks (#318)
 - Resolved dark mode flicker on initial page load caused by SSR/hydration mismatch (#315)
 
 ---
 
 ## [1.0.0] — 2026-06-28
 
-This is the first stable release of MeetingMind. It delivers the complete MVP feature set: end-to-end meeting intelligence from audio upload through AI-powered analysis, semantic search, and workspace-scoped collaboration.
+This is the first stable release of MeetingMind. It delivers the complete MVP feature set: live extension capture, recording import fallback, AI-powered analysis, semantic search, and workspace-scoped collaboration.
 
 ### Added
 
@@ -61,11 +61,11 @@ This is the first stable release of MeetingMind. It delivers the complete MVP fe
 - Member removal and role update by workspace owner (#12)
 - Workspace settings page: name, description, default LLM model selection (#13)
 
-#### Meeting Upload & Processing Pipeline
-- Chunked multipart audio file upload supporting MP3, MP4, M4A, WAV, OGG, WEBM formats (max 500 MB) (#20)
+#### Recording Import & Processing Pipeline
+- Chunked recording import supporting MP3, MP4, M4A, WAV, OGG, WEBM formats (max 2 GB) (#20)
 - MIME type and file extension validation at upload — prevents disguised executable uploads (#21)
 - Presigned URL generation for direct browser-to-MinIO streaming upload, reducing backend memory pressure (#22)
-- Celery async processing pipeline: `upload → transcribe → analyse → embed → index` (#23)
+- Celery async processing pipeline: `import → transcribe → analyse → embed → index` (#23)
 - Real-time processing status updates via server-sent events (SSE) stream to frontend (#24)
 - Processing pipeline resumability: failed tasks store progress checkpoints in Redis; partial re-processing on retry (#25)
 - Speaker diarization using `pyannote.audio` integrated with Whisper segments (#26)
@@ -145,7 +145,7 @@ This is the first stable release of MeetingMind. It delivers the complete MVP fe
 - Applied `Content-Security-Policy` header via Nginx: restricts script sources to `'self'` and nonces for inline scripts — mitigates XSS (#S01)
 - Applied `X-Frame-Options: DENY` and `X-Content-Type-Options: nosniff` headers (#S02)
 - Enforced `Strict-Transport-Security` (HSTS) with `max-age=31536000; includeSubDomains` (#S03)
-- Audio file upload validated against magic bytes (not just extension) — prevents polyglot file attacks (#S04)
+- Imported audio files validated against magic bytes (not just extension) — prevents polyglot file attacks (#S04)
 - All database queries use parameterised statements via SQLAlchemy — no raw string interpolation (#S05)
 - Workspace isolation enforced at repository layer with mandatory `workspace_id` filter — prevents horizontal privilege escalation (#S06)
 - Secrets rotation: `APP_SECRET_KEY` rotation invalidates all outstanding JWTs without downtime via key-id header in token (#S07)

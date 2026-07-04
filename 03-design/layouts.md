@@ -58,7 +58,7 @@ Used for `/meetings/[id]`. This layout maximizes reading space while keeping con
 Used for `/dashboard`, `/meetings` (list), and `/actions`.
 
 ### Structure
-* **Header:** Page Title and primary action (e.g., "Upload Meeting" button).
+* **Header:** Page Title and primary action (e.g., "Connect Extension" or "Import Recording" button).
 * **Filters/Search Bar:** Sticky under the header.
 * **Content Grid/List:**
   * For Action Items: A vertical list spanning `max-w-4xl`.

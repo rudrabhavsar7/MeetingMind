@@ -10,7 +10,7 @@ Dependencies: 04-backend/ai-pipeline.md
 # MeetingMind Backend: Background Jobs
 
 ## 1. Overview
-Beyond the core AI Meeting Processing Pipeline (triggered by a user upload), MeetingMind requires several scheduled and asynchronous background jobs to maintain system health, generate proactive insights, and handle integrations.
+Beyond the core real-time AI Meeting Processing Pipeline, MeetingMind requires several scheduled and asynchronous background jobs to maintain system health, process imported recordings, generate proactive insights, and handle integrations.
 
 ## 2. Technology Stack
 * **Job Scheduler:** Celery Beat (integrated with the existing Celery worker pool).

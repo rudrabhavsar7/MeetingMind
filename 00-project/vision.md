@@ -38,7 +38,7 @@ Related Documents:
 
 Meetings are the connective tissue of organizational decision-making. Yet the vast majority of meeting output — the decisions made, the action items agreed upon, the institutional knowledge shared — is lost within hours of a meeting ending. Organizations spend an estimated 15–20% of total working hours in meetings, yet have no systematic way to query, synthesize, or act on what was discussed.
 
-MeetingMind is an AI-powered meeting intelligence platform built to solve this at an organizational scale. It transforms raw audio and video recordings into structured, searchable, and actionable knowledge — turning every meeting into a persistent, queryable asset rather than a disposable event.
+MeetingMind is an AI-powered meeting intelligence platform built to solve this at an organizational scale. It captures live meeting audio and transforms it into structured, searchable, and actionable knowledge as the discussion happens — turning every meeting into a persistent, queryable asset rather than a disposable event.
 
 MeetingMind is not a transcription tool with a summary bolt-on. It is a knowledge system built around the meeting as a first-class data primitive, with AI at its core — not as a feature, but as the foundation.
 
@@ -85,7 +85,7 @@ MeetingMind is the product that synthesizes these three forces into a coherent, 
 
 This vision operates at three time horizons:
 
-- **Now (0–12 months):** Teams can upload, transcribe, summarize, and search their meetings in a self-hosted, privacy-first environment.
+- **Now (0–12 months):** Teams can capture live meetings, transcribe them in real time, generate rolling summaries/action items, import legacy recordings, and search meeting knowledge in a self-hosted, privacy-first environment.
 - **Near-term (12–24 months):** Organizations can query across their entire meeting history using natural language — finding decisions, tracking action item completion, and surfacing relevant past discussions automatically.
 - **Long-term (24+ months):** AI agents proactively surface meeting insights at decision points, pre-brief stakeholders before meetings, and identify organizational patterns (recurring blockers, decision loops, velocity trends) without human prompting.
 
@@ -163,7 +163,6 @@ MeetingMind is built on a FastAPI backend with a clean, versioned REST API. This
 
 - Consumer / individual freelancers (insufficient willingness to self-host)
 - Pure sales intelligence (Gong/Chorus territory with different data model requirements)
-- Real-time meeting assistance (latency constraints require a different architecture)
 
 ---
 
@@ -224,7 +223,7 @@ keeping sensitive discussions private while delivering enterprise-grade AI intel
 
 ### 9.1 The Meeting as a First-Class Data Object
 
-In MeetingMind, a meeting is not a file. It is a structured entity with a lifecycle: uploaded → processing → transcribed → analyzed → searchable → exportable. Every architectural decision must be evaluated against this lifecycle model.
+In MeetingMind, a meeting is not a file. It is a structured entity with a lifecycle: detected in a meeting app → explicitly captured by the extension → streaming → transcribing → analyzing → searchable → exportable. Imported recordings and standalone web captures follow the same intelligence lifecycle after ingestion, but Chrome extension capture is the primary v1 surface. Every architectural decision must be evaluated against this lifecycle model.
 
 ### 9.2 AI as Infrastructure, Not Feature
 
@@ -296,11 +295,11 @@ WCAG 2.2 AA compliance is a v1 requirement, not a future roadmap item. This affe
 
 Clarity on scope prevents architectural drift:
 
-- **Not a real-time meeting assistant** — MeetingMind processes recordings, not live audio streams. Real-time transcription is a different latency and infrastructure problem.
+- **Not an upload-only transcription tool** — MeetingMind is extension-first and real-time-first. Recording import exists for backfill and fallback, but the core v1 experience is Chrome extension capture inside existing meeting apps.
 - **Not a video conferencing platform** — MeetingMind does not host meetings. It processes recordings from any source.
 - **Not a task management system** — Action items are extracted and tracked within MeetingMind, but MeetingMind is not a replacement for Jira, Linear, or Asana. It integrates with them.
 - **Not a document management system** — Meeting summaries and exports are supplementary outputs, not a document storage solution.
-- **Not a surveillance tool** — MeetingMind is a knowledge management tool. It requires explicit upload of recordings; it does not integrate with calendar systems to auto-join and record meetings without user consent.
+- **Not a surveillance tool** — MeetingMind is a knowledge management tool. It requires explicit user action to start extension capture, standalone capture, or recording import; it does not auto-join or record meetings without user consent.
 
 ---
 
@@ -347,13 +346,12 @@ The vision document is the contract between the product and the engineering orga
 1. All AI inference runs locally. No external AI API calls in the default configuration.
 2. All data is stored in operator-controlled infrastructure. No telemetry without explicit opt-in.
 3. The API is versioned from day one (`/api/v1/`). Breaking changes require a version bump.
-4. Every background job is idempotent and retry-safe. Celery workers can restart without data corruption.
-5. The database schema is migration-managed (Alembic). No manual schema modifications in production.
+4. The database schema is migration-managed (Alembic). No manual schema modifications in production.
+5. Real-time streaming is a first-class citizen. The architecture is built around WebSockets and streaming STT APIs (or local streaming models) instead of just background Celery batch jobs.
 
 **Decisions that are intentionally deferred:**
-1. Real-time processing — requires a fundamentally different streaming architecture; address in v2.
-2. Multi-tenancy at the SaaS level — the current data model supports it but the operational tooling does not; address when offering a managed hosting tier.
-3. Mobile native apps — web-responsive is sufficient for v1; native app is a post-PMF investment.
+1. Multi-tenancy at the SaaS level — the current data model supports it but the operational tooling does not; address when offering a managed hosting tier.
+2. Mobile native apps — web-responsive is sufficient for v1; native app is a post-PMF investment.
 
 **The most important thing:** MeetingMind's moat is not the technology — it is the quality of the knowledge extraction pipeline and the trust organizations place in it when processing sensitive conversations. Every engineering decision should protect and compound that trust.
 

@@ -25,7 +25,10 @@ graph TD
     B --> F(Settings)
     
     C --> C1(All Meetings)
-    C --> C2(Upload Meeting)
+    C --> C2(Extension Captures)
+    C --> C4(Import Recording)
+    C --> C5(Standalone Capture)
+    F --> F4(Extension)
     C --> C3(Meeting Details)
     
     C3 --> C3A(Transcript)
@@ -44,7 +47,7 @@ graph TD
 
 ### 2.1 Primary Navigation (Sidebar)
 * **Dashboard** (Home icon) - Overview of recent activity and metrics.
-* **Meetings** (Video icon) - Central repository of all uploaded meetings.
+* **Meetings** (Video icon) - Central repository of all extension-captured, standalone-captured, and imported meetings.
 * **Action Items** (Check-square icon) - Cross-meeting task tracker.
 * **AI Search** (Sparkles/Search icon) - Global RAG interface.
 * **Settings** (Gear icon, pinned to bottom).
@@ -73,7 +76,8 @@ graph TD
 | `/register` | Account creation | Public |
 | `/dashboard` | Main application overview | Authenticated |
 | `/meetings` | List of all workspace meetings | Authenticated |
-| `/meetings/upload` | File upload interface | Authenticated |
+| `/meetings/new` | Standalone web live capture fallback | Authenticated |
+| `/meetings/import` | Recording import fallback | Authenticated |
 | `/meetings/[id]` | Meeting details (Summary tab) | Authenticated |
 | `/meetings/[id]/transcript` | Full text transcript viewer | Authenticated |
 | `/meetings/[id]/actions` | Action items filtered to this meeting | Authenticated |
@@ -82,11 +86,12 @@ graph TD
 | `/settings/profile` | User preferences | Authenticated |
 | `/settings/workspace` | Workspace name/billing | Admin Only |
 | `/settings/members` | Role management and invites | Admin Only |
+| `/settings/extension` | Chrome extension connection and capture settings | Authenticated |
 
 ## 4. Content Taxonomy
 
 ### 4.1 Meeting Entities
-* **Meeting Object:** ID, Title, Date, Uploader, Duration, Status (Queued/Processing/Complete/Failed).
+* **Meeting Object:** ID, Title, Date, Creator, Duration, SourceType, SourceApp, SourceURL, VisibleParticipants, Status (Detected/Scheduled/Recording/Transcribing/Analyzing/Complete/Failed).
 * **Segment:** A block of transcript text with StartTime, EndTime, and SpeakerID.
 * **Summary Block:** AI-generated markdown text summarizing the whole meeting or specific topics.
 * **Action Item:** Task Description, Assignee (SpeakerID or UserID), Due Date, Status (Open/Closed).

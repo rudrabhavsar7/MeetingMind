@@ -10,10 +10,10 @@ Dependencies: 04-backend/ai-pipeline.md
 # MeetingMind Backend: Transcription & Diarization
 
 ## 1. Overview
-This document details the specific sub-system responsible for converting raw meeting audio into structured, speaker-labeled text.
+This document details the specific sub-system responsible for converting extension-captured live meeting audio into structured, speaker-labeled text. **Chrome Extension Real-Time Streaming** over WebSockets/WebRTC is the primary v1 path. **Batch Processing** with Celery is retained for imported recordings and backfills.
 
 ## 2. Core Technologies
-* **Transcription (Speech-to-Text):** OpenAI Whisper (using `whisper` Python package or an API provider).
+* **Transcription (Speech-to-Text):** Local Whisper-compatible streaming STT by default.
 * **Diarization (Who spoke when):** `pyannote.audio` (HuggingFace).
 * **Audio Processing:** `ffmpeg` (via `ffmpeg-python`).
 
@@ -21,9 +21,18 @@ This document details the specific sub-system responsible for converting raw mee
 Whisper is incredibly accurate at transcribing speech, but its built-in speaker identification is virtually non-existent.
 Pyannote is excellent at identifying distinct speakers (Speaker 1, Speaker 2) and providing the exact start/end timestamps of their speech, but it does not transcribe words.
 
-**The Solution:** Run both concurrently, then align their outputs.
+**The Solution (Real-Time):** Use a local streaming Whisper implementation combined with an online diarization tracker (e.g. pyannote's streaming pipeline) to tag speakers live.
+**The Solution (Batch Import):** Run Whisper and Pyannote concurrently, then align their outputs.
 
-## 4. Pipeline Execution Steps
+## 4. Pipeline Execution Steps (Extension Real-Time Streams)
+1. **Meeting Detection:** The Chrome extension detects a supported meeting tab, starting with Google Meet.
+2. **WebSocket Ingestion:** The extension establishes a `wss://` connection to `/api/v1/workspaces/{workspace_id}/meetings/{id}/stream`.
+3. **Audio Chunking:** The extension streams tab audio as PCM audio chunks (typically 250ms - 500ms).
+4. **Live STT:** Chunks are fed into the local streaming STT engine by default.
+5. **Interim vs Final Transcripts:** Interim results are emitted to the extension and console immediately for low-latency UI. Once a natural pause is detected, a `final` transcript segment is locked in.
+6. **Diarization Sync:** The online diarization model tags the `final` segment with a speaker ID before it is saved to the database.
+
+## 5. Pipeline Execution Steps (Batch Recording Imports)
 
 ### Step 1: Pre-processing
 Audio must be optimized for the models.
@@ -60,19 +69,19 @@ Group contiguous words belonging to the same speaker into a `TranscriptSegment`.
 ]
 ```
 
-## 5. Speaker Identification (Advanced)
+## 6. Speaker Identification (Advanced)
 By default, the output is "SPEAKER_01". 
 * **User Input Mapping:** In the UI, users can click "SPEAKER_01" and rename them to "Alex". The backend must store a mapping `{"SPEAKER_01": "Alex"}` for that meeting ID.
 * **Voice Enrollment (Future):** Store a small voice vector for "Alex" globally in the user's workspace. Pyannote can compare new audio against known voice vectors to automatically label "SPEAKER_01" as "Alex".
 
-## 6. Performance Optimization
+## 7. Performance Optimization
 * **Chunking:** Whisper struggles with files longer than ~30 minutes (hallucinations/looping). Use Faster-Whisper or chunk the audio into 10-minute segments, process them in parallel, and stitch the results back together.
 * **VAD (Voice Activity Detection):** Run a fast VAD model (like Silero VAD) *before* Whisper to completely skip over long periods of silence, saving massive amounts of compute.
 
-## 7. API Fallbacks
-If local GPUs are unavailable, the backend should be configurable to route this step to APIs:
+## 8. API Fallbacks
+If local GPUs are unavailable, the backend may be configured by the operator to route this step to APIs. This is opt-in and not the default privacy-first deployment mode:
 * **Deepgram API:** Extremely fast, has built-in diarization, often cheaper than spinning up A100s.
 * **OpenAI API:** Whisper API (Note: OpenAI's API does *not* support diarization natively, so Pyannote must still run locally).
 
-## 8. Data Privacy
-* If processing locally on MeetingMind infrastructure, ensure audio files are deleted from temporary volumes immediately after Step 4 completes.
+## 9. Data Privacy
+* If processing locally on MeetingMind infrastructure, ensure temporary audio buffers/files are deleted immediately after the relevant streaming or batch processing step completes.

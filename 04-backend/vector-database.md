@@ -31,8 +31,8 @@ class TranscriptSegment(SQLModel, table=True):
     text: str
     start_time: float
     end_time: float
-    # Dimension matches the embedding model (e.g., 1536 for OpenAI)
-    embedding: list[float] = Field(sa_type=Vector(1536))
+    # Dimension matches the default local BAAI BGE embedding model.
+    embedding: list[float] = Field(sa_type=Vector(768))
 ```
 
 ## 3. Indexing Strategy

@@ -42,6 +42,8 @@
 - [x] 02-engineering/testing-strategy.md
 - [x] 02-engineering/deployment.md
 - [x] 02-engineering/performance.md
+- [x] 02-engineering/jira-tickets.md
+- [x] 02-engineering/jira-task-breakdown.md
 
 ## 03-design/
 - [x] 03-design/design-system.md
@@ -62,7 +64,8 @@
 - [x] 03-design/pages/meetings.md
 - [x] 03-design/pages/meeting-details.md
 - [x] 03-design/pages/ai-search.md
-- [x] 03-design/pages/upload.md
+- [x] 03-design/pages/upload.md *(Recording import fallback)*
+- [x] 03-design/pages/extension-capture.md
 - [x] 03-design/pages/settings.md
 - [x] 03-design/pages/authentication.md
 - [x] 03-design/pages/profile.md
@@ -153,7 +156,7 @@
 - [x] 03-design/components/meetings/decision-card.md
 - [x] 03-design/components/meetings/topic-card.md
 - [x] 03-design/components/meetings/meeting-timeline.md
-- [x] 03-design/components/meetings/upload-zone.md
+- [x] 03-design/components/meetings/upload-zone.md *(Recording import zone fallback)*
 - [x] 03-design/components/meetings/recording-status.md
 - [x] 03-design/components/meetings/knowledge-card.md
 
@@ -193,7 +196,7 @@
 ## 07-prompts/
 - [x] 07-prompts/cursor-rules.md
 - [x] 07-prompts/copilot-rules.md
-- [x] 07-prompts/claude-rules.md
+- [x] 07-prompts/ai-agent-rules.md
 - [x] 07-prompts/codex-rules.md
 - [x] 07-prompts/ui-prompts.md
 - [x] 07-prompts/backend-prompts.md

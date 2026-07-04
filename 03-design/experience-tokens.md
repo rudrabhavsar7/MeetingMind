@@ -30,7 +30,7 @@ Because AI processing (transcription, RAG) takes time, we use experience tokens 
 ## 2. Feedback Mechanisms
 
 ### 2.1 Transient Feedback (Toasts)
-* **Usage:** For success messages ("Meeting uploaded"), non-critical errors ("Failed to copy link"), or background task completions ("Transcription finished").
+* **Usage:** For success messages ("Meeting captured"), non-critical errors ("Failed to copy link"), or background task completions ("Transcription finished").
 * **Duration:** 4000ms.
 * **Position:** Bottom-right of the screen.
 

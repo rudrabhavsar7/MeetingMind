@@ -29,7 +29,7 @@ These prompts are designed to guide AI assistants to write backend Python code t
 
 ## 4. Generating a RAG Query (pgvector)
 > "Write an asynchronous SQLAlchemy query using `pgvector`.
-> - I have a `TranscriptSegment` table with an `embedding` column (type `Vector(1536)`).
+> - I have a `TranscriptSegment` table with an `embedding` column (type `Vector(768)`).
 > - I have a `query_vector` array of floats.
 > - Write a query that finds the top 5 segments using Cosine Distance (`cosine_distance`).
 > - CRITICAL: The query must join the `Meeting` table and filter by a specific `workspace_id` to prevent data leakage."

@@ -46,6 +46,7 @@ graph TD
 * **Hardware Requirements:** Minimum 4 vCPU, 16GB RAM. Recommended 8 vCPU, 32GB RAM + NVIDIA GPU for optimal inference speed.
 
 ### 3.2 Frontend Stack
+* **Capture Client:** Chrome Extension using Manifest V3 and TypeScript.
 * **Framework:** React 19 / Next.js 15 utilizing the App Router.
 * **Language:** TypeScript (Strict mode enabled).
 * **Styling:** Tailwind CSS v4, utilizing CSS variables for theme tokens.
@@ -63,6 +64,9 @@ graph TD
 * **API Latency:** 
   * 95th percentile (p95) response time for standard CRUD operations must be < 200ms.
   * Search queries (excluding LLM generation) must return in < 500ms.
+* **Extension Capture Performance:**
+  * Interim transcript events should appear within < 2 seconds of audible speech under normal network conditions.
+  * Extension startup and meeting detection should complete within < 1 second after a supported meeting tab loads.
 * **Frontend Performance:**
   * Largest Contentful Paint (LCP) < 2.5s.
   * Cumulative Layout Shift (CLS) < 0.1.
@@ -77,15 +81,15 @@ graph TD
 * **Authentication:** Stateless JWT implementation. Access tokens (15m expiry), Refresh tokens (7d expiry, HTTP-only, secure, SameSite=Lax).
 * **Password Hashing:** Bcrypt with a minimum work factor of 12.
 * **Input Validation:** All API inputs must be strictly validated using Pydantic schemas.
-* **File Security:** Uploaded files must be validated by MIME type and magic numbers. Max upload size strictly enforced at the reverse proxy (Nginx) and application levels (2GB).
+* **Stream & Import Security:** Live audio chunks must be authenticated, rate-limited, and bounded by session limits. Imported files must be validated by MIME type and magic numbers, with max import size strictly enforced at the reverse proxy (Nginx) and application levels (2GB).
 
 ## 6. AI Pipeline Requirements
 
-* **Transcription:** Open-source Whisper model. The system must chunk audio files longer than 10 minutes to prevent memory exhaustion.
+* **Transcription:** Open-source Whisper-compatible streaming STT for Chrome extension and fallback web live sessions. Imported recordings longer than 10 minutes must be chunked to prevent memory exhaustion.
 * **LLM Inference:** Must communicate via Ollama's REST API.
 * **Embeddings:** BAAI BGE embeddings (768 dimensions).
 * **Vector Storage:** pgvector extension on PostgreSQL. Must use HNSW indexing for performance at scale.
-* **Idempotency:** AI processing tasks must be idempotent. If a Celery worker dies mid-transcription, restarting the task must not corrupt data.
+* **Idempotency:** AI processing tasks must be idempotent. If a stream reconnects or a Celery worker dies during imported-recording processing, restarting the step must not corrupt data.
 
 ## 7. API Requirements
 

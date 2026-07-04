@@ -17,19 +17,22 @@ This document provides a high-level overview of the MeetingMind system architect
 
 ## 1. System Context (C4 Level 1)
 
-MeetingMind operates entirely within the host organization's infrastructure.
+MeetingMind operates primarily within the host organization's infrastructure. The Chrome extension runs in the user's browser as the capture client and streams authorized meeting audio to the self-hosted backend.
 
 ```mermaid
 C4Context
     title System Context diagram for MeetingMind
 
-    Person(user, "User", "Uploads meetings, searches knowledge, tracks action items")
+    Person(user, "User", "Captures meetings from Google Meet/Zoom/Teams, searches knowledge, tracks action items")
+    System_Ext(meeting_apps, "Meeting Apps", "Google Meet, Zoom Web, Microsoft Teams Web")
     System(meetingmind, "MeetingMind Platform", "Processes, stores, and searches meeting intelligence")
     
     System_Ext(smtp, "SMTP Server", "Delivers notification emails")
     System_Ext(ollama, "Ollama", "Local LLM inference engine")
 
-    Rel(user, meetingmind, "Uses", "HTTPS")
+    Rel(user, meeting_apps, "Attends meetings in", "Browser")
+    Rel(user, meetingmind, "Uses console", "HTTPS")
+    Rel(meeting_apps, meetingmind, "Audio captured by MeetingMind extension", "User-authorized tab capture")
     Rel(meetingmind, smtp, "Sends emails via", "SMTP")
     Rel(meetingmind, ollama, "Requests completions from", "HTTP/REST")
 ```
@@ -45,7 +48,8 @@ C4Container
     Person(user, "User", "Knowledge worker")
     
     System_Boundary(c1, "MeetingMind Deployment") {
-        Container(spa, "Web Application", "Next.js 15, React 19", "Provides the user interface")
+        Container(ext, "Chrome Extension", "Manifest V3, TypeScript", "Detects meeting pages, captures tab audio, shows live transcript panel")
+        Container(spa, "Web Console", "Next.js 15, React 19", "Dashboard, meeting details, search, settings")
         Container(api, "API Application", "FastAPI, Python", "Handles business logic and auth")
         Container(worker, "Celery Worker", "Python", "Executes background AI tasks")
         
@@ -54,7 +58,9 @@ C4Container
         ContainerDb(minio, "MinIO", "S3 Compatible", "Object storage for audio and exports")
     }
 
-    Rel(user, spa, "Visits", "HTTPS")
+    Rel(user, ext, "Starts/stops capture", "Chrome")
+    Rel(user, spa, "Visits console", "HTTPS")
+    Rel(ext, api, "Creates capture session, streams audio", "HTTPS/WSS")
     Rel(spa, api, "Makes API calls to", "JSON/HTTPS")
     Rel(spa, minio, "Uploads files to", "Presigned URLs/HTTPS")
     
@@ -90,42 +96,48 @@ C4Container
 
 ## 4. Primary Data Flows
 
-### 4.1. Meeting Upload and Processing Pipeline
+### 4.1. Extension-Based Real-Time Meeting Capture and Processing Pipeline
 
 ```mermaid
 sequenceDiagram
-    participant U as User / UI
+    participant U as User
+    participant M as Meeting App Tab
+    participant E as Chrome Extension
     participant A as FastAPI
-    participant M as MinIO
-    participant R as Redis (Broker)
-    participant W as Celery Worker
+    participant R as Redis Pub/Sub
+    participant S as Streaming STT / Diarization
     participant DB as PostgreSQL
-    participant O as Ollama / Whisper
+    participant O as Ollama / Embeddings
 
-    U->>A: Request upload presigned URL
-    A-->>U: Return MinIO URL
-    U->>M: Upload media file directly
-    U->>A: Notify upload complete
-    A->>DB: Create Meeting record (Status: QUEUED)
-    A->>R: Enqueue `process_meeting` task
-    A-->>U: Return 200 OK (Processing Started)
+    U->>M: Join meeting
+    M-->>E: Supported meeting detected
+    U->>E: Start capture
+    E->>A: Create live capture session with source metadata
+    A->>DB: Create Meeting record (Status: RECORDING)
+    A-->>E: Return meeting ID + stream token
+    E->>A: Open WebSocket and stream tab audio chunks
+    A->>S: Forward normalized audio chunks
+    S-->>A: Emit interim transcript events
+    A-->>E: Push transcript_interim
+    S-->>A: Emit final speaker-labeled segments
+    A->>DB: Save TranscriptSegments
+    A->>R: Publish transcript_final/status events
     
-    R->>W: Consume task
-    W->>M: Download media file
-    W->>O: Run Whisper Transcription
-    O-->>W: Return transcript segments
-    W->>DB: Save Transcript
+    A->>O: Send rolling transcript context
+    O-->>A: Return summary/actions/decisions JSON
+    A->>DB: Save Summary, Action Items, Decisions
+    A-->>E: Push summary_updated/action_item_detected
     
-    W->>O: Generate Summary & Actions (Llama 3)
-    O-->>W: Return structured data
-    W->>DB: Save Summary & Action Items
+    A->>O: Generate embeddings for finalized chunks
+    O-->>A: Return vectors
+    A->>DB: Save vectors to pgvector
     
-    W->>O: Generate Embeddings (BAAI BGE)
-    O-->>W: Return vectors
-    W->>DB: Save to pgvector
-    
-    W->>DB: Update Meeting (Status: COMPLETE)
+    U->>E: End capture
+    E->>A: End live capture
+    A->>DB: Update Meeting (Status: COMPLETE)
 ```
+
+Recording imports use the same transcript, analysis, embedding, and storage model after a presigned upload and Celery batch ingestion step. They are a fallback path, not the primary v1 workflow.
 
 ### 4.2. Semantic Search (RAG) Flow
 

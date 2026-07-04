@@ -39,7 +39,7 @@ A new user logs in and sees a blank Dashboard. They don't know if the app is bro
 * Illustration/Icon (Large, muted).
 * Title (Friendly, e.g., "No meetings yet").
 * Description (Explains how to add data).
-* Primary Action Button (e.g., "Upload Meeting").
+* Primary Action Button (e.g., "Connect Extension" or "Import Recording").
 
 ## 9. Variants
 * Page-level (Large, centered on screen).
@@ -95,8 +95,8 @@ Not a shadcn primitive, but a standard custom component.
 <EmptyState 
   icon={Calendar} 
   title="No meetings found" 
-  description="You haven't uploaded or recorded any meetings in this workspace."
-  action={<Button onClick={openUpload}>Upload Meeting</Button>}
+  description="You haven't captured or imported any meetings in this workspace."
+  action={<Button onClick={openExtensionSettings}>Connect Extension</Button>}
 />
 ```
 

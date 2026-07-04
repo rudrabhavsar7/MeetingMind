@@ -37,7 +37,7 @@ test('displays meeting title and date', () => {
 ```
 
 ### 2.2 E2E Tests (`Playwright`)
-* Run full browser tests for critical flows: Login, File Upload, RAG Search.
+* Run full browser tests for critical flows: Login, Extension Capture, Recording Import fallback, RAG Search.
 * Use `data-testid` attributes on critical UI elements instead of relying on brittle CSS classes or translated text.
 
 ```typescript
@@ -71,8 +71,12 @@ from app.main import app
 @pytest.mark.asyncio
 async def test_create_meeting(async_client: AsyncClient, auth_headers: dict):
     response = await async_client.post(
-        "/api/v1/meetings",
-        json={"title": "Test Sync"},
+        "/api/v1/workspaces/ws_123/meetings/live",
+        json={
+            "title": "Test Sync",
+            "client_type": "chrome_extension",
+            "source_app": "google_meet",
+        },
         headers=auth_headers
     )
     assert response.status_code == 201

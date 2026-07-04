@@ -53,7 +53,7 @@ mindmap
   1. Spends 3+ hours a week formatting and distributing meeting notes.
   2. Struggles to onboard new devs because past context is lost in verbal history.
   3. Cannot use tools like Otter.ai because fintech compliance forbids third-party AI on sensitive data.
-* **How She Uses MeetingMind:** Uploads architecture reviews to generate searchable decision logs. Uses the dashboard to track overdue action items across her squads.
+* **How She Uses MeetingMind:** Captures architecture reviews to generate searchable decision logs. Uses the dashboard to track overdue action items across her squads.
 * **Quote:** *"If it's not documented, it didn't happen. But nobody has time to document everything."*
 
 ---

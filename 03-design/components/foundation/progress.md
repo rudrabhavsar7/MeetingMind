@@ -13,16 +13,16 @@ Dependencies: 03-design/design-tokens.md
 A deterministic progress bar indicating the completion percentage of a long-running task.
 
 ## 2. Design Philosophy
-For tasks taking longer than 2 seconds (like uploading a 500MB audio file), a spinner causes anxiety. A progress bar provides reassurance that the system hasn't frozen.
+For tasks taking longer than 2 seconds, such as importing a large recording or processing a finalized live capture, a spinner causes anxiety. A progress bar provides reassurance that the system hasn't frozen.
 
 ## 3. Problem Statement
-Uploading files or processing AI transcriptions are slow operations. Users need precise feedback on status.
+Recording imports and AI transcription/analysis are slow operations. Users need precise feedback on status.
 
 ## 4. UX Goals
 * Clearly communicate how much work is done and how much remains.
 
 ## 5. Usage Guidelines
-* Use for file uploads to MinIO.
+* Use for recording imports to MinIO.
 * Use for Celery task progress (e.g., Whisper transcription phases).
 
 ## 6. When to Use
@@ -41,7 +41,7 @@ Uploading files or processing AI transcriptions are slow operations. Users need 
 
 ## 10. Sizes
 * `h-2` (Small, subtle)
-* `h-4` (Standard, used on upload page).
+* `h-4` (Standard, used on recording import and processing views).
 
 ## 11. States
 * Values from `0` to `100`.
@@ -99,7 +99,7 @@ Built using Radix UI `Progress`.
 * N/A.
 
 ## 27. Composition
-* Used heavily on the `/upload` page.
+* Used on the `/meetings/import` fallback page and meeting processing states.
 
 ## 28. AI Usage Guidelines
 * Use to track multi-stage LLM pipelines (e.g., 33%: Transcribing, 66%: Extracting Actions, 100%: Summarizing).
@@ -144,4 +144,4 @@ Built using Radix UI `Progress`.
 * Adding an estimated time remaining calculation below the bar.
 
 ## 42. CTO Notes
-* Wire this directly to the Axios upload progress event on the frontend for smooth, realistic feedback during file ingestion.
+* Wire this directly to the import upload progress event on the frontend for smooth, realistic feedback during fallback file ingestion.

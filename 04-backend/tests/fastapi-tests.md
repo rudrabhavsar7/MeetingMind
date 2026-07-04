@@ -92,14 +92,23 @@ def test_get_meeting_summary(client, test_meeting):
 
 ## 6. Mocking External APIs
 * Do not call OpenAI, S3, or external services during FastAPI endpoint tests.
-* Use `pytest-mock` (wrapper around `unittest.mock`) to mock the S3 Presigned URL generator or the Celery `delay()` call.
+* Use `pytest-mock` (wrapper around `unittest.mock`) to mock WebSocket stream handlers, the STT client, the S3 Presigned URL generator, or the Celery `delay()` call.
 
 ```python
-def test_upload_meeting(client, mocker):
-    # Mock the Celery task dispatch so it doesn't actually run in tests
-    mock_task = mocker.patch("myapp.tasks.process_meeting.delay")
+def test_create_extension_live_meeting(client, mocker):
+    # Mock stream-token generation so tests do not depend on external signing state.
+    mock_token = mocker.patch("myapp.services.meeting_svc.create_stream_token", return_value="stream-token")
     
-    response = client.post("/api/v1/meetings/upload-complete", json={"meeting_id": "123"})
-    assert response.status_code == 202
-    mock_task.assert_called_once_with("123")
+    response = client.post(
+        "/api/v1/workspaces/ws_123/meetings/live",
+        json={
+            "title": "Q3 Review",
+            "client_type": "chrome_extension",
+            "source_app": "google_meet",
+            "source_url": "https://meet.google.com/abc-defg-hij",
+        },
+    )
+    assert response.status_code == 201
+    assert response.json()["data"]["stream_token"] == "stream-token"
+    mock_token.assert_called_once()
 ```

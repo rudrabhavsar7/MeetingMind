@@ -66,7 +66,7 @@ def test_generate_action_items(mocker, db_session):
 ```
 
 ## 6. Testing the Vector Pipeline
-1. Mock the embedding API to return a random array of 1536 floats (e.g., `[0.1, -0.4, ...]`).
+1. Mock the embedding provider to return a random array of 768 floats (e.g., `[0.1, -0.4, ...]`).
 2. Run the chunking and embedding task.
 3. Query the test PostgreSQL database and assert the rows were inserted.
 4. Execute a similarity search query using a mocked query vector and assert it returns the expected chunk.

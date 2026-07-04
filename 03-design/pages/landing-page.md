@@ -19,7 +19,7 @@ If a deployment chooses to serve a landing page at `/` to educate internal emplo
 * **Header:** MeetingMind Logo (Left). "Login" Button (Right).
 * **Hero Section:**
   * Headline: "Your Organization's AI Meeting Oracle."
-  * Subheadline: "Upload recordings. Get instant summaries, extracted action items, and a searchable knowledge base—all kept 100% private on our own servers."
+  * Subheadline: "Capture live meetings from Google Meet, generate summaries and action items, and search institutional knowledge - all kept private on your own servers."
   * CTA Button: "Sign In via SSO" (or standard login).
   * Graphic: A stylized, dark-mode dashboard mockup or a 3D isometric representation of a server rack with AI nodes.
 * **Features (3-Column Grid):**

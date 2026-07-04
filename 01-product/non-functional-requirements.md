@@ -20,6 +20,7 @@ This document specifies the systemic qualities MeetingMind must exhibit to be co
 * **Measurement:** Monitored continuously via Prometheus metrics exposed by FastAPI.
 
 ### 1.2 Processing Throughput
+* **Extension Capture Latency:** Interim transcript events should appear within **< 2 seconds** of audible speech under normal network conditions.
 * **Audio Extraction:** Must process 1 hour of audio in **< 1 minute** (FFmpeg).
 * **Transcription (CPU):** Must transcribe 1 hour of audio in **< 15 minutes** (using a standard 8-core CPU).
 * **Transcription (GPU):** Must transcribe 1 hour of audio in **< 3 minutes** (using an NVIDIA T4 or better).
@@ -69,6 +70,6 @@ MeetingMind v1.0 is designed for single-organization, self-hosted deployments.
 ## 6. Accessibility (A11y)
 
 * **Compliance Level:** The user interface must comply with **WCAG 2.2 Level AA** guidelines.
-* **Keyboard Navigation:** All critical flows (upload, search, read transcript) must be fully navigable via keyboard.
+* **Keyboard Navigation:** All critical flows (extension connect, capture controls, import, search, read transcript) must be fully navigable via keyboard where browser extension APIs allow.
 * **Screen Readers:** Semantic HTML and appropriate ARIA labels must be utilized, particularly for dynamic components like Modals and Command Palettes.
 * **Contrast:** The design system (Emerald + Neutral) must maintain a minimum contrast ratio of 4.5:1 for standard text.

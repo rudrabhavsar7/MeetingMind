@@ -102,7 +102,7 @@ import { Calendar } from "@/components/ui/calendar"
 * N/A.
 
 ## 29. Error Handling
-* Disabled dates (e.g., future dates for meeting uploads).
+* Disabled dates (e.g., future dates for meeting capture/import records).
 
 ## 30. Edge Cases
 * N/A.

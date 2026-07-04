@@ -14,38 +14,42 @@ Related Documents:
 
 This document maps out the critical paths users take through MeetingMind to achieve their goals, detailing their actions, touchpoints, and emotional states.
 
-## 1. Journey: First Meeting Upload and Review
+## 1. Journey: First Google Meet Capture and Review
 
 **Persona:** Maya (Engineering Manager)  
-**Goal:** Process a recorded architecture review and extract action items.
+**Goal:** Capture an architecture review in Google Meet and extract action items.
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant Upload UI
+    participant Extension
+    participant Google Meet
     participant AI Pipeline
-    participant Dashboard
+    participant Console
     
-    User->>Upload UI: Drags MP4 file
-    Upload UI-->>User: Shows upload progress
-    Upload UI->>AI Pipeline: Triggers processing
-    AI Pipeline-->>Dashboard: Status: Transcribing
-    User->>Dashboard: Leaves to do other work
-    AI Pipeline-->>User: Email: Processing Complete
-    User->>Dashboard: Clicks meeting link
-    Dashboard-->>User: Displays Transcript & Summary
+    User->>Google Meet: Joins architecture review
+    Google Meet-->>Extension: Supported meeting detected
+    User->>Extension: Starts MeetingMind capture
+    Extension-->>User: Shows Recording state
+    Extension->>AI Pipeline: Streams tab audio chunks
+    AI Pipeline-->>Extension: Interim transcript events
+    AI Pipeline-->>Extension: Final transcript and action events
+    User->>Extension: Ends capture
+    AI Pipeline-->>User: Summary ready notification
+    User->>Console: Opens meeting link
+    Console-->>User: Displays Transcript & Summary
 ```
 
 **Step-by-Step Flow:**
-1. **Trigger:** Meeting ends; Maya has an MP4 recording on her desktop.
-2. **Action:** Logs into MeetingMind and clicks "Upload Meeting".
-3. **Action:** Drags the MP4 into the drop zone and enters "Q3 Architecture Review".
-4. **Touchpoint (UploadZone):** Sees clear, fast progress bar. *(Emotion: Satisfied)*
-5. **Touchpoint (Dashboard):** Sees the meeting in the list with a pulsing "Processing" badge.
-6. **Action:** Closes tab, goes to eat lunch.
-7. **Trigger:** Receives email notification: "Q3 Architecture Review is ready".
-8. **Action:** Clicks link, arrives at Meeting Details page.
-9. **Touchpoint (Meeting Details):** Sees the AI Summary. It perfectly captured the DB migration debate. *(Emotion: Delighted)*
+1. **Trigger:** Maya is about to start a Q3 Architecture Review in Google Meet.
+2. **Action:** Joins the Google Meet tab. The MeetingMind extension detects the active meeting.
+3. **Action:** Clicks "Start Capture" in the extension and grants tab audio permission.
+4. **Touchpoint (Extension Side Panel):** Sees a clear Recording state and live transcript text appearing as people speak. *(Emotion: Confident)*
+5. **Touchpoint (Extension AI Panel):** Sees rolling summary notes and candidate action items appear during the meeting.
+6. **Action:** Ends the capture from the extension when the meeting finishes.
+7. **Trigger:** Receives notification: "Q3 Architecture Review summary is ready".
+8. **Action:** Clicks link, arrives at MeetingMind Console Meeting Details page.
+9. **Touchpoint (Meeting Details):** Sees the final AI Summary. It captured the DB migration debate with citations. *(Emotion: Delighted)*
 10. **Action:** Clicks the "Action Items" tab. Sees three tasks correctly assigned.
 11. **Action:** Clicks "Share" to copy the meeting link and pastes it into the team Slack.
 
@@ -99,8 +103,8 @@ sequenceDiagram
 6. **Action:** Maps the internal domain `meetings.internal.corp` via Nginx.
 7. **Action:** Navigates to the domain.
 8. **Touchpoint (Auth):** Sees the clean login screen. Registers the first admin account. *(Emotion: Relieved it was that easy)*
-9. **Action:** Uploads a test audio file. Opens `htop` on the server.
-10. **Touchpoint (CLI):** Watches Python processes max out the CPU as Whisper runs, then successfully return to idle.
+9. **Action:** Starts a test Google Meet capture through the Chrome extension. Opens `htop` on the server.
+10. **Touchpoint (CLI):** Watches streaming transcription workers process extension audio chunks continuously, then return to idle after the session ends.
 11. **Action:** Integrates the Prometheus `/metrics` endpoint into the company Grafana.
 
 ---

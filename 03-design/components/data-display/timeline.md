@@ -23,7 +23,7 @@ The Meeting Transcript is just a wall of text. It needs chronological structure 
 
 ## 5. Usage Guidelines
 * Used for the Transcript View.
-* Used for the Meeting Processing Status (e.g., Uploaded -> Transcribing -> Analyzing -> Complete).
+* Used for the Meeting Processing Status (e.g., Captured/Imported -> Transcribing -> Analyzing -> Complete).
 
 ## 6. When to Use
 * Event logs.

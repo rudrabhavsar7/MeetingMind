@@ -10,7 +10,7 @@ Dependencies: None
 # MeetingMind: UI Generation Prompts
 
 ## 1. Overview
-These are specialized prompts designed to force AI coding assistants (like v0 by Vercel or Claude) to generate UI components that strictly adhere to the MeetingMind design system, preventing hallucinations of random colors or off-brand layouts.
+These are specialized prompts designed to force AI coding assistants to generate UI components that strictly adhere to the MeetingMind design system, preventing hallucinations of random colors or off-brand layouts.
 
 ## 2. The Base UI Constraint Prompt
 Append this to any request asking for a UI component:
@@ -33,4 +33,4 @@ Append this to any request asking for a UI component:
 > "Generate a Chat Interface component. It needs a scrollable message area and a sticky input area at the bottom. Messages from the user should be aligned right and have a neutral gray background. Messages from the AI should be aligned left, have a subtle Emerald background tint, and include a small 'MeetingMind AI' avatar icon. The input area should look like a pill-shaped text field with a send icon on the right."
 
 ### 3.3 Generating an Empty State
-> "Generate an Empty State component for when a user has no meetings. It should have a large, subtle, grayed-out icon (like a video camera or folder) in the center, a bold `text-lg` heading ('No meetings yet'), and a muted descriptive paragraph. Below the text, include a primary action button ('Upload Meeting') using the Emerald brand color."
+> "Generate an Empty State component for when a user has no meetings. It should have a large, subtle, grayed-out icon (like a video camera or folder) in the center, a bold `text-lg` heading ('No meetings yet'), and a muted descriptive paragraph. Below the text, include a primary action button ('Connect Extension') and a secondary action ('Import Recording') using the Emerald brand color for the primary action."

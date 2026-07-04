@@ -20,7 +20,8 @@ Simulating concurrent user traffic against the FastAPI backend.
 
 ### 2.2 Scenarios
 * **The Dashboard Spike:** 500 concurrent users logging in and fetching their `GET /meetings` list.
-* **The Upload Wave:** 50 concurrent users initiating a 1GB file upload via the `POST /meetings/upload` Presigned URL flow.
+* **The Live Capture Wave:** 50 concurrent extension sessions creating live meetings with `POST /workspaces/{wid}/meetings/live` and streaming 250-500ms audio chunks over `WS /workspaces/{wid}/meetings/{id}/stream`.
+* **The Import Backfill Wave:** 25 concurrent users importing 1GB historical recordings via the `POST /workspaces/{wid}/meetings/import/presigned-url` fallback flow.
 * **The RAG Query:** 100 concurrent users asking a question via `POST /ai/chat`.
 
 ### 2.3 Success Criteria

@@ -29,7 +29,7 @@ Silent background recording violates user trust.
 * Real-time meeting capture.
 
 ## 7. When NOT to Use
-* For processing previously uploaded static files.
+* For processing previously imported static files.
 
 ## 8. Component Anatomy
 * Container (Pill/Badge).

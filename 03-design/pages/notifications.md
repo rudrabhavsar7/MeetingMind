@@ -22,7 +22,8 @@ We use `sonner` (a React toast library) for all in-app transient notifications.
 * Error toasts include a red `XCircle` icon and `text-destructive`.
 
 ### 1.2 Triggers (v1.0)
-* Meeting upload initiated.
+* Meeting capture started.
+* Recording import initiated.
 * Meeting processing completed (triggered via polling if the user is in the app).
 * Action item marked complete.
 * Settings saved.
@@ -40,7 +41,7 @@ In v1.1, an in-app notification center will be added.
 * **Notification Types:**
   * `@mention` in a meeting summary/decision.
   * New Action Item assigned to you.
-  * Meeting you uploaded finished processing.
+  * Meeting you captured or imported finished processing.
 * **Interactions:**
   * Clicking a notification routes the user to the relevant meeting/action item and marks it as read.
   * "Mark all as read" button at the top.

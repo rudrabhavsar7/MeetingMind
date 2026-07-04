@@ -43,14 +43,18 @@ Users can belong to multiple workspaces with different roles.
   * *Primary Key:* (workspace_id, user_id)
 
 ### 3.3. Meetings
-The central entity. Represents a recorded or uploaded session.
+The central entity. Represents an extension-captured, standalone-captured, imported, or bot-originated meeting session.
 * `id` (UUID, Primary Key)
 * `workspace_id` (UUID, Foreign Key)
 * `title` (String)
 * `date` (Timestamp)
 * `duration_seconds` (Integer)
-* `status` (Enum: 'uploading', 'processing', 'completed', 'failed')
-* `source_type` (Enum: 'upload', 'live_record', 'bot_join')
+* `status` (Enum: 'scheduled', 'recording', 'transcribing', 'analyzing', 'completed', 'failed')
+* `source_type` (Enum: 'extension_capture', 'standalone_web_capture', 'recording_import', 'bot_join')
+* `source_app` (Enum/String: 'google_meet', 'zoom_web', 'teams_web', 'standalone_web', 'import', Nullable)
+* `source_url` (String, Nullable) - Meeting app URL captured by the extension.
+* `source_title` (String, Nullable) - Visible meeting/page title captured by the extension.
+* `visible_participants` (JSONB, Nullable) - Participant names visible to the extension at capture time.
 * `media_url` (String) - Pointer to S3/Blob storage.
 * `summary` (Text) - Cached AI summary.
 * `created_at` (Timestamp)
@@ -63,7 +67,7 @@ We do not store the transcript as one massive string. It is broken into segments
 * `start_time` (Float) - Seconds from beginning.
 * `end_time` (Float) - Seconds from beginning.
 * `text` (Text)
-* `embedding` (Vector) - Uses `pgvector` (e.g., `vector(1536)` for OpenAI text-embedding-3-small).
+* `embedding` (Vector) - Uses `pgvector` with the default local BAAI BGE embedding model (`vector(768)`).
 
 ### 3.5. Action Items
 Tasks extracted by the AI.
@@ -87,7 +91,7 @@ To enable fast similarity search on the transcript segments:
 CREATE EXTENSION IF NOT EXISTS vector;
 
 -- Assume table is transcript_segments
-ALTER TABLE transcript_segments ADD COLUMN embedding vector(1536);
+ALTER TABLE transcript_segments ADD COLUMN embedding vector(768);
 
 -- Create an HNSW index for fast approximate nearest neighbor search
 CREATE INDEX ON transcript_segments USING hnsw (embedding vector_cosine_ops);

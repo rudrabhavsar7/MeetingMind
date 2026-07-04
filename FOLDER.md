@@ -44,7 +44,9 @@ MeetingMind/
 │   ├── monitoring.md
 │   ├── testing-strategy.md
 │   ├── deployment.md
-│   └── performance.md
+│   ├── performance.md
+│   ├── jira-tickets.md
+│   └── jira-task-breakdown.md
 │
 ├── 03-design/
 │   │
@@ -65,7 +67,8 @@ MeetingMind/
 │   │   ├── meetings.md
 │   │   ├── meeting-details.md
 │   │   ├── ai-search.md
-│   │   ├── upload.md
+│   │   ├── upload.md                  # Recording import fallback
+│   │   ├── extension-capture.md       # Chrome extension capture UX
 │   │   ├── settings.md
 │   │   ├── authentication.md
 │   │   ├── profile.md
@@ -195,7 +198,7 @@ MeetingMind/
 ├── 07-prompts/
 │   ├── cursor-rules.md
 │   ├── copilot-rules.md
-│   ├── claude-rules.md
+│   ├── ai-agent-rules.md
 │   ├── codex-rules.md
 │   ├── ui-prompts.md
 │   ├── backend-prompts.md

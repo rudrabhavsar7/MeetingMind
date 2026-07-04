@@ -77,6 +77,6 @@ To ensure consistency, specific concepts must always use the same icon. Do not m
 // ✅ GOOD: Icon paired with text
 <Button>
   <Upload className="w-4 h-4 mr-2" aria-hidden="true" />
-  Upload Meeting
+  Import Recording
 </Button>
 ```

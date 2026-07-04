@@ -111,14 +111,14 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 
-const uploadSchema = z.object({
+const importSchema = z.object({
   title: z.string().min(3, 'Title is too short'),
   date: z.date(),
 });
 
-export function UploadForm() {
+export function RecordingImportForm() {
   const { register, handleSubmit, formState: { errors } } = useForm({
-    resolver: zodResolver(uploadSchema),
+    resolver: zodResolver(importSchema),
   });
 
   const onSubmit = (data) => {

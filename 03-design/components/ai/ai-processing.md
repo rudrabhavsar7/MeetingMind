@@ -23,7 +23,7 @@ Users abandon pages if they think the app has frozen. A generic "Processing..." 
 * Keep the user entertained/informed while they wait.
 
 ## 5. Usage Guidelines
-* Displayed on the Meeting Details page immediately after an upload, before the transcript is available.
+* Displayed on the Meeting Details page during live capture finalization or immediately after a recording import, before the transcript is available.
 
 ## 6. When to Use
 * Audio/Video ingestion.
@@ -54,7 +54,7 @@ Users abandon pages if they think the app has frozen. A generic "Processing..." 
 * Centered vertically and horizontally if full-page.
 
 ## 13. Content Guidelines
-* Use active verbs for stages: "Uploading audio", "Transcribing speech", "Identifying speakers", "Generating summary".
+* Use active verbs for stages: "Receiving audio", "Transcribing speech", "Identifying speakers", "Generating summary".
 
 ## 14. Icon Rules
 * Use `CheckCircle` (green) for completed stages.
@@ -125,7 +125,7 @@ Users abandon pages if they think the app has frozen. A generic "Processing..." 
 * Track pipeline duration (Time-to-Interactive for the meeting).
 
 ## 34. Storybook Stories
-* Uploading, Transcribing, Summarizing.
+* Live capture, Importing, Transcribing, Summarizing.
 
 ## 35. Figma Mapping
 * `AI/ProcessingTracker`
@@ -140,13 +140,13 @@ Users abandon pages if they think the app has frozen. A generic "Processing..." 
 * N/A.
 
 ## 39. QA Checklist
-* Upload a 1-hour file and verify the UI doesn't timeout before the backend finishes.
+* Capture or import a 1-hour meeting and verify the UI doesn't timeout before the backend finishes.
 
 ## 40. Acceptance Criteria
 * Accurately reflects backend Celery state.
 
 ## 41. Future Enhancements
-* Estimated Time Remaining calculation based on file size and current worker queue depth.
+* Estimated Time Remaining calculation based on live session duration, import file size, and current worker queue depth.
 
 ## 42. CTO Notes
 * Do not rely solely on WebSockets; always fall back to short polling if the socket drops.

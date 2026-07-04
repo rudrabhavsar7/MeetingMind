@@ -1,0 +1,23 @@
+# MeetingMind Cursor Rules
+
+Follow the universal project instructions in `AGENTS.md`.
+
+Before generating code or making edits:
+
+1. Read `PROJECT_MEMORY.md`.
+2. Read `AGENTS.md`.
+3. Read `.agents/context-map.md`.
+4. Read the relevant product, design, backend, engineering, DevOps, or testing docs.
+
+Core rules:
+
+- Use Next.js 15 App Router, React 19, TypeScript strict mode, Tailwind CSS v4, shadcn/ui, Radix UI, and lucide-react for frontend work.
+- Default to Server Components. Add `"use client"` only when interactivity requires it.
+- Use FastAPI, Pydantic v2, async SQLAlchemy, Alembic, Celery, Redis, PostgreSQL plus pgvector, and MinIO/S3-compatible storage for backend work.
+- No `any` in TypeScript.
+- Fully type Python code.
+- Do not hardcode secrets.
+- Preserve workspace data isolation.
+- Use local AI providers by default; external providers are opt-in only.
+- Keep changes scoped to the request.
+

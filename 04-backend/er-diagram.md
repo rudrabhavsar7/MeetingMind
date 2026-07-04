@@ -57,7 +57,7 @@ erDiagram
         float start_time
         float end_time
         text text
-        vector embedding "pgvector(1536)"
+        vector embedding "pgvector(768)"
     }
 
     ACTION_ITEM {

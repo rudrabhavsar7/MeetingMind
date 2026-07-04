@@ -20,7 +20,7 @@ To allow users to browse, filter, and find past meetings efficiently without nee
 * **Filter Bar (Sticky):**
   * Search input (Keyword search on titles/participants).
   * Date range picker.
-  * Uploader dropdown (Filter by who uploaded it).
+  * Captured/imported by dropdown (Filter by who created the meeting record).
   * Status toggle (Complete / Processing / Failed).
 * **Grid Area:**
   * A responsive CSS Grid displaying `MeetingCard` components.
@@ -37,7 +37,7 @@ To allow users to browse, filter, and find past meetings efficiently without nee
 The atomic unit of this page.
 * **Visuals:** A clean, bordered card (`bg-card`).
 * **Header:** Title of the meeting.
-* **Metadata:** Date, Duration (e.g., `45m`), Uploader Avatar.
+* **Metadata:** Date, Duration (e.g., `45m`), source app/import label, creator avatar.
 * **Body:** The first two sentences of the AI Executive Summary, truncated with `line-clamp-2`.
 * **Footer:** Badge indicating status (e.g., `Processed` in Emerald, or `Processing` with a spinner).
 

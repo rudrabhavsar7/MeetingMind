@@ -17,15 +17,43 @@ This document outlines the directory architecture for both the Next.js Frontend 
 
 ```mermaid
 graph TD
-    UI[Frontend: Next.js App]
+    EXT[Capture Client: Chrome Extension]
+    UI[Console: Next.js App]
     API[Backend: FastAPI]
     Workers[Backend: Celery Workers]
     
+    EXT --> API
     UI --> API
     API --> Workers
 ```
 
-## 2. Frontend Structure (Next.js App Router)
+## 2. Chrome Extension Structure (Manifest V3)
+
+The capture client lives separately from the web console because it has different runtime constraints, permissions, packaging, and browser APIs.
+
+```text
+apps/extension/
+├── manifest.json
+├── src/
+│   ├── background/          # service worker: auth, capture orchestration, websocket lifecycle
+│   ├── content/             # meeting app detection and visible metadata extraction
+│   ├── popup/               # compact connect/start/stop UI
+│   ├── sidepanel/           # live transcript, summary, action items
+│   ├── capture/             # tab audio capture and chunk encoding
+│   ├── api/                 # MeetingMind API/WebSocket client
+│   ├── stores/              # extension-local state
+│   └── types/
+├── public/
+└── package.json
+```
+
+### Extension Layer Rules
+1. **Never auto-start capture.** User action and browser permission are required.
+2. **Content scripts only read visible meeting context.** Do not attempt to bypass meeting-app privacy boundaries.
+3. **Background/service worker owns WebSocket lifecycle.** UI surfaces should subscribe to state rather than each opening streams.
+4. **All extension auth tokens are short-lived and workspace-scoped.**
+
+## 3. Frontend Structure (Next.js App Router)
 
 The frontend uses a feature-sliced architecture combined with Next.js App Router conventions.
 
@@ -64,7 +92,7 @@ frontend/
 ### Frontend Co-location Philosophy
 * If a component is *only* used by `/app/dashboard/page.tsx`, it should be placed in `/app/dashboard/_components/` rather than the global `/components/` folder. Keep code as close to where it is used as possible.
 
-## 3. Backend Structure (FastAPI)
+## 4. Backend Structure (FastAPI)
 
 The backend follows a domain-driven, layered architecture to cleanly separate routing, business logic, and database access.
 

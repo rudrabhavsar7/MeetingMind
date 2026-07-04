@@ -10,19 +10,30 @@ Dependencies: None
 # MeetingMind Backend: AI Pipeline Architecture
 
 ## 1. Overview
-The AI Pipeline is the core engine of MeetingMind. It transforms raw audio/video files into structured data (Transcripts, Summaries, Action Items, Embeddings). Because these operations are computationally heavy and take minutes to complete, they must be executed asynchronously.
+The AI Pipeline is the core engine of MeetingMind. It transforms extension-captured live audio streams into structured data (Transcripts, Summaries, Action Items, Embeddings) while the meeting is happening. The primary v1 mode is **Chrome Extension Real-Time Streaming** via WebSockets/WebRTC, starting with Google Meet. **Asynchronous Batch** via Celery remains available for imported recordings and backfills.
 
 ## 2. Pipeline Technology Stack
 * **Task Queue:** Celery (Python).
 * **Message Broker:** Redis or RabbitMQ.
 * **Audio Processing:** FFmpeg.
-* **Transcription/Diarization:** Whisper (Local/API) + Pyannote (for Diarization).
-* **LLM Engine:** Ollama (Local) or OpenAI/Anthropic APIs.
-* **Embeddings:** HuggingFace `sentence-transformers` or OpenAI API.
+* **Transcription/Diarization:** Local Whisper-compatible streaming STT + Pyannote/online diarization.
+* **LLM Engine:** Ollama by default; external LLM APIs only as explicit opt-in configuration.
+* **Embeddings:** Local HuggingFace `sentence-transformers` by default; external embedding APIs only as explicit opt-in configuration.
 
-## 3. The Asynchronous Flow
+## 3. The Dual Pipeline Flow
 
-When a user finishes uploading a meeting, the API immediately returns `202 Accepted` and enqueues a Celery task. The pipeline follows a strict DAG (Directed Acyclic Graph) of operations.
+MeetingMind is extension-first and supports standalone web capture plus recording imports as secondary fallbacks.
+
+### 3.1 Extension Real-Time Streaming Flow (WebSockets)
+1. **Detection:** Chrome extension detects a supported meeting app tab, starting with Google Meet.
+2. **Ingestion:** Extension connects via WebSocket and streams tab audio chunks (e.g., PCM 16kHz).
+3. **Context Sync:** Extension sends source app, source URL, visible title, and visible participants when available.
+4. **Transcription:** Audio chunks are immediately piped to local streaming Whisper-compatible STT by default. External streaming STT providers are opt-in only.
+5. **Rolling Analysis:** As transcript segments complete, they are pushed to a rolling LLM context buffer. The LLM generates live summaries and action items using streaming events.
+6. **Vectorization:** Completed segments are vectorized asynchronously in the background.
+
+### 3.2 Asynchronous Batch Flow (Celery)
+For imported recordings, the pipeline follows a strict DAG (Directed Acyclic Graph) of operations:
 
 ### Stage 1: Audio Extraction & Normalization
 1. Input: MP4, WebM, WAV, etc.

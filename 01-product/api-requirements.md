@@ -25,7 +25,8 @@ This document defines the overarching requirements, constraints, and conventions
 
 ## 3. Request & Response Formats
 * **Content-Type:** `application/json` is the standard for both requests and responses.
-* **Multipart Form Data:** Required only for direct file uploads (though direct-to-MinIO presigned URLs are the preferred pattern).
+* **WebSocket Audio:** Chrome extension and fallback web capture use authenticated WebSocket/WebRTC audio chunks rather than REST file upload.
+* **Multipart Form Data:** Required only for recording imports when presigned direct-to-MinIO uploads are not available.
 * **Casing:** Request and response JSON payloads must use `snake_case` to align with Python/PostgreSQL paradigms. The frontend will handle transformation to `camelCase` if necessary.
 
 ## 4. Authentication & Authorization

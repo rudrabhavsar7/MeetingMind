@@ -33,8 +33,9 @@ This occurs when an invited employee logs in for the first time.
   * Replace the empty lists with a centralized CTA block.
   * **Illustration:** A friendly, abstract graphic representing meetings/audio.
   * **Headline:** "Welcome to MeetingMind!"
-  * **Body:** "There aren't any meetings in this workspace yet. Upload your first recording to see the AI in action."
-  * **Primary Button:** "Upload a Meeting" (Opens the Upload flow).
+  * **Body:** "There aren't any meetings in this workspace yet. Connect the Chrome extension to capture your first live meeting."
+  * **Primary Button:** "Connect Extension" (Opens the extension connection flow).
+  * **Secondary Button:** "Import Recording" (Opens the recording import fallback flow).
 
 ### 2.2 Tooltips (Optional v1.1)
 If user testing shows confusion about RAG search, a one-time "Tour" can be implemented using a library like `react-joyride` to highlight the Command Palette (`Cmd+K`) and the AI Search tab.

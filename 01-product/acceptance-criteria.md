@@ -37,18 +37,30 @@ Before a feature can be merged to the `main` branch, it must meet the following 
   * Then a toast notification says "Invalid credentials"
   * And the password field is cleared.
 
-### 2.2 Meeting Upload
-* **Scenario: Valid Audio Upload**
-  * Given the user is on `/meetings/upload`
-  * When they drag a 50MB MP3 file into the drop zone
-  * Then a progress bar appears and reaches 100%
-  * And the UI transitions to show the meeting in a "Processing" state.
+### 2.2 Extension-Based Real-Time Meeting Capture
+* **Scenario: Start Google Meet Capture**
+  * Given the user has installed and connected the MeetingMind Chrome extension
+  * And they are inside an active Google Meet tab
+  * When they click "Start Capture" in the extension and grant tab audio permission
+  * Then a meeting record is created in the selected workspace
+  * And the extension transitions to a "Recording" state within 2 seconds.
 
-* **Scenario: Invalid File Type**
-  * Given the user is on `/meetings/upload`
+* **Scenario: Live Transcript Appears**
+  * Given an extension capture session is active
+  * When the user speaks for at least 5 seconds
+  * Then interim transcript text appears in the extension side panel
+  * And final speaker-labeled transcript segments are persisted after pauses.
+
+* **Scenario: Meeting Context Saved**
+  * Given the extension is capturing a Google Meet session
+  * When the meeting page exposes title, URL, and visible participants
+  * Then MeetingMind saves the source app, meeting URL, title, start time, and visible participant names to the meeting details.
+
+* **Scenario: Recording Import Fallback**
+  * Given the user is on `/meetings/import`
   * When they drag a `.exe` file into the drop zone
   * Then the drop zone rejects the file immediately
-  * And a red toast appears saying "Invalid file format. Please upload MP3, MP4, or WAV."
+  * And a red toast appears saying "Invalid file format. Please import MP3, MP4, WAV, M4A, or WebM."
 
 ### 2.3 Meeting Details & Transcript
 * **Scenario: Viewing a processed meeting**

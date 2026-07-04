@@ -16,7 +16,7 @@ The Button component is the primary interactive element in MeetingMind, used to 
 Buttons should be instantly recognizable, provide immediate tactile feedback, and clearly communicate their hierarchical importance within a view.
 
 ## 3. Problem Statement
-Inconsistent button usage leads to cognitive overload. Users need to know instantly which action is primary (e.g., "Upload Meeting") vs. secondary (e.g., "Cancel").
+Inconsistent button usage leads to cognitive overload. Users need to know instantly which action is primary (e.g., "Connect Extension") vs. secondary (e.g., "Cancel").
 
 ## 4. UX Goals
 * Provide clear visual hierarchy.

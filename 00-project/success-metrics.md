@@ -92,7 +92,7 @@ These metrics define the commercial and organizational footprint of the project.
 |---|---|---|---|---|
 | **Active Workspaces** | Number of unique self-hosted deployments actively processing meetings | 0 | 50 | 200 |
 | **Monthly Active Users (MAU)** | Unique users logging in across all known deployments | 0 | 500 | 2,500 |
-| **W1 Retention** | % of users returning in week 2 after their first meeting upload | N/A | > 40% | > 60% |
+| **W1 Retention** | % of users returning in week 2 after their first captured or imported meeting | N/A | > 40% | > 60% |
 | **Volume Processed** | Total hours of meeting audio processed monthly across the network | 0 | 2,000 hrs | 10,000 hrs |
 
 ---

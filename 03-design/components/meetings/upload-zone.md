@@ -1,5 +1,5 @@
 ---
-Title: MeetingMind — Component: Upload Zone
+Title: MeetingMind — Component: Recording Import Zone
 Version: 1.0.0
 Status: Approved
 Owner: Lead UX Designer
@@ -7,27 +7,27 @@ Last Updated: 2026-06-28
 Dependencies: 03-design/components/foundation/progress.md
 ---
 
-# MeetingMind Component: Upload Zone
+# MeetingMind Component: Recording Import Zone
 
 ## 1. Overview
-A large, interactive drag-and-drop area for users to upload audio and video meeting files.
+A large, interactive drag-and-drop area for users to import existing audio and video meeting recordings as a fallback/backfill flow.
 
 ## 2. Design Philosophy
-Uploading files should be frictionless and visually obvious. The area should be inviting and clearly state what formats are accepted.
+Importing historical recordings should be frictionless and visually obvious. The area should be inviting and clearly state what formats are accepted.
 
 ## 3. Problem Statement
-Small "Choose File" buttons are easily missed and provide poor feedback during long uploads.
+Small "Choose File" buttons are easily missed and provide poor feedback during long recording imports.
 
 ## 4. UX Goals
 * Clear drag-and-drop affordance.
-* Real-time upload progress feedback.
+* Real-time import progress feedback.
 * Clear error handling (wrong format, file too large).
 
 ## 5. Usage Guidelines
-* Prominently displayed on the "New Meeting" or "Upload" page.
+* Prominently displayed on the `/meetings/import` fallback page.
 
 ## 6. When to Use
-* Ingesting new raw data.
+* Importing historical meeting recordings or recordings from unsupported meeting apps.
 
 ## 7. When NOT to Use
 * For small image uploads (Use a standard file input).

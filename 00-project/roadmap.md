@@ -24,7 +24,7 @@ gantt
 
     section v1.0 (MVP)
     Core Infrastructure   :done, 2026-07, 4w
-    Transcription & AI    :done, 2026-08, 4w
+    Streaming STT & Websockets :done, 2026-08, 4w
     UI & UX MVP           :active, 2026-09, 4w
 
     section v1.1 (Scale)
@@ -38,7 +38,7 @@ gantt
     API & Webhooks        :2027-03, 4w
 
     section v2.0 (Agents)
-    Real-time Collab      :2027-04, 8w
+    Advanced Integrations :2027-04, 8w
     AI Agents Framework   :2027-06, 8w
     External Integrations :2027-08, 6w
 ```
@@ -51,18 +51,19 @@ gantt
 
 ### Product Features
 * **Authentication & Workspaces:** Single-workspace registration, basic JWT auth, role management (Admin/Member).
-* **Upload Pipeline:** Drag-and-drop media upload, support for MP4, MP3, WAV.
-* **Transcription Engine:** Local Whisper integration with batch processing.
-* **Speaker Diarization:** Basic speaker separation (Speaker A, Speaker B).
-* **AI Extraction:** Summaries, Action Items, and Decisions using Llama 3 via Ollama.
-* **Meeting Details UI:** Transcript viewer with timestamp sync, AI summary cards.
+* **Chrome Extension Capture:** Manifest V3 extension for Google Meet detection, tab-audio capture, live side panel, and secure workspace connection.
+* **Real-Time Pipeline:** WebSocket/WebRTC architecture to stream audio live from the extension to the backend. Recording import and standalone web capture remain supported as fallback/backfill paths.
+* **Streaming STT Engine:** Local streaming Whisper variants for live word-by-word transcription. External streaming STT providers are opt-in only.
+* **Speaker Diarization:** Real-time continuous speaker tagging.
+* **Rolling AI Extraction:** Live summaries and action items populated in real-time via streaming LLM output.
+* **MeetingMind Console:** Dashboard and meeting details for extension-captured meetings, source app metadata, live transcript viewer, and WebSocket sync.
 * **Semantic Search:** Basic RAG pipeline for searching past meetings.
 
 ### Infrastructure & Engineering
 * **Deployment:** Single-node Docker Compose setup.
-* **Backend:** FastAPI, PostgreSQL, Redis, Celery (local workers).
+* **Backend:** FastAPI with WebSockets, PostgreSQL, Redis for pub/sub. (Moving away from Celery-only batch queues).
 * **AI:** Ollama container integration, pgvector setup.
-* **Frontend:** Next.js App Router, shadcn/ui integration.
+* **Frontend:** Chrome Extension (Manifest V3) capture client plus Next.js App Router console with shadcn/ui integration.
 
 ---
 
@@ -72,6 +73,7 @@ gantt
 
 ### Product Features
 * **Export Engine:** Export meeting notes to PDF, DOCX, and Markdown.
+* **Zoom Web and Teams Web Capture:** Extend the Chrome extension beyond Google Meet.
 * **Dashboard Analytics:** Meeting volume stats, action item completion tracking.
 * **Notification System:** In-app and email alerts for mentions, assigned action items, and completed processing.
 * **Command Palette:** Global Cmd+K navigation and fuzzy search.
@@ -95,6 +97,7 @@ gantt
 * **Public API:** Documented REST API for external consumption with API key management.
 * **Webhooks:** Outbound webhooks for events (`meeting.processed`, `action_item.created`).
 * **SSO / SAML:** Enterprise authentication integrations (Okta, Azure AD).
+* **Desktop Capture App:** Native desktop app for Zoom/Teams desktop meetings where browser extension capture cannot reach.
 
 ### Infrastructure & Engineering
 * **Data Isolation:** Row-Level Security (RLS) implementation in PostgreSQL for strict tenant isolation.
@@ -110,14 +113,11 @@ gantt
 
 ### Product Features
 * **AI Agents:** Autonomous agents that can query meeting history to generate weekly digests or prep briefs.
-* **Real-time Collaboration:** Live cursor tracking on action items, live editing of AI summaries.
-* **Calendar Integration:** Auto-sync with Google Calendar/Outlook to pre-fill meeting metadata.
 * **Workflow Integrations:** Native, two-way sync with Jira, Linear, and Slack.
-* **Mobile Experience:** Fully responsive mobile web app V2, focusing on on-the-go knowledge retrieval.
+* **Mobile Experience:** Fully responsive mobile web app V2 and Android/iOS capture exploration where platform permissions allow.
 
 ### Infrastructure & Engineering
 * **Vector DB Scale:** Migration path from pgvector to Qdrant for deployments exceeding 10M chunks.
-* **Real-time Comm:** WebSocket infrastructure for live collaboration (Socket.io or native WebSockets).
 * **Agent Framework:** Implementation of LangGraph or similar stateful agent orchestration.
 * **Tech Debt:** Deprecation of v1 legacy API endpoints.
 

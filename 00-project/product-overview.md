@@ -17,9 +17,9 @@ Related Documents:
 
 ## Executive Summary
 
-MeetingMind is a self-hosted, AI-powered meeting intelligence platform that transforms unstructured audio recordings into structured, searchable, and actionable organisational knowledge. It is designed for organisations that require the productivity gains of AI meeting analysis without compromising data sovereignty by routing sensitive conversations through third-party cloud AI services.
+MeetingMind is a self-hosted, AI-powered meeting intelligence platform delivered as a Chrome extension plus a web console. The extension captures live meeting audio from existing meeting apps, starting with Google Meet, and transforms it into structured, searchable, and actionable organisational knowledge as the meeting happens. It is designed for organisations that require the productivity gains of AI meeting analysis without compromising data sovereignty by routing sensitive conversations through third-party cloud AI services.
 
-The platform ingests meeting recordings in any common audio/video format, transcribes speech with state-of-the-art accuracy using OpenAI Whisper, and runs structured extraction — summaries, action items, decisions, and topic segmentation — through local Large Language Models (LLMs) served by Ollama. All extracted content is indexed in a pgvector-backed knowledge base, enabling hybrid semantic search and Retrieval-Augmented Generation (RAG) Q&A across the entire meeting corpus.
+The extension detects supported meeting pages, captures tab audio with explicit user permission, streams audio over WebSockets/WebRTC, and syncs available meeting context such as source app, URL, title, and visible participants. The backend transcribes speech with local Whisper-compatible streaming STT and runs rolling structured extraction - summaries, action items, decisions, and topic segmentation - through local Large Language Models (LLMs) served by Ollama. Recording import and standalone web capture remain supported as fallbacks, but v1 is extension-first. All extracted content is indexed in a pgvector-backed knowledge base, enabling hybrid semantic search and Retrieval-Augmented Generation (RAG) Q&A across the entire meeting corpus.
 
 **The core value proposition:** teams gain the institutional knowledge embedded in their meetings — without giving that knowledge to an external cloud provider.
 
@@ -39,14 +39,22 @@ MeetingMind targets the intersection of three market trends:
 mindmap
   root((MeetingMind))
     Ingestion
-      Audio Upload
-        MP3 · MP4 · WAV · M4A · OGG · WEBM
-        Chunked multipart · Presigned URL
-        Max 500 MB
+      Chrome Extension Capture
+        Google Meet MVP
+        Zoom Web / Teams Web fast-follow
+        Tab audio capture with explicit permission
+        250-500ms audio chunks
+        Interim and final transcript events
+        Source app / URL / visible metadata sync
+      Standalone Web Capture
+        Browser microphone fallback
+      Recording Import (MP3/MP4/WAV)
+        Presigned URL fallback
+        Max 2 GB
       Processing Pipeline
-        MIME Validation
+        MIME Validation / Stream Buffering
         MinIO Storage
-        Celery Queue
+        WebSockets & Celery Queue
     Transcription
       Whisper large-v3
         Word-level timestamps
@@ -66,7 +74,7 @@ mindmap
         Topic Segmentation
     Knowledge Base
       Embeddings
-        BAAI BGE-M3 1024-dim
+        BAAI BGE-base 768-dim
         pgvector HNSW index
       Search
         BM25 Full-text
@@ -107,7 +115,7 @@ mindmap
 
 | Segment | Role | Primary Needs | Key Workflows |
 |---|---|---|---|
-| **Knowledge Worker** | Meeting participant who uploads recordings | Automatic summaries, action item capture, search across past meetings | Upload recording → Review AI summary → Assign action items → Search for past decisions |
+| **Knowledge Worker** | Meeting participant who uses Google Meet/Zoom/Teams | Extension-based live transcription, automatic summaries, action item capture, search across past meetings | Start extension capture → Review transcript and AI summary in console → Assign action items → Search for past decisions |
 | **Team Lead / Manager** | Workspace owner, manages team | Oversight of team's meeting outputs, action item accountability, decision audit trail | Review action item completion, search for decisions made in team meetings, manage workspace members |
 | **Executive / Stakeholder** | Occasional consumer of summaries | High-level summaries, fast retrieval of specific information | Ask Q&A against meeting corpus, review executive summary, export for reports |
 | **IT Administrator** | Deploys and maintains the platform | Self-hosted control, security compliance, user management | Deploy via Docker Compose, configure OAuth/SMTP, monitor with Flower, manage storage |
@@ -134,7 +142,7 @@ The following matrix positions MeetingMind relative to the primary alternatives:
 | **Open Source** | ✅ MIT | ❌ | ❌ | ❌ | ✅ |
 | **API & Webhooks** | ✅ v1.2.0 | ✅ | ✅ | ✅ | ❌ None |
 | **Calendar Integration** | 🔜 v2.0.0 | ✅ | ✅ | ❌ | ❌ None |
-| **Real-time Transcription** | 🔜 v2.0.0 | ✅ | ✅ | ❌ | ❌ None |
+| **Real-time Transcription** | ✅ v1.0.0 | ✅ | ✅ | ❌ | ❌ None |
 | **Cost** | Infrastructure only | $10–30/user/mo | $10–19/user/mo | $8–15/user/mo | Free |
 
 **Key differentiator:** MeetingMind is the only solution in this matrix that combines enterprise-grade structured extraction, hybrid semantic search with RAG, and complete data sovereignty within a deployable open-source package.
@@ -153,7 +161,8 @@ C4Container
 
   Container_Boundary(meetingmind, "MeetingMind Platform") {
     Container(nginx, "Nginx", "Reverse Proxy", "TLS termination, static serving, upstream routing")
-    Container(frontend, "Next.js Frontend", "Next.js 15 / React 19 / TypeScript", "Server-side rendered UI. App Router, RSC, streaming.")
+    Container(extension, "Chrome Extension", "Manifest V3 / TypeScript", "Detects meeting apps, captures tab audio, shows live side panel.")
+    Container(frontend, "Next.js Console", "Next.js 15 / React 19 / TypeScript", "Workspace dashboard, meeting details, search, settings.")
     Container(backend, "FastAPI Backend", "Python 3.11 / FastAPI 0.111", "REST API. Auth, meeting CRUD, search, RAG, SSE status.")
     Container(worker, "Celery Worker", "Python 3.11 / Celery 5", "Async task processing. Transcription, analysis, embedding.")
     ContainerDb(postgres, "PostgreSQL + pgvector", "PostgreSQL 16", "Relational data + HNSW vector index for embeddings.")
@@ -164,7 +173,9 @@ C4Container
   System_Ext(ollama, "Ollama", "Local LLM Runtime (Llama 3, Gemma, DeepSeek)")
   System_Ext(smtp, "SMTP", "Email delivery")
 
+  Rel(user, extension, "Uses inside Google Meet/Zoom/Teams", "Chrome")
   Rel(user, nginx, "HTTPS", "443")
+  Rel(extension, backend, "Live audio stream + metadata", "WSS/HTTPS")
   Rel(nginx, frontend, "Proxy /", "HTTP")
   Rel(nginx, backend, "Proxy /api/", "HTTP")
   Rel(frontend, backend, "REST API calls", "fetch()")
@@ -189,8 +200,9 @@ The following table summarises the platform's target performance characteristics
 
 | Metric | Target | Measurement |
 |---|---|---|
-| Audio upload throughput | 500 MB per file | Presigned URL direct upload |
-| Transcription speed | 10× real-time (faster-whisper) | GPU: NVIDIA RTX 3090; CPU: ~1× real-time |
+| Live transcript latency | < 2 seconds for interim text | Extension tab audio chunk → WebSocket → STT event |
+| Recording import throughput | 2 GB per file | Presigned URL direct upload fallback |
+| Batch transcription speed | 10× real-time (faster-whisper) | GPU: NVIDIA RTX 3090; CPU: ~1× real-time |
 | AI analysis latency | < 90 seconds for 60-min meeting | End-to-end from queue pick-up to indexing |
 | Search p95 latency | < 300 ms | Hybrid BM25 + pgvector HNSW |
 | RAG Q&A latency | < 8 seconds | Retrieval + LLM generation |
@@ -207,8 +219,8 @@ The following table summarises the platform's target performance characteristics
 timeline
   title MeetingMind Product Lifecycle
   section Phase 1 — Foundation (Q3 2026)
-    v1.0.0 MVP : Upload & transcription
-               : AI extraction pipeline
+    v1.0.0 MVP : Chrome extension capture & imports
+               : Real-time STT & Extraction
                : Workspace and auth
                : Semantic search and RAG
                : Markdown and PDF export
@@ -223,7 +235,7 @@ timeline
            : Webhook integrations
   section Phase 3 — Scale (Q2-Q3 2027)
     v2.0.0 : AI agents
-           : Real-time collaboration
+           : Advanced Integrations
            : Slack and Jira integration
            : Calendar integration
            : Mobile-responsive v2
@@ -240,6 +252,10 @@ timeline
 | Ollama | v1.0.0 ✅ | Outbound | Local LLM inference |
 | REST API (public) | v1.2.0 | Inbound | External systems query MeetingMind data |
 | Webhooks | v1.2.0 | Outbound | Push events to external systems on meeting completion |
+| Chrome Extension | v1.0.0 ✅ | Inbound | Capture Google Meet tab audio and meeting page context |
+| Zoom Web / Teams Web | v1.1.0 | Inbound | Extend browser extension detection and capture support |
+| Desktop App | v1.2.0 | Inbound | Capture native Zoom/Teams desktop meetings |
+| Mobile Apps | v2.0.0 | Inbound | Android/iOS capture where platform permissions allow |
 | Slack | v2.0.0 | Bidirectional | Post summaries to channels; receive recording links |
 | Jira / Linear | v2.0.0 | Outbound | Sync extracted action items as tickets |
 | Google Calendar / Outlook | v2.0.0 | Inbound | Auto-import meeting metadata from calendar events |

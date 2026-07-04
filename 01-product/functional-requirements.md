@@ -20,24 +20,28 @@ This document details the specific, testable functional requirements for the MVP
 | **FR-003** | User Login | Users can authenticate with credentials. | **Given** an existing user<br>**When** they submit correct credentials on /login<br>**Then** they receive a JWT and are redirected to /dashboard. | P0 |
 | **FR-004** | Session Management | The system must keep users logged in across sessions using refresh tokens. | **Given** a logged-in user closes the browser<br>**When** they return within 7 days<br>**Then** they are automatically authenticated via HttpOnly cookie. | P1 |
 
-## 2. Meeting Upload (FR-011 to FR-020)
+## 2. Extension-Based Real-Time Meeting Capture (FR-011 to FR-020)
 
 | ID | Title | Description | Acceptance Criteria | Priority |
 |---|---|---|---|---|
-| **FR-011** | File Type Validation | The system accepts only supported media types. | **Given** a user is on the upload page<br>**When** they drop a .pdf file<br>**Then** the UI rejects the file before upload begins. | P0 |
-| **FR-012** | File Size Limit | The system rejects files over 2GB. | **Given** a valid video file of 2.5GB<br>**When** the user attempts upload<br>**Then** the system rejects it with a clear size limit error. | P0 |
-| **FR-013** | Direct Storage Upload | Files upload directly to MinIO via presigned URLs. | **Given** a user uploads a valid file<br>**When** the upload begins<br>**Then** the client requests a presigned URL and PUTs directly to storage, bypassing the API. | P0 |
-| **FR-014** | Progress Indicator | The UI shows upload progress. | **Given** a large file is uploading<br>**When** data is transferring<br>**Then** the UI displays a percentage and progress bar. | P1 |
+| **FR-011** | Extension Authentication | Users can connect the Chrome extension to their MeetingMind workspace. | **Given** a logged-in user installs the extension<br>**When** they click Connect<br>**Then** the extension receives a short-lived device/session token scoped to the selected workspace. | P0 |
+| **FR-012** | Meeting Page Detection | The extension detects supported meeting apps. | **Given** a user opens Google Meet in Chrome<br>**When** they join a meeting<br>**Then** the MeetingMind extension shows a capture-ready state for that tab. | P0 |
+| **FR-013** | Start Extension Capture | Users can start capture from the extension. | **Given** the extension detects a supported meeting<br>**When** the user clicks Start Capture and grants tab audio permission<br>**Then** a Meeting record is created and the extension enters Recording state. | P0 |
+| **FR-014** | Audio Streaming | The extension streams tab audio to the backend. | **Given** a live capture session is active<br>**When** meeting audio is present<br>**Then** the extension sends 250-500ms audio chunks over WebSocket/WebRTC without routing through file upload. | P0 |
+| **FR-015** | Meeting Context Sync | The extension syncs available meeting metadata. | **Given** a capture session starts<br>**When** the source page exposes metadata<br>**Then** source app, meeting URL, title, start time, and visible participants are saved to the Meeting record. | P0 |
+| **FR-016** | Live Transcript Updates | The extension and console display live transcription. | **Given** the backend receives speech audio<br>**When** interim and final transcript events are produced<br>**Then** the UI renders interim text and persists final speaker-labeled segments. | P0 |
+| **FR-017** | Recording Import Fallback | Users can import existing recordings. | **Given** a user has an MP3, MP4, WAV, M4A, or WebM file up to 2GB<br>**When** they use the import flow<br>**Then** the file uploads directly to MinIO via presigned URL and enters batch processing. | P1 |
+| **FR-018** | Standalone Web Capture Fallback | Users can capture from the MeetingMind web app when the extension cannot detect a meeting app. | **Given** a user is on `/meetings/new`<br>**When** they grant microphone permission and click Start<br>**Then** a Meeting record is created and processed with the same live pipeline. | P2 |
 
 ## 3. Transcription & Analysis (FR-021 to FR-040)
 
 | ID | Title | Description | Acceptance Criteria | Priority |
 |---|---|---|---|---|
-| **FR-021** | Audio Extraction | The system extracts audio from video files. | **Given** an MP4 is uploaded<br>**When** processing begins<br>**Then** the Celery worker uses FFmpeg to extract a normalized WAV file. | P0 |
-| **FR-022** | ASR Execution | The system transcribes audio using Whisper. | **Given** an extracted audio file<br>**When** passed to the Whisper module<br>**Then** a JSON array of transcript segments with timestamps is returned. | P0 |
-| **FR-023** | Chunking Strategy | Audio > 10m is chunked for memory safety. | **Given** a 60-minute audio file<br>**When** transcription begins<br>**Then** the system processes it in 10-minute overlapping chunks. | P0 |
-| **FR-024** | LLM Summarization | The system generates a summary from the transcript. | **Given** a complete transcript<br>**When** passed to the LLM pipeline<br>**Then** a markdown summary is generated and saved to the database. | P0 |
-| **FR-025** | Action Extraction | The system identifies actionable tasks. | **Given** a transcript containing commitments<br>**When** analyzed by the LLM<br>**Then** discrete Action Item records are created in the DB. | P0 |
+| **FR-021** | Streaming ASR Execution | The system transcribes live audio using local streaming STT. | **Given** audio chunks arrive from a live session<br>**When** they are passed to the STT module<br>**Then** interim and final transcript events with timestamps are returned. | P0 |
+| **FR-022** | Streaming Diarization | The system tags speakers during live capture. | **Given** final transcript segments are produced<br>**When** diarization is available<br>**Then** each segment is saved with a speaker label and timestamp range. | P0 |
+| **FR-023** | Recording Import Processing | Imported recordings use the batch pipeline. | **Given** an MP4 is imported<br>**When** processing begins<br>**Then** the Celery worker uses FFmpeg to extract normalized WAV and process it in safe chunks. | P1 |
+| **FR-024** | Rolling LLM Summarization | The system generates a rolling summary during the meeting. | **Given** final transcript segments are available<br>**When** the rolling context buffer updates<br>**Then** the summary is refreshed and saved without waiting for manual post-processing. | P0 |
+| **FR-025** | Live Action Extraction | The system identifies actionable tasks during or shortly after the meeting. | **Given** a transcript segment contains a commitment<br>**When** analyzed by the LLM pipeline<br>**Then** a discrete Action Item record is created with a source citation. | P0 |
 
 ## 4. Search & RAG (FR-041 to FR-050)
 

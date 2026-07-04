@@ -14,9 +14,9 @@ MeetingMind utilizes a RESTful API built with FastAPI (Python). FastAPI provides
 
 ## 2. API Design Principles
 * **Base URL:** `/api/v1`
-* **Content Type:** `application/json` (except for file uploads).
+* **Content Type:** `application/json` for REST requests, binary or base64 audio chunks for extension live WebSocket streams, and presigned object-storage uploads only for recording imports.
 * **Authentication:** Bearer token (JWT) in the `Authorization` header.
-* **Pagination:** Limit/Offset pattern (e.g., `?limit=20&offset=0`).
+* **Pagination:** Cursor-based pagination for large collections (e.g., `?cursor=abc123&limit=50`).
 * **Error Handling:** Standardized JSON error responses following RFC 7807 (Problem Details).
 
 ## 3. Standard Response Formats
@@ -25,7 +25,7 @@ MeetingMind utilizes a RESTful API built with FastAPI (Python). FastAPI provides
 ```json
 {
   "data": { ... },
-  "meta": { "total_count": 45, "limit": 20 } // Optional, for lists
+  "pagination": { "next_cursor": "def456", "has_more": true, "limit": 50 } // Optional, for lists
 }
 ```
 
@@ -54,15 +54,23 @@ Handled via OAuth2 (e.g., Google/Microsoft) or Email/Password, issuing JWTs.
 * `POST /workspaces`
 * `GET /workspaces/{id}/members`
 
-### 4.3 Meetings (`/workspaces/{workspace_id}/meetings`)
-*Notice: Meetings are nested under workspaces for explicit multi-tenant routing.*
+### 4.3 Extension (`/extension`)
+* `POST /extension/connect` -> Exchange a logged-in browser session for a short-lived extension token scoped to selected workspaces.
+* `GET /extension/capabilities` -> Return supported meeting apps, capture settings, retention policy, and feature flags.
+* `POST /extension/heartbeat` -> Maintain extension connection state and current active tab context.
+
+### 4.4 Meetings (`/workspaces/{workspace_id}/meetings`)
+*Notice: Meetings are nested under workspaces for explicit multi-tenant routing. Chrome extension capture is the primary v1 ingestion path; recording import and standalone web capture are secondary.*
 
 * `GET /workspaces/{wid}/meetings` -> List meetings (supports query params `?status=completed&sort=-date`).
 * `GET /workspaces/{wid}/meetings/{id}` -> Get detailed meeting (includes summary).
-* `POST /workspaces/{wid}/meetings/upload` -> Multipart form-data for uploading raw audio. Returns an upload task ID.
+* `POST /workspaces/{wid}/meetings/live` -> Create a live capture session and return the meeting/session identifiers. Payload includes `client_type`, `source_app`, `source_url`, `source_title`, and visible participants when available.
+* `WS /workspaces/{wid}/meetings/{id}/stream` -> WebSocket connection for extension or standalone live audio streaming and real-time STT/extraction events.
+* `POST /workspaces/{wid}/meetings/import/presigned-url` -> Generate a presigned upload URL for recording import fallback.
+* `POST /workspaces/{wid}/meetings/import-complete` -> Confirm imported recording upload and trigger batch processing.
 * `DELETE /workspaces/{wid}/meetings/{id}` -> Soft delete.
 
-### 4.4 Meeting Data (`/meetings/{meeting_id}/*`)
+### 4.5 Meeting Data (`/meetings/{meeting_id}/*`)
 For accessing the nested resources of a specific meeting. (Can omit workspace ID in path if the backend checks the meeting's workspace ownership against the user's JWT).
 
 * `GET /meetings/{id}/transcript` -> Returns the list of `TranscriptSegments`.
@@ -70,23 +78,46 @@ For accessing the nested resources of a specific meeting. (Can omit workspace ID
 * `PATCH /meetings/{id}/action-items/{item_id}` -> E.g., marking complete.
 * `GET /meetings/{id}/decisions`
 
-### 4.5 AI & RAG (`/workspaces/{workspace_id}/ai`)
+### 4.6 AI & RAG (`/workspaces/{workspace_id}/ai`)
 * `POST /workspaces/{wid}/ai/chat` 
   * **Payload:** `{ "query": "What was the budget for Q3?", "meeting_ids": ["uuid-1", "uuid-2"] }`
   * **Response:** Server-Sent Events (SSE) stream for real-time text generation, OR a JSON response if streaming is disabled.
 
-## 5. File Upload Strategy
-FastAPI can handle `UploadFile`, but for large meeting recordings (1GB+):
-1. Client requests a Presigned URL: `POST /meetings/presigned-url`
+## 5. Extension Capture Strategy
+The primary ingestion path is Chrome extension capture:
+1. User joins a supported meeting app page, starting with Google Meet.
+2. Extension detects the active meeting and requests explicit user action to start capture.
+3. Extension creates a live meeting session: `POST /workspaces/{wid}/meetings/live`.
+4. Extension opens `WS /workspaces/{wid}/meetings/{id}/stream`.
+5. Extension sends 250-500ms PCM audio chunks captured from the meeting tab.
+6. Extension sends available meeting context: source app, URL, visible title, start/end time, and visible participants where accessible.
+7. Backend emits `transcript_interim`, `transcript_final`, `action_item_detected`, `summary_updated`, and `meeting_completed` events.
+8. Final transcript segments, action items, decisions, and embeddings are persisted incrementally.
+
+## 5.1 Standalone Web Capture Strategy
+The MeetingMind console may use the same `/meetings/live` and WebSocket stream endpoints for unsupported meeting apps. This is a fallback path, not the primary v1 experience.
+
+## 5.2 Recording Import Strategy
+FastAPI can handle `UploadFile`, but for large recording imports (1GB+):
+1. Client requests a Presigned URL: `POST /workspaces/{wid}/meetings/import/presigned-url`
 2. Backend returns an S3/Cloud Storage URL.
 3. Client uses `PUT` to upload the file directly to the storage bucket.
-4. Client notifies Backend of success: `POST /meetings/upload-complete`
-5. Backend triggers Celery pipeline.
+4. Client notifies Backend of success: `POST /workspaces/{wid}/meetings/import-complete`
+5. Backend triggers the Celery batch pipeline.
 
-## 6. Websockets / Polling
-For tracking the AI Processing pipeline (`status` changing from `uploading` -> `transcribing` -> `completed`):
-* Prefer a WebSocket connection: `WS /ws/meetings/{id}/status`
+## 6. Websockets
+
+### 6.1 Status Tracking
+For tracking live and imported meeting processing (`status` changing from `recording` -> `transcribing` -> `analyzing` -> `completed`):
+* Prefer the live stream WebSocket for active sessions.
+* For non-active views, use `WS /ws/meetings/{id}/status`.
 * Fallback to HTTP Polling: `GET /meetings/{id}/status`
+
+### 6.2 Live Streaming Mode
+For real-time meeting processing:
+* Connection: `WS /workspaces/{wid}/meetings/{id}/stream`
+* Client Payload: Binary PCM audio chunks.
+* Server Payload: JSON events for `transcript_interim`, `transcript_final`, `action_item_detected`, and `summary_updated`.
 
 ## 7. Rate Limiting
 * General API: 100 req/min per IP.

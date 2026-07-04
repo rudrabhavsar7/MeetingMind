@@ -30,14 +30,19 @@ This document maps all planned features across the first four major version rele
 | Advanced RBAC | Viewer-only roles, granular permissions | P2 | | | ✅ | |
 | SSO / SAML | Enterprise auth integrations (Okta, Azure) | P2 | | | | ✅ |
 
-## 2. Ingestion & Upload
+## 2. Capture & Import
 
 | Feature | Description | Priority | v1.0 | v1.1 | v1.2 | v2.0 |
 |---|---|---|---|---|---|---|
-| Audio Upload | MP3, WAV, M4A up to 2GB | P0 | ✅ | | | |
-| Video Upload | MP4, WebM up to 2GB (audio extracted locally) | P0 | ✅ | | | |
-| Upload Progress | Real-time % indicator | P1 | ✅ | | | |
-| Processing Queue UI | Visual indicator of background task status | P0 | ✅ | | | |
+| Chrome Extension Capture | Capture meeting tab audio from supported browser meeting apps | P0 | ✅ | | | |
+| Google Meet Support | Detect and capture Google Meet sessions | P0 | ✅ | | | |
+| Zoom Web Support | Detect and capture Zoom Web sessions | P1 | | ✅ | | |
+| Microsoft Teams Web Support | Detect and capture Teams Web sessions | P1 | | ✅ | | |
+| Meeting Context Sync | Store source app, URL, title, start/end time, and visible participants | P0 | ✅ | | | |
+| Recording Import | MP3, WAV, M4A, MP4, WebM up to 2GB | P1 | ✅ | | | |
+| Standalone Web Capture | Browser microphone capture from MeetingMind console as fallback | P2 | | ✅ | | |
+| Desktop App Capture | Native desktop capture for Zoom/Teams desktop apps | P2 | | | ✅ | |
+| Mobile Capture | Android/iOS capture integrations where platform permissions allow | P3 | | | | ✅ |
 | Automatic Bot Join | Bot that joins Zoom/Meet calls to record | P3 | | | | ✅ |
 
 ## 3. Transcription & Audio Processing

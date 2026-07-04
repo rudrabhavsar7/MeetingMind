@@ -18,7 +18,7 @@ In MeetingMind v1.0, roles are scoped at the **Workspace** level. A user can hav
 | Action / Resource | Owner | Admin | Member | Viewer |
 |---|:---:|:---:|:---:|:---:|
 | Read Meetings & Transcripts | ✅ | ✅ | ✅ | ✅ |
-| Upload Meetings | ✅ | ✅ | ✅ | ❌ |
+| Start Extension Capture / Import Meetings | ✅ | ✅ | ✅ | ❌ |
 | Delete Meetings | ✅ | ✅ | ❌ | ❌ |
 | Update Action Items | ✅ | ✅ | ✅ | ❌ |
 | Use AI Search | ✅ | ✅ | ✅ | ✅ |
@@ -110,17 +110,17 @@ The frontend should hide or disable UI elements that the user cannot interact wi
 // hooks/use-permissions.ts
 import { useUserStore } from '@/stores/user-store';
 
-export function useCanUpload() {
+export function useCanCaptureMeeting() {
   const role = useUserStore((state) => state.currentWorkspaceRole);
   return role === 'OWNER' || role === 'ADMIN' || role === 'MEMBER';
 }
 
 // In a component:
-const canUpload = useCanUpload();
+const canCaptureMeeting = useCanCaptureMeeting();
 
 return (
   <div>
-    {canUpload && <Button>Upload Meeting</Button>}
+    {canCaptureMeeting && <Button>Connect Extension</Button>}
   </div>
 );
 ```

@@ -45,7 +45,7 @@ threatmodel
 * **Roles:**
   * `Owner`: Full control, billing, deletion.
   * `Admin`: Manage members, manage workspace settings.
-  * `Member`: Upload meetings, edit action items.
+  * `Member`: Start live meetings, import recordings, edit action items.
   * `Viewer`: Read-only access to transcripts and search.
 * **Enforcement:** Enforced at the FastAPI route level using dependency injection (`Depends(require_role("Admin"))`).
 
@@ -59,12 +59,16 @@ threatmodel
 * **Validation:** Pydantic models must be used for ALL incoming request bodies, enforcing type, length, and regex constraints.
 * **XSS Prevention:** Next.js automatically escapes HTML. Any use of `dangerouslySetInnerHTML` must pipe data through `DOMPurify`.
 
-## 6. Secure File Uploads
-Because audio/video files are untrusted inputs:
-1. **Direct Uploads:** Files are uploaded directly to MinIO via presigned URLs to prevent the Python backend from loading massive payloads into memory.
-2. **Type Validation:** The frontend must restrict file types in the file picker.
-3. **Magic Number Check:** The Celery worker must verify the file signature (magic bytes) using python-magic before passing it to FFmpeg, rejecting disguised executables.
-4. **Sanitization:** FFmpeg process must run with restricted privileges and time limits to prevent resource exhaustion attacks via malformed media files.
+## 6. Secure Extension Capture and Recording Imports
+Because live audio chunks and imported audio/video files are untrusted inputs:
+1. **Extension Tokens:** Chrome extension sessions must use short-lived tokens scoped to a user, workspace, meeting, and browser device.
+2. **Authenticated Streams:** Capture WebSockets must use short-lived stream tokens scoped to a meeting and workspace.
+3. **Explicit Consent:** The extension must never auto-start capture. User action and browser tab-audio permission are required.
+4. **Chunk Limits:** The backend must enforce audio chunk size, session duration, reconnect limits, and tab/source metadata validation.
+5. **Direct Imports:** Imported files are uploaded directly to MinIO via presigned URLs to prevent the Python backend from loading massive payloads into memory.
+6. **Type Validation:** The frontend must restrict import file types in the file picker.
+7. **Magic Number Check:** The Celery worker must verify imported file signatures (magic bytes) using python-magic before passing them to FFmpeg, rejecting disguised executables.
+8. **Sanitization:** FFmpeg process must run with restricted privileges and time limits to prevent resource exhaustion attacks via malformed media files.
 
 ## 7. OWASP Top 10 Mitigations
 
