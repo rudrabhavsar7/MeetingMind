@@ -14,9 +14,9 @@ Related Documents:
 For implementation-level subtasks, dependency sequencing, verification steps, and handoff notes, use `02-engineering/jira-task-breakdown.md` alongside this backlog.
 
 ## Team Allocation Refresher
-* **Rudra:** Frontend Engineer (Next.js, UI/UX, shadcn/ui)
+* **Rudra:** Backend & AI Engineer (FastAPI, Celery, Whisper, RAG)
 * **Jenil:** Product Manager / Full Stack (API hooks, State, Auth flows)
-* **Prashant:** Backend & AI Engineer (FastAPI, Celery, Whisper, RAG)
+* **Prashant:** Frontend Engineer (Next.js, UI/UX, shadcn/ui)
 * **Arnish:** DevOps & DB Engineer (Postgres, AWS, Docker, CI/CD)
 
 ---
@@ -32,7 +32,7 @@ For implementation-level subtasks, dependency sequencing, verification steps, an
   - CI pipeline correctly fails if Python `ruff`/`mypy` or Next.js `eslint` fails.
 
 ### MM-102: Scaffold Next.js 15 Project & Design System
-* **Assignee:** Rudra | **Type:** Task | **Points:** 2
+* **Assignee:** Prashant | **Type:** Task | **Points:** 2
 * **Description:** Initialize Next.js 15 App Router. Install Tailwind CSS and Shadcn/ui.
 * **Acceptance Criteria:**
   - Next.js app runs locally on port 3000.
@@ -40,7 +40,7 @@ For implementation-level subtasks, dependency sequencing, verification steps, an
   - Base components (Button, Input, Card) from shadcn are installed.
 
 ### MM-103: Scaffold FastAPI & Poetry Environment
-* **Assignee:** Prashant | **Type:** Task | **Points:** 2
+* **Assignee:** Rudra | **Type:** Task | **Points:** 2
 * **Description:** Initialize the backend Python project using Poetry for dependency management.
 * **Acceptance Criteria:**
   - FastAPI server runs locally on port 8000 via Uvicorn.
@@ -59,7 +59,7 @@ For implementation-level subtasks, dependency sequencing, verification steps, an
 ## 🔐 Module 2: Database & Authentication (Epic: MM-200)
 
 ### MM-201: Define SQLAlchemy Core Models
-* **Assignee:** Prashant | **Type:** Task | **Points:** 3
+* **Assignee:** Rudra | **Type:** Task | **Points:** 3
 * **Description:** Write the ORM models for the core entities using async SQLAlchemy.
 * **Acceptance Criteria:**
   - `User`, `Workspace`, and `WorkspaceMembership` models are defined.
@@ -74,7 +74,7 @@ For implementation-level subtasks, dependency sequencing, verification steps, an
   - The first migration script successfully creates the tables defined in MM-201.
 
 ### MM-203: Backend JWT Authentication Flow
-* **Assignee:** Prashant | **Type:** Story | **Points:** 5
+* **Assignee:** Rudra | **Type:** Story | **Points:** 5
 * **Description:** Implement email/password registration and login endpoints.
 * **Acceptance Criteria:**
   - `POST /auth/register` hashes the password using `bcrypt` and saves the user.
@@ -82,7 +82,7 @@ For implementation-level subtasks, dependency sequencing, verification steps, an
   - Unauthenticated requests to protected routes return `401 Unauthorized`.
 
 ### MM-204: Frontend Auth UI & Session State
-* **Assignee:** Rudra | **Type:** Story | **Points:** 3
+* **Assignee:** Prashant | **Type:** Story | **Points:** 3
 * **Description:** Build the Login and Registration screens and manage the JWT session.
 * **Acceptance Criteria:**
   - Visually polished `/login` and `/register` pages exist.
@@ -108,7 +108,7 @@ For implementation-level subtasks, dependency sequencing, verification steps, an
   - CORS rules allow presigned import `PUT` requests and retained-media `GET` requests from the frontend domain (`localhost:3000` and `*.meetingmind.app`).
 
 ### MM-302: Create Extension Connection & Live Session Endpoints
-* **Assignee:** Prashant | **Type:** Task | **Points:** 3
+* **Assignee:** Rudra | **Type:** Task | **Points:** 3
 * **Description:** Backend endpoints to connect the Chrome extension and create extension-originated live capture sessions.
 * **Acceptance Criteria:**
   - `POST /extension/connect` exchanges a logged-in browser session for a short-lived extension token.
@@ -118,7 +118,7 @@ For implementation-level subtasks, dependency sequencing, verification steps, an
   - Rejects users who are not members of the workspace.
 
 ### MM-303: Chrome Extension Capture UI
-* **Assignee:** Rudra | **Type:** Story | **Points:** 5
+* **Assignee:** Prashant | **Type:** Story | **Points:** 5
 * **Description:** Build the Chrome extension popup/side panel where users connect a workspace, start/stop capture, and view live transcript status.
 * **Acceptance Criteria:**
   - Detects an active Google Meet tab.
@@ -138,7 +138,7 @@ For implementation-level subtasks, dependency sequencing, verification steps, an
   - Connection loss shows a recoverable error state.
 
 ### MM-306: Console Extension Settings
-* **Assignee:** Rudra | **Type:** Task | **Points:** 3
+* **Assignee:** Prashant | **Type:** Task | **Points:** 3
 * **Description:** Build `/settings/extension` for extension connection, workspace selection, and capture preferences.
 * **Acceptance Criteria:**
   - Shows extension connection status.
@@ -166,7 +166,7 @@ For implementation-level subtasks, dependency sequencing, verification steps, an
   - `tasks.py` is configured and can execute a dummy `ping` task.
 
 ### MM-402: Streaming Audio Ingestion Task
-* **Assignee:** Prashant | **Type:** Task | **Points:** 3
+* **Assignee:** Rudra | **Type:** Task | **Points:** 3
 * **Description:** First stage of the extension real-time pipeline. Accept and normalize live tab-audio chunks.
 * **Acceptance Criteria:**
   - Backend accepts authenticated extension audio chunks for an active meeting.
@@ -174,7 +174,7 @@ For implementation-level subtasks, dependency sequencing, verification steps, an
   - Invalid or out-of-order chunks are rejected or recovered without corrupting the meeting transcript.
 
 ### MM-403: Transcription & Diarization Task
-* **Assignee:** Prashant | **Type:** Task | **Points:** 8
+* **Assignee:** Rudra | **Type:** Task | **Points:** 8
 * **Description:** The core ML task. Convert audio to speaker-labeled text.
 * **Acceptance Criteria:**
   - Local streaming STT emits interim and final transcript events.
@@ -182,7 +182,7 @@ For implementation-level subtasks, dependency sequencing, verification steps, an
   - Outputs persisted `TranscriptSegment` objects mapping text to speakers and timestamps.
 
 ### MM-404: LLM Summarization Task
-* **Assignee:** Prashant | **Type:** Task | **Points:** 5
+* **Assignee:** Rudra | **Type:** Task | **Points:** 5
 * **Description:** Use an LLM to generate the Executive Summary and Action Items.
 * **Acceptance Criteria:**
   - Passes rolling transcript context to Ollama by default.
@@ -201,7 +201,7 @@ For implementation-level subtasks, dependency sequencing, verification steps, an
 ## 🖥️ Module 5: Core Application UI (Epic: MM-500)
 
 ### MM-501: Dashboard Meeting List
-* **Assignee:** Rudra | **Type:** Story | **Points:** 3
+* **Assignee:** Prashant | **Type:** Story | **Points:** 3
 * **Description:** The main view showing historical meetings.
 * **Acceptance Criteria:**
   - Fetches data using TanStack Query.
@@ -209,14 +209,14 @@ For implementation-level subtasks, dependency sequencing, verification steps, an
   - Shows an Empty State if no meetings exist.
 
 ### MM-502: Meeting Details & Summary View
-* **Assignee:** Rudra | **Type:** Story | **Points:** 3
+* **Assignee:** Prashant | **Type:** Story | **Points:** 3
 * **Description:** The detailed view of a specific meeting.
 * **Acceptance Criteria:**
   - Renders the Executive Summary in a clean, readable format.
   - Displays Action Items in a checklist (can be checked/unchecked).
 
 ### MM-503: Interactive Transcript Viewer
-* **Assignee:** Rudra | **Type:** Story | **Points:** 8
+* **Assignee:** Prashant | **Type:** Story | **Points:** 8
 * **Description:** The complex UI for reading the transcript.
 * **Acceptance Criteria:**
   - Renders chat-bubble style `TranscriptSegments` with `SpeakerChips`.
@@ -240,21 +240,21 @@ For implementation-level subtasks, dependency sequencing, verification steps, an
   - Add an HNSW index via Alembic migration.
 
 ### MM-602: Vector Embedding Pipeline Step
-* **Assignee:** Prashant | **Type:** Task | **Points:** 5
+* **Assignee:** Rudra | **Type:** Task | **Points:** 5
 * **Description:** Add the final step to the AI pipeline.
 * **Acceptance Criteria:**
   - Chunks the transcript and generates vectors via an Embedding Model.
   - Inserts vectors into the database.
 
 ### MM-603: `POST /ai/chat` Endpoint
-* **Assignee:** Prashant | **Type:** Task | **Points:** 5
+* **Assignee:** Rudra | **Type:** Task | **Points:** 5
 * **Description:** The core semantic search backend logic.
 * **Acceptance Criteria:**
   - Accepts a user query -> Embeds query -> Does Cosine Similarity search in Postgres (filtered by workspace).
   - Injects top results into LLM prompt and returns the answer.
 
 ### MM-604: Chat Interface UI
-* **Assignee:** Rudra | **Type:** Story | **Points:** 4
+* **Assignee:** Prashant | **Type:** Story | **Points:** 4
 * **Description:** Build the visual chat component.
 * **Acceptance Criteria:**
   - Sticky input at the bottom of the screen.

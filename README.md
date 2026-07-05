@@ -5,9 +5,9 @@
 ---
 
 ## 👥 The Team
-* **Rudra:** Frontend Engineer (Next.js, Tailwind, shadcn/ui)
+* **Rudra:** Backend & AI Engineer (FastAPI, Celery, Whisper, LLMs)
 * **Jenil:** Product Manager / Full Stack (User Flows, API Integration, Auth)
-* **Prashant:** Backend & AI Engineer (FastAPI, Celery, Whisper, LLMs)
+* **Prashant:** Frontend Engineer (Next.js, Tailwind, shadcn/ui)
 * **Arnish:** DevOps & DB Engineer (Postgres, AWS, Docker, CI/CD)
 
 ---
