@@ -6,7 +6,7 @@ Last reviewed: 2026-07-04
 
 MeetingMind is a documentation-first project for a privacy-first, self-hosted AI meeting intelligence platform. The product is now extension-first: a Chrome extension captures live meeting audio from existing meeting apps, starting with Google Meet, and the MeetingMind web console stores transcripts, summaries, action items, decisions, recordings, searchable embeddings, and cited RAG answers. Recording import and standalone web capture are secondary fallback/backfill paths.
 
-This repo currently contains product, architecture, design, backend, DevOps, testing, prompt, and resource documentation. It does not currently contain the actual `apps/frontend` or `apps/backend` implementation directories described by the architecture docs.
+This repo contains product, architecture, design, backend, DevOps, testing, prompt, and resource documentation. It now also contains the initial `apps/backend` FastAPI scaffold from MM-103. The `apps/frontend` and `apps/extension` implementations are still pending.
 
 ## Core Product Understanding
 
@@ -77,7 +77,7 @@ apps/
 docker-compose.yml
 ```
 
-`apps/extension` is the Chrome extension capture client. `apps/frontend` is the MeetingMind web console.
+`apps/backend` now exists as the initial FastAPI scaffold. `apps/extension` is the planned Chrome extension capture client. `apps/frontend` is the planned MeetingMind web console.
 
 Frontend should use feature-sliced Next.js conventions, colocating route-only components under route `_components` folders and using shared components only when reuse is real.
 
@@ -233,7 +233,7 @@ Future implementation should follow these decisions unless a newer ADR or user d
 
 ## Current Repository State Observed
 
-Root is mostly markdown documentation. Key folders:
+Root is mostly markdown documentation plus the initial backend scaffold. Key folders:
 
 - `00-project`: vision, roadmap, architecture, glossary, metrics
 - `01-product`: PRD, TRD, requirements, personas, journeys, acceptance criteria
@@ -244,6 +244,7 @@ Root is mostly markdown documentation. Key folders:
 - `06-testing`: test strategy, QA checklists, unit/integration/e2e/security/performance
 - `07-prompts`: agent and assistant prompt/rule docs
 - `08-resources`: templates, references, release notes, decision log
+- `apps/backend`: FastAPI backend scaffold with Poetry, app factory, health routes, settings, logging, and starter tests
 
 Uncommitted changes were present during review in several docs, including:
 
