@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "MeetingMind Capture",
+  "description": "Capture meetings and stream audio to MeetingMind.",
+  "version": "1.0.0",
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "MeetingMind"
+  },
+  "background": {
+    "service_worker": "assets/background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://meet.google.com/*"],
+      "js": ["assets/content.js"]
+    }
+  ],
+  "permissions": [
+    "activeTab",
+    "storage",
+    "tabCapture",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://meet.google.com/*",
+    "http://localhost:3000/*"
+  ]
+}
