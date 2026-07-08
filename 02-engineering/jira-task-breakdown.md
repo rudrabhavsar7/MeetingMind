@@ -4,12 +4,12 @@ Version: 1.0.0
 Status: Approved
 Owner: Project Manager
 Last Updated: 2026-07-04
-Dependencies: 02-engineering/jira-tickets.md, PROJECT_MEMORY.md, AGENTS.md
+Dependencies: 02-engineering/jira-tickets.md, 02-engineering/jira-api-contracts.md, PROJECT_MEMORY.md, AGENTS.md
 ---
 
 # MeetingMind: Jira Task Breakdown
 
-This document expands the high-level Jira tickets into implementation-ready work. `02-engineering/jira-tickets.md` remains the backlog source of truth for ticket title, owner, points, description, and acceptance criteria. This file adds suggested subtasks, dependencies, verification, and handoff notes.
+This document expands the high-level Jira tickets into implementation-ready work. `02-engineering/jira-tickets.md` remains the backlog source of truth for ticket title, owner, points, description, and acceptance criteria. This file adds suggested subtasks, dependencies, verification, and handoff notes. API-owning tickets must also follow `02-engineering/jira-api-contracts.md` for endpoint payloads, auth rules, status codes, stream events, and required tests.
 
 ## Working Rules
 
@@ -19,6 +19,7 @@ This document expands the high-level Jira tickets into implementation-ready work
 - Treat recording import and standalone web capture as fallback/backfill paths.
 - Keep external AI providers opt-in only; local Ollama/STT/embedding providers are the default.
 - Every tenant-scoped API and database query must enforce workspace membership.
+- Do not implement an API ticket from endpoint names alone; read `02-engineering/jira-api-contracts.md` and add any missing contract details before coding.
 
 ## Dependency Map
 
@@ -162,6 +163,7 @@ graph TD
 ### MM-203: Backend JWT Authentication Flow
 
 **Implementation subtasks**
+- Follow the MM-203 endpoint contracts in `02-engineering/jira-api-contracts.md`.
 - Add password hashing service using bcrypt or argon2.
 - Implement register, login, refresh, logout, and current-user endpoints.
 - Store refresh tokens as HttpOnly cookies with secure settings for production.
@@ -196,6 +198,7 @@ graph TD
 ### MM-205: Implement RBAC Middleware
 
 **Implementation subtasks**
+- Follow the MM-205 workspace and membership contracts in `02-engineering/jira-api-contracts.md`.
 - Add workspace membership dependency for FastAPI routes.
 - Support Owner/Admin/Member/Viewer role checks.
 - Add helper APIs for `require_workspace_member` and `require_workspace_role`.
@@ -232,6 +235,7 @@ graph TD
 ### MM-302: Create Extension Connection and Live Session Endpoints
 
 **Implementation subtasks**
+- Follow the MM-302 endpoint contracts in `02-engineering/jira-api-contracts.md`.
 - Implement `POST /extension/connect`.
 - Issue short-lived extension tokens scoped to user and workspace.
 - Implement `GET /extension/capabilities` and `POST /extension/heartbeat`.
@@ -287,6 +291,7 @@ graph TD
 ### MM-305: Recording Import Fallback
 
 **Implementation subtasks**
+- Follow the MM-305 endpoint contracts in `02-engineering/jira-api-contracts.md`.
 - Build import page or flow under `/meetings/import`.
 - Add frontend file validation for MIME type, size, and extension.
 - Request presigned import URL from backend.
@@ -342,6 +347,7 @@ graph TD
 ### MM-402: Streaming Audio Ingestion Task
 
 **Implementation subtasks**
+- Follow the MM-402 WebSocket contract in `02-engineering/jira-api-contracts.md`.
 - Implement WebSocket receive loop for authenticated meeting streams.
 - Validate stream token, workspace, meeting status, and chunk metadata.
 - Normalize incoming audio into STT-compatible format.
@@ -393,6 +399,7 @@ graph TD
 ### MM-405: Real-Time Pipeline Events
 
 **Implementation subtasks**
+- Follow the MM-405 status event contracts in `02-engineering/jira-api-contracts.md`.
 - Define event schema for status, transcript, action item, summary, error, and completion events.
 - Implement event publisher from backend pipeline.
 - Add WebSocket delivery to active extension and console clients.
@@ -412,6 +419,7 @@ graph TD
 ### MM-501: Dashboard Meeting List
 
 **Implementation subtasks**
+- Follow the MM-501 meetings API contracts in `02-engineering/jira-api-contracts.md`.
 - Build dashboard route and meeting list query.
 - Render recent captured/imported meetings as cards.
 - Show source app, status, title, date, duration, and creator.
@@ -429,6 +437,7 @@ graph TD
 ### MM-502: Meeting Details and Summary View
 
 **Implementation subtasks**
+- Follow the MM-502 action item and decision API contracts in `02-engineering/jira-api-contracts.md`.
 - Build meeting details route.
 - Fetch meeting, summary, action items, decisions, and source metadata.
 - Render summary with cited sections where available.
@@ -446,6 +455,7 @@ graph TD
 ### MM-503: Interactive Transcript Viewer
 
 **Implementation subtasks**
+- Follow the MM-503 transcript API contracts in `02-engineering/jira-api-contracts.md`.
 - Build transcript segment list with virtualization.
 - Render speaker chips, timestamps, final/interim distinction, and active segment state.
 - Support speaker rename flow if backend supports it.
@@ -463,6 +473,7 @@ graph TD
 ### MM-504: Video Playback and Timestamp Sync
 
 **Implementation subtasks**
+- Follow the MM-504 media URL API contract in `02-engineering/jira-api-contracts.md`.
 - Add media player for retained live audio/video or imported recording where available.
 - Use signed media URLs instead of public object URLs.
 - Seek media when transcript timestamp is clicked.
@@ -515,6 +526,7 @@ graph TD
 ### MM-603: POST /ai/chat Endpoint
 
 **Implementation subtasks**
+- Follow the MM-603 Ask AI API contract in `02-engineering/jira-api-contracts.md`.
 - Add request/response schemas for workspace-scoped chat.
 - Embed user query with local embedding provider.
 - Retrieve top transcript chunks with workspace filter.
@@ -550,6 +562,7 @@ graph TD
 ### MM-605: Chat API Integration and Citations
 
 **Implementation subtasks**
+- Follow the MM-605 citation resolver contract in `02-engineering/jira-api-contracts.md` if that optional endpoint is implemented.
 - Connect chat UI to `POST /ai/chat`.
 - Support streaming response if backend enables SSE/WebSocket streaming.
 - Render citation chips with meeting title and timestamp.
@@ -575,4 +588,3 @@ Every ticket should satisfy:
 - Local-first AI behavior unless explicit opt-in is part of the ticket.
 - Clear loading, empty, error, and success states for user-facing work.
 - Documentation updates when behavior or architecture changes.
-

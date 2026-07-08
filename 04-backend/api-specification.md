@@ -3,8 +3,12 @@ Title: MeetingMind — Backend: API Specification
 Version: 1.0.0
 Status: Approved
 Owner: Lead Backend Engineer
-Last Updated: 2026-06-28
+Last Updated: 2026-07-08
 Dependencies: 04-backend/database-schema.md
+Related Documents:
+  - 01-product/api-requirements.md
+  - 02-engineering/api-design.md
+  - 02-engineering/jira-api-contracts.md
 ---
 
 # MeetingMind Backend: API Specification
@@ -21,38 +25,50 @@ MeetingMind utilizes a RESTful API built with FastAPI (Python). FastAPI provides
 
 ## 3. Standard Response Formats
 
+Endpoint-level request and response contracts live in `02-engineering/jira-api-contracts.md`. This API specification defines architecture-level conventions; the Jira API contract document defines implementation-ready payloads, auth rules, error cases, status codes, stream events, and required tests.
+
 ### Success
 ```json
 {
   "data": { ... },
-  "pagination": { "next_cursor": "def456", "has_more": true, "limit": 50 } // Optional, for lists
+  "meta": { "next_cursor": "def456", "has_more": true, "limit": 50 } // Optional, for lists
 }
 ```
 
 ### Error
 ```json
 {
-  "error": {
-    "code": "RESOURCE_NOT_FOUND",
-    "message": "The requested meeting does not exist.",
-    "details": {}
-  }
+  "type": "https://api.meetingmind.io/errors/not-found",
+  "title": "Resource Not Found",
+  "status": 404,
+  "detail": "The requested meeting does not exist in this workspace.",
+  "instance": "/api/v1/workspaces/{workspace_id}/meetings/{meeting_id}"
 }
 ```
 
+Errors must follow RFC 7807 Problem Details directly at the response top level. Do not return a separate `{ "error": ... }` envelope for HTTP API errors. Validation errors may add an `errors` array with field-level details.
+
 ## 4. Core Endpoints
 
+The list below is an architectural inventory. Implementers must use `02-engineering/jira-api-contracts.md` for exact payloads and test cases.
+
 ### 4.1 Authentication (`/auth`)
-Handled via OAuth2 (e.g., Google/Microsoft) or Email/Password, issuing JWTs.
+Handled through email/password for v1. OAuth providers may be added later as explicit product work. Authentication issues short-lived bearer access tokens and refresh tokens stored as HttpOnly cookies.
+* `POST /auth/register`
 * `POST /auth/login`
 * `POST /auth/refresh`
+* `POST /auth/logout`
 * `GET /auth/me` -> Returns current user and their accessible workspaces.
 
 ### 4.2 Workspaces (`/workspaces`)
 * `GET /workspaces` -> List user's workspaces.
 * `GET /workspaces/{id}`
 * `POST /workspaces`
+* `PATCH /workspaces/{id}`
 * `GET /workspaces/{id}/members`
+* `POST /workspaces/{id}/members`
+* `PATCH /workspaces/{id}/members/{user_id}`
+* `DELETE /workspaces/{id}/members/{user_id}`
 
 ### 4.3 Extension (`/extension`)
 * `POST /extension/connect` -> Exchange a logged-in browser session for a short-lived extension token scoped to selected workspaces.
@@ -65,6 +81,7 @@ Handled via OAuth2 (e.g., Google/Microsoft) or Email/Password, issuing JWTs.
 * `GET /workspaces/{wid}/meetings` -> List meetings (supports query params `?status=completed&sort=-date`).
 * `GET /workspaces/{wid}/meetings/{id}` -> Get detailed meeting (includes summary).
 * `POST /workspaces/{wid}/meetings/live` -> Create a live capture session and return the meeting/session identifiers. Payload includes `client_type`, `source_app`, `source_url`, `source_title`, and visible participants when available.
+* `POST /workspaces/{wid}/meetings/{id}/end` -> End a live capture session and advance the meeting toward final processing.
 * `WS /workspaces/{wid}/meetings/{id}/stream` -> WebSocket connection for extension or standalone live audio streaming and real-time STT/extraction events.
 * `POST /workspaces/{wid}/meetings/import/presigned-url` -> Generate a presigned upload URL for recording import fallback.
 * `POST /workspaces/{wid}/meetings/import-complete` -> Confirm imported recording upload and trigger batch processing.
@@ -74,14 +91,19 @@ Handled via OAuth2 (e.g., Google/Microsoft) or Email/Password, issuing JWTs.
 For accessing the nested resources of a specific meeting. (Can omit workspace ID in path if the backend checks the meeting's workspace ownership against the user's JWT).
 
 * `GET /meetings/{id}/transcript` -> Returns the list of `TranscriptSegments`.
+* `PATCH /meetings/{id}/transcript/speakers/{speaker_label}` -> Rename or map diarized speaker labels.
+* `GET /meetings/{id}/transcript/search` -> Search inside a single meeting transcript.
 * `GET /meetings/{id}/action-items`
 * `PATCH /meetings/{id}/action-items/{item_id}` -> E.g., marking complete.
 * `GET /meetings/{id}/decisions`
+* `GET /meetings/{id}/media-url` -> Return a signed media URL when retained media exists and policy allows access.
+* `GET /meetings/{id}/status` -> HTTP polling fallback for processing status.
 
 ### 4.6 AI & RAG (`/workspaces/{workspace_id}/ai`)
 * `POST /workspaces/{wid}/ai/chat` 
   * **Payload:** `{ "query": "What was the budget for Q3?", "meeting_ids": ["uuid-1", "uuid-2"] }`
   * **Response:** Server-Sent Events (SSE) stream for real-time text generation, OR a JSON response if streaming is disabled.
+* `GET /meetings/{meeting_id}/citations/{segment_id}` -> Optional citation resolver for transcript jump targets when the frontend does not already have the cited segment cached.
 
 ## 5. Extension Capture Strategy
 The primary ingestion path is Chrome extension capture:

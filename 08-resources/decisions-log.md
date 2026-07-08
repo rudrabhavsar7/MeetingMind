@@ -113,3 +113,16 @@ This document records all significant architectural decisions made during the de
   * *Positive:* The database schema, tests, and AI pipeline align with the privacy-first local inference requirement.
   * *Positive:* Self-hosted deployments avoid OpenAI-sized vector assumptions.
   * *Negative:* Operators who opt into a different embedding provider must run a deliberate migration or maintain a separate vector column/index.
+
+---
+
+## ADR 009: Workspace Context in API Paths
+
+* **Date:** 2026-07-08
+* **Status:** Accepted
+* **Context:** Earlier API requirements mentioned `X-Workspace-ID` as the primary workspace context carrier, while the Jira backlog and backend API specification used explicit workspace paths such as `/api/v1/workspaces/{workspace_id}/meetings`. Header-scoped tenancy creates ambiguity for generated clients and makes endpoint contracts harder for agents to implement consistently.
+* **Decision:** Workspace collection routes carry workspace context in the URL path. Meeting child routes such as `/api/v1/meetings/{meeting_id}/transcript` derive workspace context from the meeting record and then enforce membership. `X-Workspace-ID` is not the primary authorization boundary.
+* **Consequences:**
+  * *Positive:* API routes are self-describing and match the Jira endpoint inventory.
+  * *Positive:* Workspace authorization can be tested directly from path/resource ownership instead of relying on a client-provided header.
+  * *Negative:* Some non-resource commands may need explicit workspace IDs in either path or body if they are added later.

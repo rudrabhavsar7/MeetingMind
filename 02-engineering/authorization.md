@@ -43,7 +43,7 @@ class Role(IntEnum):
 
 def require_role(required_role: Role):
     async def role_checker(
-        workspace_id: str, # Usually passed in header or path
+        workspace_id: str, # Usually passed in the URL path
         user: User = Depends(get_current_user),
         db: AsyncSession = Depends(get_db)
     ):
@@ -71,7 +71,7 @@ def require_role(required_role: Role):
 @router.post("/meetings", response_model=MeetingResponse)
 async def create_meeting(
     payload: MeetingCreate,
-    workspace_id: str = Header(...),
+    workspace_id: str,
     # Enforce that the user is at least a MEMBER
     user: User = Depends(require_role(Role.MEMBER)) 
 ):

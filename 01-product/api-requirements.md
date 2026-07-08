@@ -3,10 +3,11 @@ Title: MeetingMind — API Requirements
 Version: 1.0.0
 Status: Approved
 Owner: Principal Software Architect
-Last Updated: 2026-06-28
+Last Updated: 2026-07-08
 Dependencies: 01-product/prd.md
 Related Documents:
   - 02-engineering/api-design.md
+  - 02-engineering/jira-api-contracts.md
   - 04-backend/api-specification.md
 ---
 
@@ -31,7 +32,7 @@ This document defines the overarching requirements, constraints, and conventions
 
 ## 4. Authentication & Authorization
 * **Bearer Token:** The API must accept JWTs via the `Authorization: Bearer <token>` header.
-* **Workspace Scoping:** Most endpoints require a workspace context, passed via a custom header: `X-Workspace-ID`.
+* **Workspace Scoping:** Workspace collection routes must carry workspace context in the URL path, for example `/api/v1/workspaces/{workspace_id}/meetings`. Meeting child routes such as `/api/v1/meetings/{meeting_id}/transcript` must derive workspace context from the meeting record and then verify membership. Do not use `X-Workspace-ID` as the primary authorization boundary.
 * **RBAC Enforcement:** The API must reject requests with `403 Forbidden` if the user's role in the specified workspace lacks the necessary permissions.
 
 ## 5. Standard Status Codes
@@ -63,7 +64,7 @@ The API must use appropriate HTTP status codes:
 ## 7. Pagination, Filtering, and Sorting
 * **Pagination:** Must use cursor-based pagination for large collections to avoid offset-limit performance penalties.
   * Request: `?cursor=abc123z&limit=50`
-  * Response envelope: `{ "data": [...], "pagination": { "next_cursor": "def456y", "has_more": true } }`
+  * Response envelope: `{ "data": [...], "meta": { "next_cursor": "def456y", "has_more": true, "limit": 50 } }`
 * **Filtering:** Use bracket notation: `?filter[status]=completed`.
 * **Sorting:** Use prefix notation: `?sort=-created_at` (descending) or `?sort=title` (ascending).
 

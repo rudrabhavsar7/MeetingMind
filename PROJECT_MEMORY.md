@@ -1,12 +1,12 @@
 # MeetingMind Project Memory
 
-Last reviewed: 2026-07-04
+Last reviewed: 2026-07-08
 
 ## What This Repository Is
 
 MeetingMind is a documentation-first project for a privacy-first, self-hosted AI meeting intelligence platform. The product is now extension-first: a Chrome extension captures live meeting audio from existing meeting apps, starting with Google Meet, and the MeetingMind web console stores transcripts, summaries, action items, decisions, recordings, searchable embeddings, and cited RAG answers. Recording import and standalone web capture are secondary fallback/backfill paths.
 
-This repo contains product, architecture, design, backend, DevOps, testing, prompt, and resource documentation. It now also contains the initial `apps/backend` FastAPI scaffold from MM-103. The `apps/frontend` and `apps/extension` implementations are still pending.
+This repo contains product, architecture, design, backend, DevOps, testing, prompt, and resource documentation. It now also contains initial `apps/backend`, `apps/frontend`, and `apps/extension` scaffolds. The implementation is still early and should be checked against the docs before assuming any feature is complete.
 
 ## Core Product Understanding
 
@@ -77,7 +77,7 @@ apps/
 docker-compose.yml
 ```
 
-`apps/backend` now exists as the initial FastAPI scaffold. `apps/extension` is the planned Chrome extension capture client. `apps/frontend` is the planned MeetingMind web console.
+`apps/backend` exists as the initial FastAPI scaffold. `apps/frontend` exists as the early MeetingMind web console scaffold. `apps/extension` exists as the early Chrome extension scaffold.
 
 Frontend should use feature-sliced Next.js conventions, colocating route-only components under route `_components` folders and using shared components only when reuse is real.
 
@@ -129,6 +129,8 @@ Important endpoint groups:
 - SSE for streaming RAG responses where appropriate
 
 Response formats should be consistent JSON envelopes for success and standardized structured errors for failures.
+
+Detailed endpoint-level contracts for API-owning Jira tickets are now documented in `02-engineering/jira-api-contracts.md`. Workspace collection routes should carry workspace context in the path, such as `/api/v1/workspaces/{workspace_id}/meetings`; meeting child routes derive workspace context from the meeting record and then enforce membership. Successful list responses use `meta` for cursor pagination, and HTTP errors use RFC 7807 Problem Details directly at the top level.
 
 ## AI Pipeline
 
@@ -203,6 +205,8 @@ The current detailed Jira document organizes work into these modules:
 
 When implementing a ticket, read `02-engineering/jira-tickets.md` first, then `02-engineering/jira-task-breakdown.md`, then read the matching product, backend, design, and testing docs before editing code.
 
+For API-owning tickets, also read `02-engineering/jira-api-contracts.md` before coding. It defines endpoint payloads, auth rules, status codes, stream events, side effects, and required tests so agents do not infer API behavior from endpoint names alone.
+
 ## Important Local Agent Rules
 
 The repo has a generic AI-agent operating layer:
@@ -244,7 +248,9 @@ Root is mostly markdown documentation plus the initial backend scaffold. Key fol
 - `06-testing`: test strategy, QA checklists, unit/integration/e2e/security/performance
 - `07-prompts`: agent and assistant prompt/rule docs
 - `08-resources`: templates, references, release notes, decision log
-- `apps/backend`: FastAPI backend scaffold with Poetry, app factory, health routes, settings, logging, and starter tests
+- `apps/backend`: FastAPI backend scaffold with Poetry, app factory, health/auth routes, settings, logging, SQLAlchemy models, Alembic migration, and starter tests
+- `apps/frontend`: early Next.js frontend scaffold with auth/app routes and initial UI components
+- `apps/extension`: early Chrome extension scaffold with Vite/TypeScript files
 
 Uncommitted changes were present during review in several docs, including:
 

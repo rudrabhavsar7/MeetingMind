@@ -7,11 +7,14 @@ Last Updated: 2026-06-28
 Dependencies: None
 Related Documents:
   - 02-engineering/jira-task-breakdown.md
+  - 02-engineering/jira-api-contracts.md
 ---
 
 # MeetingMind: Detailed Jira Epics & Tasks
 
 For implementation-level subtasks, dependency sequencing, verification steps, and handoff notes, use `02-engineering/jira-task-breakdown.md` alongside this backlog.
+
+For endpoint-level request/response bodies, auth rules, status codes, stream events, and API tests, use `02-engineering/jira-api-contracts.md`. API-owning tickets are not implementation-ready unless their endpoint contracts are either listed there or added before coding begins.
 
 ## Team Allocation Refresher
 * **Rudra:** Backend & AI Engineer (FastAPI, Celery, Whisper, RAG)
@@ -549,7 +552,7 @@ Use this appendix as the Jira import/task creation checklist. `02-engineering/ji
 
 ## Appendix B: Endpoint Inventory by Ticket
 
-All REST paths below are under `/api/v1` unless explicitly marked otherwise. Workspace-scoped endpoints must enforce membership checks.
+All REST paths below are under `/api/v1` unless explicitly marked otherwise. Workspace-scoped endpoints must enforce membership checks. Exact payloads, response envelopes, authorization rules, error cases, and test obligations are defined in `02-engineering/jira-api-contracts.md`.
 
 | Ticket | Method | Path | Purpose |
 |---|---|---|---|
@@ -620,3 +623,65 @@ All REST paths below are under `/api/v1` unless explicitly marked otherwise. Wor
 | MM-303 | `src/sidepanel/*` | Live transcript, status, summaries, and action item view. |
 | MM-304 | `src/capture/*` | Tab audio capture, chunking, sequencing, and encoding. |
 | MM-304 | `src/api/*` | REST and WebSocket clients for MeetingMind backend. |
+
+---
+
+## Appendix C: No-Guesswork Jira Ticket Standard
+
+Every new or revised Jira ticket must include the fields below before an AI agent starts implementation. If a field is not applicable, write `Not applicable` and explain why.
+
+### Required Ticket Fields
+
+- **Problem statement:** The user or system problem being solved, not just the technical activity.
+- **Source documents:** Exact docs the implementer must read before coding.
+- **Owned surfaces:** Backend modules, frontend routes, extension files, database tables, jobs, or infrastructure files expected to change.
+- **In-scope behavior:** Concrete behavior the ticket must deliver.
+- **Out-of-scope behavior:** Adjacent work the implementer must not silently add.
+- **Data contract:** Models, enums, fields, validation rules, and migrations required by the ticket.
+- **API contract:** Endpoint path, method, auth, request body, response body, status codes, and error cases. Reference `02-engineering/jira-api-contracts.md` when the endpoint already exists there.
+- **UI contract:** Route, state model, loading/empty/error/success states, accessibility expectations, and responsive behavior.
+- **Background job contract:** Queue name, trigger, input payload, idempotency key or dedupe rule, retry policy, timeout, and failure state.
+- **Security and privacy checks:** Workspace isolation, role requirements, secret handling, local-only AI requirement, and raw media retention impact.
+- **Acceptance criteria:** Given/When/Then scenarios or equivalent testable bullets.
+- **Verification commands:** Specific lint, typecheck, unit, integration, E2E, migration, or manual checks.
+- **Fixtures and mocks:** Sample data, mocked providers, audio fixtures, object-storage stubs, or AI mock outputs needed for deterministic testing.
+- **Dependencies and blockers:** Upstream tickets and unresolved decisions.
+- **Handoff notes:** What the next ticket can rely on after completion.
+
+### Required API Ticket Detail
+
+For each endpoint in an API ticket, specify:
+
+- **Method and path:** Include `/api/v1` path unless the route is intentionally root-level.
+- **Purpose:** One sentence describing why the endpoint exists.
+- **Auth:** Required token/cookie and workspace role.
+- **Request:** JSON schema or WebSocket message schema with field validation.
+- **Response:** Success envelope and example payload.
+- **Errors:** Expected Problem Details statuses, especially `401`, `403`, `404`, `409`, `422`, and `429`.
+- **Side effects:** Database rows, object-storage objects, Celery tasks, Redis keys, WebSocket events, or audit logs created/updated.
+- **Tests:** Success, validation failure, unauthenticated, unauthorized, cross-workspace, not-found, and idempotency/retry cases where relevant.
+- **OpenAPI:** Route summary, description, tags, request model, response model, and examples.
+
+### Required Frontend or Extension Ticket Detail
+
+For each UI surface in a ticket, specify:
+
+- **Route or extension surface:** Next.js route, popup, side panel, content script, background worker, or settings page.
+- **State list:** All visible states including loading, empty, error, unauthorized, disconnected, unsupported, ready, recording, processing, completed, and failed where applicable.
+- **API dependencies:** Exact endpoints and event types consumed.
+- **User actions:** Buttons, forms, keyboard behavior, retries, redirects, and destructive confirmations.
+- **Accessibility:** Focus order, labels, keyboard access, ARIA needs, reduced-motion behavior, and screen-reader text where needed.
+- **Responsive behavior:** Mobile, tablet, desktop, and extension panel constraints.
+- **Tests:** Component, integration, Playwright, and mocked API cases.
+
+### Required AI Pipeline Ticket Detail
+
+For each AI or background-processing ticket, specify:
+
+- **Trigger:** WebSocket event, API request, Celery task, or scheduler.
+- **Input payload:** IDs, object keys, chunk metadata, transcript segment IDs, and model/provider config.
+- **Output:** Persisted records, events, status transitions, embeddings, citations, and cleanup actions.
+- **Provider policy:** Local default provider and explicit opt-in rule for any external provider.
+- **Idempotency:** How reruns avoid duplicate transcript segments, action items, decisions, embeddings, or tasks.
+- **Failure mode:** Meeting status, retry policy, user-visible error, and logs.
+- **Tests:** Mocked provider success/failure, malformed model output, retry behavior, and workspace isolation.
