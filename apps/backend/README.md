@@ -15,6 +15,17 @@ Useful endpoints:
 - `GET /api/v1/health`
 - `GET /docs`
 
+## Database Migrations
+
+Alembic is configured from `apps/backend` and reads `MEETINGMIND_DATABASE_URL` through the
+backend settings layer.
+
+```powershell
+poetry run alembic upgrade head
+poetry run alembic downgrade -1
+poetry run alembic revision --autogenerate -m "describe change"
+```
+
 ## Verification
 
 ```powershell

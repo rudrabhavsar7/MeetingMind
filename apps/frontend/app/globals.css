@@ -49,6 +49,8 @@
 }
 
 :root {
+  --font-outfit: Outfit, "Segoe UI", Arial, sans-serif;
+  --font-geist-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
   --background: oklch(1 0 0);
   --foreground: oklch(0.129 0.042 264.695);
   --card: oklch(1 0 0);

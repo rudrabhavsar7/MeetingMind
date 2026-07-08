@@ -1,0 +1,6 @@
+Alembic migrations for the MeetingMind backend.
+
+Use from apps/backend:
+
+  poetry run alembic upgrade head
+  poetry run alembic downgrade -1
