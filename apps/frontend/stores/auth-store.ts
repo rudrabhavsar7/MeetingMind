@@ -1,13 +1,11 @@
 import { create } from "zustand";
-import { apiClient, setAccessToken, clearAccessToken } from "@/lib/api";
-
-/** Shape of the authenticated user returned from GET /auth/me */
-interface AuthUser {
-  id: string;
-  email: string;
-  full_name: string;
-  avatar_url: string | null;
-}
+import { apiClient, clearAccessToken, setAccessToken } from "@/lib/api";
+import type {
+  ApiResponse,
+  AuthSession,
+  BootstrapStatus,
+  User,
+} from "@/types/api.types";
 
 interface LoginPayload {
   email: string;
@@ -18,25 +16,19 @@ interface RegisterPayload {
   email: string;
   password: string;
   full_name: string;
+  workspace_name: string;
+  workspace_slug: string;
 }
 
 interface AuthState {
-  /** Currently authenticated user — null when unauthenticated. */
-  user: AuthUser | null;
-  /** True while an auth network request is in-flight. */
+  user: User | null;
   isLoading: boolean;
-  /** Populated when a login/register/logout operation fails. */
   error: string | null;
-
-  /** Log in with email + password. Stores access token in memory. */
   login: (payload: LoginPayload) => Promise<void>;
-  /** Register a new account and auto-login. */
   register: (payload: RegisterPayload) => Promise<void>;
-  /** Log out — clears in-memory token and calls the backend to revoke refresh. */
+  getBootstrapStatus: () => Promise<BootstrapStatus>;
   logout: () => Promise<void>;
-  /** Hydrate the store from an existing session (called on app boot). */
   hydrateFromSession: () => Promise<void>;
-  /** Clear any transient error message. */
   clearError: () => void;
 }
 
@@ -48,41 +40,38 @@ export const useAuthStore = create<AuthState>((set) => ({
   login: async ({ email, password }) => {
     set({ isLoading: true, error: null });
     try {
-      const { data } = await apiClient.post<{
-        access_token: string;
-        user: AuthUser;
-      }>("/auth/login", { email, password });
-
-      setAccessToken(data.access_token);
-      set({ user: data.user, isLoading: false });
-    } catch (err: unknown) {
-      const message =
-        isAxiosError(err) && hasErrorMessage(err.response?.data)
-          ? err.response!.data.error.message
-          : "Login failed. Please check your credentials.";
-      set({ error: message, isLoading: false });
-      throw err;
+      const { data } = await apiClient.post<ApiResponse<AuthSession>>(
+        "/auth/login",
+        { email, password }
+      );
+      setAccessToken(data.data.access_token);
+      set({ user: data.data.user, isLoading: false });
+    } catch (error: unknown) {
+      set({ error: errorMessage(error, "Login failed. Please check your credentials."), isLoading: false });
+      throw error;
     }
   },
 
-  register: async ({ email, password, full_name }) => {
+  register: async (payload) => {
     set({ isLoading: true, error: null });
     try {
-      const { data } = await apiClient.post<{
-        access_token: string;
-        user: AuthUser;
-      }>("/auth/register", { email, password, full_name });
-
-      setAccessToken(data.access_token);
-      set({ user: data.user, isLoading: false });
-    } catch (err: unknown) {
-      const message =
-        isAxiosError(err) && hasErrorMessage(err.response?.data)
-          ? err.response!.data.error.message
-          : "Registration failed. Please try again.";
-      set({ error: message, isLoading: false });
-      throw err;
+      const { data } = await apiClient.post<ApiResponse<AuthSession>>(
+        "/auth/register",
+        payload
+      );
+      setAccessToken(data.data.access_token);
+      set({ user: data.data.user, isLoading: false });
+    } catch (error: unknown) {
+      set({ error: errorMessage(error, "Registration failed. Please try again."), isLoading: false });
+      throw error;
     }
+  },
+
+  getBootstrapStatus: async () => {
+    const { data } = await apiClient.get<ApiResponse<BootstrapStatus>>(
+      "/auth/bootstrap-status"
+    );
+    return data.data;
   },
 
   logout: async () => {
@@ -98,19 +87,13 @@ export const useAuthStore = create<AuthState>((set) => ({
   hydrateFromSession: async () => {
     set({ isLoading: true });
     try {
-      // Attempt to get a new access token using the HttpOnly refresh cookie.
-      const { data: refreshData } = await apiClient.post<{
-        access_token: string;
-      }>("/auth/refresh");
-      setAccessToken(refreshData.access_token);
-
-      // Fetch the current user profile.
-      const { data: userData } = await apiClient.get<{ data: AuthUser }>(
-        "/auth/me"
+      const { data: refreshData } = await apiClient.post<ApiResponse<AuthSession>>(
+        "/auth/refresh"
       );
+      setAccessToken(refreshData.data.access_token);
+      const { data: userData } = await apiClient.get<ApiResponse<User>>("/auth/me");
       set({ user: userData.data, isLoading: false });
     } catch {
-      // No valid session — user needs to log in.
       clearAccessToken();
       set({ user: null, isLoading: false });
     }
@@ -119,22 +102,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   clearError: () => set({ error: null }),
 }));
 
-/** Narrow type guard for Axios errors (avoids importing AxiosError type at runtime). */
-function isAxiosError(
-  err: unknown
-): err is { response?: { data?: unknown }; message: string } {
-  return typeof err === "object" && err !== null && "response" in err;
-}
-
-/** Narrow type guard for the API RFC-7807 error envelope. */
-function hasErrorMessage(
-  data: unknown
-): data is { error: { message: string } } {
-  return (
-    typeof data === "object" &&
-    data !== null &&
-    "error" in data &&
-    typeof (data as Record<string, unknown>).error === "object" &&
-    typeof ((data as Record<string, unknown>).error as Record<string, unknown>).message === "string"
-  );
+function errorMessage(error: unknown, fallback: string): string {
+  if (typeof error !== "object" || error === null || !("response" in error)) {
+    return fallback;
+  }
+  const response = (error as { response?: { data?: unknown } }).response;
+  if (typeof response?.data !== "object" || response.data === null) return fallback;
+  const detail = (response.data as Record<string, unknown>).detail;
+  return typeof detail === "string" ? detail : fallback;
 }

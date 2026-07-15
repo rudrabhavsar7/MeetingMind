@@ -18,6 +18,7 @@ class WorkspaceRole(StrEnum):
 class MeetingStatus(StrEnum):
     SCHEDULED = "scheduled"
     RECORDING = "recording"
+    PAUSED = "paused"
     TRANSCRIBING = "transcribing"
     ANALYZING = "analyzing"
     COMPLETED = "completed"
@@ -28,7 +29,6 @@ class MeetingSourceType(StrEnum):
     EXTENSION_CAPTURE = "extension_capture"
     STANDALONE_WEB_CAPTURE = "standalone_web_capture"
     RECORDING_IMPORT = "recording_import"
-    BOT_JOIN = "bot_join"
 
 
 class MeetingSourceApp(StrEnum):
@@ -42,3 +42,64 @@ class MeetingSourceApp(StrEnum):
 class ActionItemStatus(StrEnum):
     OPEN = "open"
     COMPLETED = "completed"
+
+
+class MediaKind(StrEnum):
+    IMPORT = "import"
+    LIVE_AUDIO = "live_audio"
+    EXTRACTED_AUDIO = "extracted_audio"
+    EXPORT = "export"
+    AVATAR = "avatar"
+
+
+class MediaStatus(StrEnum):
+    PENDING = "pending"
+    UPLOADED = "uploaded"
+    PROCESSING = "processing"
+    READY = "ready"
+    DELETED = "deleted"
+    FAILED = "failed"
+
+
+class AIProcessingStage(StrEnum):
+    SUMMARY = "summary"
+    ACTION_ITEMS = "action_items"
+    DECISIONS = "decisions"
+    EMBEDDING = "embedding"
+    RAG = "rag"
+
+
+class AIProcessingMode(StrEnum):
+    ROLLING = "rolling"
+    FINAL = "final"
+    BATCH = "batch"
+    BACKFILL = "backfill"
+
+
+class ProcessingStatus(StrEnum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class SummaryKind(StrEnum):
+    ROLLING = "rolling"
+    FINAL = "final"
+    USER_EDITED = "user_edited"
+
+
+class SummaryStatus(StrEnum):
+    DRAFT = "draft"
+    CURRENT = "current"
+    SUPERSEDED = "superseded"
+
+
+class OutputOrigin(StrEnum):
+    AI = "ai"
+    USER = "user"
+
+
+class FeedbackRating(StrEnum):
+    UP = "up"
+    DOWN = "down"

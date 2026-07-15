@@ -1,27 +1,71 @@
-from app.models.auth import RefreshToken
+from app.models.ai import (
+    AIOutputCitation,
+    AIOutputFeedback,
+    AIProcessingRun,
+    SummaryVersion,
+)
+from app.models.audit import AuditLog
+from app.models.auth import ExtensionSession, PasswordResetToken, RefreshToken
 from app.models.enums import (
     ActionItemStatus,
+    AIProcessingMode,
+    AIProcessingStage,
+    FeedbackRating,
+    MediaKind,
+    MediaStatus,
     MeetingSourceApp,
     MeetingSourceType,
     MeetingStatus,
+    OutputOrigin,
+    ProcessingStatus,
+    SummaryKind,
+    SummaryStatus,
     WorkspaceRole,
 )
-from app.models.meeting import ActionItem, Decision, Meeting, TranscriptSegment
+from app.models.meeting import (
+    ActionItem,
+    Decision,
+    MediaObject,
+    Meeting,
+    MeetingParticipant,
+    TranscriptChunk,
+    TranscriptSegment,
+)
 from app.models.user import User
-from app.models.workspace import Workspace, WorkspaceMembership
+from app.models.workspace import Workspace, WorkspaceInvitation, WorkspaceMembership
 
 __all__ = [
     "ActionItem",
     "ActionItemStatus",
+    "AIOutputCitation",
+    "AIOutputFeedback",
+    "AIProcessingMode",
+    "AIProcessingRun",
+    "AIProcessingStage",
+    "AuditLog",
     "Decision",
+    "ExtensionSession",
+    "FeedbackRating",
+    "MediaObject",
+    "MediaKind",
+    "MediaStatus",
     "Meeting",
+    "MeetingParticipant",
     "MeetingSourceApp",
     "MeetingSourceType",
     "MeetingStatus",
+    "OutputOrigin",
+    "PasswordResetToken",
+    "ProcessingStatus",
     "RefreshToken",
+    "SummaryKind",
+    "SummaryStatus",
+    "SummaryVersion",
+    "TranscriptChunk",
     "TranscriptSegment",
     "User",
     "Workspace",
+    "WorkspaceInvitation",
     "WorkspaceMembership",
     "WorkspaceRole",
 ]

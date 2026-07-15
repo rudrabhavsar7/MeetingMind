@@ -17,6 +17,7 @@ asyncpg = "^0.30.0"
 bcrypt = "^5.0.0"
 pyjwt = "^2.13.0"
 alembic = "^1.18.5"
+pgvector = "^0.5.0"
 
 [tool.poetry.group.dev.dependencies]
 httpx = "^0.28.1"

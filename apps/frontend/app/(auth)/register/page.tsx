@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Loader2, UserPlus } from "lucide-react";
@@ -15,20 +15,33 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useAuthStore } from "@/stores/auth-store";
+import type { BootstrapStatus } from "@/types/api.types";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register, isLoading, error, clearError } = useAuthStore();
+  const { register, getBootstrapStatus, isLoading, error, clearError } = useAuthStore();
+  const [bootstrapStatus, setBootstrapStatus] = useState<BootstrapStatus | null>(null);
+  const [statusError, setStatusError] = useState(false);
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [workspaceName, setWorkspaceName] = useState("");
+  const [workspaceSlug, setWorkspaceSlug] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{
     fullName?: string;
     email?: string;
     password?: string;
+    workspaceName?: string;
+    workspaceSlug?: string;
   }>({});
+
+  useEffect(() => {
+    void getBootstrapStatus()
+      .then(setBootstrapStatus)
+      .catch(() => setStatusError(true));
+  }, [getBootstrapStatus]);
 
   function validate() {
     const errors: typeof fieldErrors = {};
@@ -37,6 +50,9 @@ export default function RegisterPage() {
     else if (!/\S+@\S+\.\S+/.test(email)) errors.email = "Enter a valid email address.";
     if (!password) errors.password = "Password is required.";
     else if (password.length < 8) errors.password = "Password must be at least 8 characters.";
+    else if (!/\d/.test(password)) errors.password = "Password must include a number.";
+    if (!workspaceName.trim()) errors.workspaceName = "Workspace name is required.";
+    if (!workspaceSlug.trim()) errors.workspaceSlug = "Workspace slug is required.";
     return errors;
   }
 
@@ -49,11 +65,50 @@ export default function RegisterPage() {
     if (Object.keys(errors).length > 0) return;
 
     try {
-      await register({ email, password, full_name: fullName });
+      await register({
+        email,
+        password,
+        full_name: fullName,
+        workspace_name: workspaceName,
+        workspace_slug: workspaceSlug,
+      });
       router.push("/dashboard");
     } catch {
       // Error already set in the store
     }
+  }
+
+  if (statusError) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Registration unavailable</CardTitle>
+          <CardDescription>The backend could not be reached. Try again after it is running.</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  if (!bootstrapStatus) {
+    return <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" aria-label="Checking registration mode" />;
+  }
+
+  if (!bootstrapStatus.setup_required) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Invitation required</CardTitle>
+          <CardDescription>
+            Initial setup is complete. Ask your workspace owner for an invitation, or sign in if you already have an account.
+          </CardDescription>
+        </CardHeader>
+        <CardFooter>
+          <Link href="/login" className="text-sm font-medium text-primary hover:underline">
+            Go to sign in
+          </Link>
+        </CardFooter>
+      </Card>
+    );
   }
 
   return (
@@ -153,6 +208,48 @@ export default function RegisterPage() {
                   {fieldErrors.email}
                 </p>
               )}
+            </div>
+
+            {/* Password */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label htmlFor="register-workspace" className="text-sm font-medium text-foreground">
+                  Workspace name
+                </label>
+                <Input
+                  id="register-workspace"
+                  value={workspaceName}
+                  onChange={(event) => {
+                    const name = event.target.value;
+                    setWorkspaceName(name);
+                    setWorkspaceSlug(
+                      name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+                    );
+                  }}
+                  placeholder="Engineering"
+                  disabled={isLoading}
+                  required
+                />
+                {fieldErrors.workspaceName && (
+                  <p className="text-xs text-destructive">{fieldErrors.workspaceName}</p>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="register-workspace-slug" className="text-sm font-medium text-foreground">
+                  Workspace slug
+                </label>
+                <Input
+                  id="register-workspace-slug"
+                  value={workspaceSlug}
+                  onChange={(event) => setWorkspaceSlug(event.target.value.toLowerCase())}
+                  placeholder="engineering"
+                  disabled={isLoading}
+                  required
+                />
+                {fieldErrors.workspaceSlug && (
+                  <p className="text-xs text-destructive">{fieldErrors.workspaceSlug}</p>
+                )}
+              </div>
             </div>
 
             {/* Password */}

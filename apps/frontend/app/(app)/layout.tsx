@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AppSidebar } from "@/components/layout/app-sidebar";
+import { AuthGuard } from "@/components/auth/auth-guard";
 
 export const metadata: Metadata = {
   title: {
@@ -14,15 +15,17 @@ export const metadata: Metadata = {
  */
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <AppSidebar />
-      <main
-        id="main-content"
-        className="flex-1 overflow-y-auto"
-        tabIndex={-1}
-      >
-        {children}
-      </main>
-    </div>
+    <AuthGuard>
+      <div className="flex h-screen overflow-hidden bg-background">
+        <AppSidebar />
+        <main
+          id="main-content"
+          className="flex-1 overflow-y-auto"
+          tabIndex={-1}
+        >
+          {children}
+        </main>
+      </div>
+    </AuthGuard>
   );
 }

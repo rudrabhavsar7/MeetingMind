@@ -1,7 +1,7 @@
 from functools import lru_cache
-from typing import Annotated
+from typing import Annotated, Literal, Self
 
-from pydantic import AnyUrl, Field, SecretStr, field_validator
+from pydantic import AnyUrl, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
@@ -24,6 +24,15 @@ class Settings(BaseSettings):
     access_token_minutes: int = 15
     refresh_token_days: int = 7
     refresh_cookie_name: str = "refresh_token"
+    frontend_url: str = "http://localhost:3000"
+    password_reset_notifier: Literal["disabled", "smtp"] = "disabled"
+    smtp_host: str | None = None
+    smtp_port: int = 1025
+    smtp_starttls: bool = False
+    smtp_username: str | None = None
+    smtp_password: SecretStr | None = None
+    smtp_from_email: str | None = None
+    smtp_timeout_seconds: int = 10
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -45,6 +54,36 @@ class Settings(BaseSettings):
         if value.startswith("postgresql://"):
             return value.replace("postgresql://", "postgresql+asyncpg://", 1)
         return value
+
+    @model_validator(mode="after")
+    def validate_security_settings(self) -> Self:
+        if self.env in {"staging", "production"}:
+            secret = self.jwt_secret.get_secret_value()
+            known_placeholders = {"change-me", "change-me-in-local-env"}
+            if len(secret.encode("utf-8")) < 32 or secret in known_placeholders:
+                raise ValueError(
+                    "MEETINGMIND_JWT_SECRET must contain at least 32 bytes of generated entropy "
+                    "in staging and production"
+                )
+
+        if self.password_reset_notifier == "smtp":
+            missing = [
+                name
+                for name, value in {
+                    "MEETINGMIND_SMTP_HOST": self.smtp_host,
+                    "MEETINGMIND_SMTP_FROM_EMAIL": self.smtp_from_email,
+                }.items()
+                if not value
+            ]
+            if missing:
+                raise ValueError(
+                    "SMTP password-reset delivery requires " + ", ".join(missing)
+                )
+            if (self.smtp_username is None) != (self.smtp_password is None):
+                raise ValueError(
+                    "MEETINGMIND_SMTP_USERNAME and MEETINGMIND_SMTP_PASSWORD must be set together"
+                )
+        return self
 
 
 @lru_cache

@@ -5,11 +5,35 @@
 
 // ─── Auth ─────────────────────────────────────────────────────────────────
 
+export type WorkspaceRole = "owner" | "admin" | "member" | "viewer";
+
+export interface UserWorkspace {
+  id: string;
+  name: string;
+  slug: string;
+  role: WorkspaceRole;
+}
+
 export interface User {
   id: string;
   email: string;
   full_name: string;
-  avatar_url: string | null;
+  workspaces: UserWorkspace[];
+}
+
+export interface AuthSession {
+  access_token: string;
+  token_type: "bearer";
+  user: User;
+}
+
+export interface BootstrapStatus {
+  setup_required: boolean;
+  registration_mode: "bootstrap" | "invitation_only";
+}
+
+export interface StatusResponse {
+  status: string;
 }
 
 // ─── Workspaces ───────────────────────────────────────────────────────────
@@ -24,7 +48,9 @@ export interface Workspace {
 // ─── Meetings ─────────────────────────────────────────────────────────────
 
 export type MeetingStatus =
+  | "scheduled"
   | "recording"
+  | "paused"
   | "transcribing"
   | "analyzing"
   | "completed"
@@ -117,7 +143,7 @@ export interface ApiResponse<T> {
 
 export interface PaginatedResponse<T> {
   data: T[];
-  pagination: {
+  meta: {
     next_cursor: string | null;
     has_more: boolean;
     limit: number;

@@ -3,6 +3,7 @@
 import axios from "axios";
 import type { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { API_BASE_URL, API_V1_PREFIX } from "@/lib/constants";
+import type { ApiResponse, AuthSession } from "@/types/api.types";
 
 /**
  * In-memory access token store.
@@ -78,8 +79,19 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean;
     };
+    const isCredentialEndpoint = [
+      "/auth/login",
+      "/auth/register",
+      "/auth/refresh",
+      "/auth/password/forgot",
+      "/auth/password/reset",
+    ].some((path) => originalRequest.url?.endsWith(path));
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !isCredentialEndpoint
+    ) {
       if (isRefreshing) {
         // Queue additional 401s until the refresh completes
         return new Promise<string>((resolve, reject) => {
@@ -94,14 +106,14 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const { data } = await axios.post<{ access_token: string }>(
+        const { data } = await axios.post<ApiResponse<AuthSession>>(
           `${API_BASE_URL}${API_V1_PREFIX}/auth/refresh`,
           {},
           { withCredentials: true }
         );
-        setAccessToken(data.access_token);
-        processPendingQueue(null, data.access_token);
-        originalRequest.headers.Authorization = `Bearer ${data.access_token}`;
+        setAccessToken(data.data.access_token);
+        processPendingQueue(null, data.data.access_token);
+        originalRequest.headers.Authorization = `Bearer ${data.data.access_token}`;
         return apiClient(originalRequest);
       } catch (refreshError) {
         processPendingQueue(refreshError, "");

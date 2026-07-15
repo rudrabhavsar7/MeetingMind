@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 };
 
 /**
- * Shared layout for all auth pages (/login, /register).
+ * Shared layout for login, registration, and password recovery pages.
  * Centers the form card on screen with a branded split-panel design.
  */
 export default function AuthLayout({

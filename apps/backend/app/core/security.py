@@ -79,9 +79,17 @@ def decode_token(*, token: str, secret: str, algorithm: str, expected_type: str)
     )
 
 
-def generate_refresh_token() -> str:
+def generate_opaque_token() -> str:
     return secrets.token_urlsafe(48)
 
 
+def hash_opaque_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def generate_refresh_token() -> str:
+    return generate_opaque_token()
+
+
 def hash_refresh_token(refresh_token: str) -> str:
-    return hashlib.sha256(refresh_token.encode("utf-8")).hexdigest()
+    return hash_opaque_token(refresh_token)

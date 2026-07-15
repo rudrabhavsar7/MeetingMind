@@ -1,6 +1,6 @@
 # MeetingMind Project Memory
 
-Last reviewed: 2026-07-08
+Last reviewed: 2026-07-15
 
 ## What This Repository Is
 
@@ -14,11 +14,11 @@ The core value proposition is enterprise-grade meeting intelligence without send
 
 Primary workflows:
 
-1. A user registers/logs in and belongs to a workspace.
+1. On a fresh v1 deployment, the first operator bootstraps the initial Owner and one default workspace; later users register only through workspace invitations and then log in normally.
 2. The user installs/connects the MeetingMind Chrome extension.
 3. The user joins a supported meeting app page, starting with Google Meet.
 4. The extension detects the meeting and the user explicitly starts capture.
-5. The extension streams 250-500ms tab-audio chunks over WebSocket/WebRTC and sends available source metadata.
+5. The extension streams self-framed 250-500ms PCM tab-audio chunks over the v1 WebSocket protocol and sends available source metadata.
 6. The backend runs local streaming STT, online diarization, rolling LLM analysis, embedding generation, and incremental persistence.
 7. Users review live/final summaries, action items, decisions, transcript segments, source app metadata, and retained recordings in the web console.
 8. Users can import historical recordings or use standalone web capture as fallback paths.
@@ -64,6 +64,7 @@ Infrastructure:
 - Nginx reverse proxy in production
 - Optional GPU worker routing for transcription/diarization
 - Local observability with logs, Prometheus/Grafana, and Celery Flower where applicable
+- Shared development and staging use only Supabase-managed PostgreSQL/pgvector: separate `meetingmind_dev` and `meetingmind_staging` schemas and roles; all other services remain local/self-hosted
 
 ## Planned Monorepo Shape
 
@@ -97,10 +98,22 @@ Main entities:
 - `Workspace`
 - `User`
 - `WorkspaceMembership`
+- `WorkspaceInvitation`
+- `PasswordResetToken`
+- `RefreshToken`
+- `ExtensionSession`
 - `Meeting`
+- `MeetingParticipant`
+- `MediaObject`
 - `TranscriptSegment`
+- `TranscriptChunk`
+- `AIProcessingRun`
+- `SummaryVersion`
 - `ActionItem`
 - `Decision`
+- `AIOutputCitation`
+- `AIOutputFeedback`
+- `AuditLog`
 
 Important rules:
 
@@ -109,7 +122,14 @@ Important rules:
 - Protect all workspace data through membership checks and preferably PostgreSQL RLS later.
 - Store transcripts as timestamped segments, not one large blob.
 - Store vectors in pgvector with HNSW indexes.
+- `04-backend/data-dictionary.md` is canonical: every tenant table has direct `workspace_id`; transcript source segments are immutable and embedding-free; local BGE vectors live on versioned `TranscriptChunk` rows.
+- AI summaries are immutable versions, regeneration is append-only, and AI processing runs record provider/model/prompt/input lineage.
+- AI-origin summaries, actions, and decisions require exact same-meeting transcript citations before becoming current/user-visible.
 - Use soft deletes for valuable entities like meetings and workspaces.
+- v1 exposes one active default workspace per deployment while retaining workspace-scoped storage and authorization for future multi-workspace support.
+- Workspace roles are `owner`, `admin`, `member`, and `viewer`; only Owner can grant/remove Owner, and the last Owner is protected.
+- Invitation and password-reset tokens are single-use, expiring, revocable, and stored only as hashes.
+- `01-product/requirements-traceability.md` maps every approved v1 functional requirement to its Jira owner, normative surface, and named verification target; this is specification coverage, not implementation evidence.
 
 ## API Shape
 
@@ -132,11 +152,13 @@ Response formats should be consistent JSON envelopes for success and standardize
 
 Detailed endpoint-level contracts for API-owning Jira tickets are now documented in `02-engineering/jira-api-contracts.md`. Workspace collection routes should carry workspace context in the path, such as `/api/v1/workspaces/{workspace_id}/meetings`; meeting child routes derive workspace context from the meeting record and then enforce membership. Successful list responses use `meta` for cursor pagination, and HTTP errors use RFC 7807 Problem Details directly at the top level.
 
+Authentication includes public bootstrap-status, atomic first-Owner/default-workspace registration, invitation validation/registration, enumeration-safe password reset, login, refresh rotation, and logout. After bootstrap, public registration closes. `POST /workspaces` and workspace switching are deferred to v1.2 and must not be exposed by v1 clients or OpenAPI.
+
 ## AI Pipeline
 
 The docs describe two processing modes:
 
-1. Chrome extension real-time streaming pipeline via WebSockets/WebRTC for live tab audio.
+1. Chrome extension real-time streaming pipeline via the versioned WebSocket protocol for live tab audio.
 2. Standalone web live capture fallback using the same stream API.
 3. Batch pipeline via Celery for imported recordings and backfills.
 
@@ -151,6 +173,8 @@ Real-time stages:
 7. Run rolling summary/action/decision extraction through local LLMs.
 8. Generate embeddings for finalized transcript chunks.
 9. Publish status and AI events to the UI.
+
+The normative live transport is `04-backend/realtime-protocol.md`: WebSocket protocol `1.0`, Chrome 116+ service-worker/offscreen capture ownership, 16 kHz mono PCM `MM01` frames, contiguous acknowledgements, a 60-second memory-only replay buffer, explicit audio gaps, Pause/Resume, 15-second heartbeats, fresh reconnect tokens, and an eight-hour meeting limit. WebRTC is deferred.
 
 Batch import stages:
 
@@ -203,6 +227,8 @@ The current detailed Jira document organizes work into these modules:
 - MM-500: core application UI
 - MM-600: RAG search and Ask AI
 
+Newly explicit v1 coverage tickets include MM-206 (profile/password), MM-307 (standalone web capture), MM-505 (workspace Actions), MM-506 (Markdown export), and MM-606 (keyword search).
+
 When implementing a ticket, read `02-engineering/jira-tickets.md` first, then `02-engineering/jira-task-breakdown.md`, then read the matching product, backend, design, and testing docs before editing code.
 
 For API-owning tickets, also read `02-engineering/jira-api-contracts.md` before coding. It defines endpoint payloads, auth rules, status codes, stream events, side effects, and required tests so agents do not infer API behavior from endpoint names alone.
@@ -232,6 +258,11 @@ These points are resolved product/architecture direction and should guide future
 - Default AI stance is local-only via Ollama. External providers are opt-in only unless a ticket explicitly says otherwise.
 - Real-time capture has been resolved as the primary v1 ingestion mode in ADR 006.
 - Chrome extension capture has been resolved as the primary v1 capture surface in ADR 007. Google Meet is first; Zoom Web and Teams Web are fast-follow; desktop and mobile capture are later integration tracks.
+- ADR 010 resolves v1 tenancy/onboarding: one default workspace is exposed per deployment; first-run bootstrap creates the Owner/workspace atomically; later registration is invitation-only; the fixed roles are Owner/Admin/Member/Viewer; arbitrary workspace creation/switching is v1.2.
+- ADR 011 resolves live transport/lifecycle: v1 uses the versioned acknowledged WebSocket protocol, Manifest V3 offscreen capture ownership on Chrome 116+, bounded replay and explicit gaps; WebRTC is deferred.
+- ADR 012 makes `04-backend/data-dictionary.md` canonical for tenant persistence and AI provenance; embeddings live on transcript chunks and AI outputs keep immutable versions, processing lineage, and relational citations.
+- ADR 013 makes the single-node, operator-controlled Docker Compose stack the normative v1 deployment; external cloud, AI, telemetry, and notification services are optional explicit integrations and are disabled by default.
+- ADR 014 scopes Supabase to PostgreSQL/pgvector for development and staging only. Development and staging are isolated by schema and role, CI uses disposable local PostgreSQL, no other Supabase product is adopted, and production database hosting remains undecided.
 
 Future implementation should follow these decisions unless a newer ADR or user decision changes them.
 
@@ -251,6 +282,19 @@ Root is mostly markdown documentation plus the initial backend scaffold. Key fol
 - `apps/backend`: FastAPI backend scaffold with Poetry, app factory, health/auth routes, settings, logging, SQLAlchemy models, Alembic migration, and starter tests
 - `apps/frontend`: early Next.js frontend scaffold with auth/app routes and initial UI components
 - `apps/extension`: early Chrome extension scaffold with Vite/TypeScript files
+
+MM-203 backend authentication now includes atomic first-Owner bootstrap, invitation validation and
+single-use registration, enumeration-safe password-reset issuance, single-use reset consumption,
+atomic refresh rotation, refresh-session revocation, inactive-user rejection, and sensitive-token
+log redaction. Reset-token delivery uses an injectable notifier with a configurable local SMTP
+adapter; delivery remains disabled by default until an operator-approved sink is configured. The
+frontend now includes enumeration-safe forgot-password and single-use reset-password pages that
+remove reset tokens from the visible URL and never persist them in browser storage.
+
+Local Windows development networks without usable IPv6 must connect to the managed development
+database through the project's Supabase session pooler on port 5432. The backend includes a
+development-only configurator that tests the pooler before updating the ignored `.env`; FastAPI CORS
+allows only configured origins and supports credentialed browser authentication.
 
 Uncommitted changes were present during review in several docs, including:
 
