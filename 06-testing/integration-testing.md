@@ -1,9 +1,9 @@
 ---
 Title: MeetingMind — Testing: Integration Testing
-Version: 1.0.0
+Version: 1.1.0
 Status: Approved
 Owner: QA Engineer
-Last Updated: 2026-06-28
+Last Updated: 2026-07-11
 Dependencies: 06-testing/testing-strategy.md
 ---
 
@@ -89,3 +89,14 @@ test('loads and displays meetings', async () => {
 ## 4. Key Rules for Integration Tests
 1. **Database Cleansing:** Every test MUST start with a clean database. Use pytest fixtures to truncate tables or rollback transactions after every test.
 2. **Mock External APIs:** Any call that leaves the local network (OpenAI, AWS S3, SendGrid) MUST be mocked. Integration tests should be able to run on an airplane without WiFi.
+
+## 5. Canonical Data and Provenance Tests
+
+- Assert every tenant-scoped row, including transcript chunks, processing runs, outputs, citations, media objects, and feedback, carries the expected `workspace_id`.
+- Reject citations whose segment/output/meeting/workspace combination does not match.
+- Reject promotion of an AI-origin summary, action, or decision without at least one valid citation.
+- Regeneration creates a new `AIProcessingRun` and `SummaryVersion`; the previous current version remains readable until promotion and is never mutated.
+- User summary edits append `kind=user_edited` versions and retain/copy citation lineage.
+- Re-running chunking/embedding with the same content hash, chunker version, and model does not create duplicates.
+- Vector queries filter `TranscriptChunk.workspace_id` and never retrieve soft-deleted or cross-workspace content.
+- Database rows persist private object keys only; signed URLs are generated at response time and never stored.

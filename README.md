@@ -8,14 +8,17 @@
 * **Rudra:** Backend & AI Engineer (FastAPI, Celery, Whisper, LLMs)
 * **Jenil:** Product Manager / Full Stack (User Flows, API Integration, Auth)
 * **Prashant:** Frontend Engineer (Next.js, Tailwind, shadcn/ui)
-* **Arnish:** DevOps & DB Engineer (Postgres, AWS, Docker, CI/CD)
+* **Arnish:** DevOps & DB Engineer (PostgreSQL, self-hosting, Docker, CI/CD)
 
 ---
 
 ## 🚀 Quick Start & Important Links
 Before writing any code, team members should review their assigned tickets and the related architecture documents.
 
-* **🎯 Jira Backlog & Sprint Plan:** [02-engineering/jira-tickets.md](./02-engineering/jira-tickets.md) *(Start here!)*
+The application scaffolds exist, but the production Dockerfiles and root Compose bundle are not complete yet. Do not treat this repository as having a working one-command deployment until the foundation ticket delivers and verifies those artifacts.
+
+* **🎯 Phase & Sprint Plan:** [02-engineering/phase-plan.md](./02-engineering/phase-plan.md) *(Start here!)*
+* **📋 Jira Backlog:** [02-engineering/jira-tickets.md](./02-engineering/jira-tickets.md)
 * **🎨 UI & Components:** [03-design/design-system.md](./03-design/design-system.md)
 * **🗄️ Database Schema:** [04-backend/database-schema.md](./04-backend/database-schema.md)
 * **🔌 API Specification:** [04-backend/api-specification.md](./04-backend/api-specification.md)
@@ -28,8 +31,8 @@ Before writing any code, team members should review their assigned tickets and t
 ## 🛠️ Tech Stack
 * **Frontend:** Chrome Extension (Manifest V3) for capture, plus Next.js 15 (App Router), React, TypeScript, Tailwind CSS, Zustand, TanStack Query for the web console.
 * **Backend:** FastAPI (Python), SQLAlchemy (Async), Pydantic.
-* **AI/ML:** Whisper (Transcription), Pyannote (Diarization), OpenAI/Ollama, Celery (Background Jobs).
-* **Infrastructure:** PostgreSQL + `pgvector`, Redis, Docker, AWS S3.
+* **AI/ML:** Local Whisper/faster-whisper, pyannote.audio, Ollama, BGE embeddings, and Celery. External AI providers are optional operator opt-ins only.
+* **Infrastructure:** Docker Compose target with Nginx, PostgreSQL + `pgvector`, Redis, MinIO, and local observability.
 
 ---
 
@@ -37,7 +40,7 @@ Before writing any code, team members should review their assigned tickets and t
 This repository is configured with a `.agents` directory to supercharge your development speed.
 
 ### Global Rules
-Any AI agent invoked in this workspace automatically reads `.agents/AGENTS.md` and knows our exact tech stack, coding standards, and directory structure.
+Any AI agent working in this repository should begin with the root `AGENTS.md`, `PROJECT_MEMORY.md`, and `.agents/context-map.md`.
 
 ### Custom Skills
 You can instruct your AI to use the following custom skills:

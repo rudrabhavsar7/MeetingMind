@@ -1,9 +1,9 @@
 ---
 Title: MeetingMind - Engineering: Jira API Implementation Contracts
-Version: 1.0.0
+Version: 1.1.0
 Status: Approved
 Owner: Lead Backend Engineer
-Last Updated: 2026-07-08
+Last Updated: 2026-07-10
 Dependencies: 02-engineering/jira-tickets.md, 04-backend/api-specification.md
 Related Documents:
   - 01-product/api-requirements.md
@@ -30,6 +30,7 @@ This document exists so implementation agents do not need to infer API behavior 
 - All tenant-scoped database queries must filter by `workspace_id` directly or through a meeting lookup that verifies the meeting belongs to an authorized workspace.
 - List endpoints default to `limit=50`, cap `limit` at 100, and use opaque cursors.
 - LLM, STT, diarization, and embedding providers are local by default. External providers require explicit operator opt-in and are out of scope unless a ticket says otherwise.
+- Per ADR 010, v1 exposes one default workspace per deployment. The schema and paths remain workspace-scoped, but workspace creation/switching are not public v1 capabilities.
 
 ## Shared Schemas
 
@@ -63,6 +64,20 @@ This document exists so implementation agents do not need to infer API behavior 
   "name": "Engineering",
   "slug": "engineering",
   "role": "owner"
+}
+```
+
+### WorkspaceInvitation
+
+```json
+{
+  "id": "uuid",
+  "workspace_id": "uuid",
+  "email": "sarah@example.com",
+  "role": "member",
+  "status": "pending",
+  "expires_at": "2026-07-17T09:00:00Z",
+  "created_at": "2026-07-10T09:00:00Z"
 }
 ```
 
@@ -100,7 +115,9 @@ This document exists so implementation agents do not need to infer API behavior 
   "end_time": 18.74,
   "sequence_number": 12,
   "text": "We should ship the extension capture flow first.",
-  "is_final": true
+  "is_final": true,
+  "stt_confidence": 0.91,
+  "language": "en"
 }
 ```
 
@@ -115,6 +132,30 @@ This document exists so implementation agents do not need to infer API behavior 
   "end_time": 18.74,
   "speaker_label": "Speaker 1",
   "text_excerpt": "We should ship the extension capture flow first."
+}
+```
+
+### SummaryVersion
+
+```json
+{
+  "id": "uuid",
+  "workspace_id": "uuid",
+  "meeting_id": "uuid",
+  "ai_processing_run_id": "uuid",
+  "version": 3,
+  "kind": "final",
+  "executive_summary": "The team selected the acknowledged WebSocket protocol for v1.",
+  "key_points": ["WebRTC is deferred", "Reconnect uses fresh handshake tokens"],
+  "status": "current",
+  "citations": [
+    {
+      "segment_id": "uuid",
+      "start_time": 20.5,
+      "end_time": 35.0
+    }
+  ],
+  "created_at": "2026-07-08T10:00:00Z"
 }
 ```
 
@@ -162,9 +203,36 @@ Tests:
 
 ## MM-203: Authentication API
 
+### `GET /auth/bootstrap-status`
+
+Purpose: tell the first-run UI whether the deployment still requires its initial Owner and default workspace.
+
+Auth: none.
+
+Response `200`:
+
+```json
+{
+  "data": {
+    "setup_required": true,
+    "registration_mode": "bootstrap"
+  }
+}
+```
+
+Rules:
+
+- `registration_mode` is `bootstrap` only while there are zero users; otherwise it is `invitation_only`.
+- The response must not include user counts, emails, workspace identifiers, or other deployment details.
+
+Tests:
+
+- Fresh database returns `setup_required=true`.
+- After successful bootstrap it returns `setup_required=false` and `registration_mode=invitation_only`.
+
 ### `POST /auth/register`
 
-Purpose: create an email/password user, create or attach the user to a default workspace, return an access token, and set a refresh cookie.
+Purpose: atomically bootstrap the first Owner and default workspace, or register a later user through a valid workspace invitation.
 
 Auth: none.
 
@@ -174,7 +242,10 @@ Request:
 {
   "email": "maya@example.com",
   "full_name": "Maya Chen",
-  "password": "SecurePass123"
+  "password": "SecurePass123",
+  "workspace_name": "Engineering",
+  "workspace_slug": "engineering",
+  "invitation_token": null
 }
 ```
 
@@ -183,6 +254,10 @@ Validation:
 - `email`: required, valid email, normalized to lowercase.
 - `full_name`: required, 1-255 characters.
 - `password`: required, 8-128 characters, at least one number.
+- Bootstrap mode: allowed only while there are zero users; `workspace_name` and `workspace_slug` are required and `invitation_token` must be absent.
+- Invitation mode: `invitation_token` is required; workspace and role come from the invitation and client-supplied workspace fields are ignored/rejected.
+- Invitation token must be hashed at rest, single-use, unexpired, unrevoked, and bound to the normalized registration email.
+- Bootstrap user, workspace, and Owner membership must be committed in one transaction protected against concurrent bootstrap requests.
 
 Response `201`:
 
@@ -198,8 +273,8 @@ Response `201`:
       "workspaces": [
         {
           "id": "uuid",
-          "name": "Maya's Workspace",
-          "slug": "mayas-workspace",
+          "name": "Engineering",
+          "slug": "engineering",
           "role": "owner"
         }
       ]
@@ -213,12 +288,14 @@ Cookies:
 - Sets `refresh_token`.
 - `HttpOnly=true`.
 - `Secure=true` in production.
-- `SameSite=Lax`.
+- `SameSite=Strict`.
 - Max age is 7 days.
 
 Errors:
 
 - `409` if email already exists.
+- `409` if bootstrap has already completed and no invitation was supplied.
+- `403` if an invitation is invalid, expired, revoked, already used, or bound to a different email.
 - `422` for validation failure.
 
 Tests:
@@ -226,7 +303,63 @@ Tests:
 - Successful registration hashes password and never returns `password_hash`.
 - Duplicate email returns `409`.
 - Refresh cookie is present and has secure production settings.
-- User is owner of a default workspace unless a later invite/bootstrap flow explicitly changes this behavior.
+- Fresh bootstrap creates exactly one Owner, one default workspace, and one Owner membership.
+- A concurrent bootstrap attempt cannot create a second workspace or Owner.
+- Invitation registration creates membership with the invitation role and marks the invitation used in the same transaction.
+- Registration without an invitation is rejected after bootstrap.
+
+### `GET /auth/invitations/{token}`
+
+Purpose: validate an invitation for the registration UI.
+
+Auth: possession of the invitation token.
+
+Response `200`:
+
+```json
+{
+  "data": {
+    "workspace_name": "Engineering",
+    "email": "sarah@example.com",
+    "role": "member",
+    "expires_at": "2026-07-17T09:00:00Z"
+  }
+}
+```
+
+Errors: `403` for invalid, expired, revoked, or used invitations. Error details must not distinguish the cause.
+
+### `POST /auth/password/forgot`
+
+Purpose: request a password-reset message without revealing whether the account exists.
+
+Auth: none.
+
+Request: `{ "email": "maya@example.com" }`.
+
+Response `202`: `{ "data": { "status": "accepted" } }` for both known and unknown emails.
+
+Tests:
+
+- Known and unknown emails produce the same status and response body.
+- At most one active reset token per user is retained; tokens are hashed and expire after 30 minutes.
+
+### `POST /auth/password/reset`
+
+Purpose: replace a password using a valid single-use reset token and revoke existing refresh sessions.
+
+Auth: reset token in the request body.
+
+Request: `{ "token": "opaque-token", "new_password": "SecurePass456" }`.
+
+Response `200`: `{ "data": { "status": "password_reset" } }`.
+
+Errors: `403` for an invalid, expired, revoked, or used token; `422` for password validation.
+
+Tests:
+
+- Successful reset consumes the token and revokes all existing refresh sessions for the user.
+- Token reuse fails.
 
 ### `POST /auth/login`
 
@@ -331,6 +464,18 @@ Tests:
 - Requires bearer token.
 - Returns only workspaces where the user has active membership.
 
+## MM-206: Profile and Password API
+
+### `PATCH /users/me`
+
+Auth: bearer access token. Request accepts `full_name` (1-120 normalized characters). Response `200` returns the updated current-user object. Email, role, workspace, and user ID are not writable through this route.
+
+### `POST /auth/change-password`
+
+Auth: bearer access token. Request: `{ "current_password": "...", "new_password": "..." }`. The current password must verify and the new password must satisfy FR-002. Response `200` returns `{ "data": { "status": "ok", "other_sessions_revoked": true } }`; other refresh and extension sessions are revoked and an audit event is written.
+
+Tests: wrong current password is a generic `400`; weak/reused password is rejected; another user's profile cannot be targeted; session revocation is transactional.
+
 ## MM-205: Workspace and Membership API
 
 ### `GET /workspaces`
@@ -358,10 +503,13 @@ Tests:
 
 - User sees only active memberships.
 - Soft-deleted workspaces are excluded.
+- A v1 deployment returns at most its one active default workspace.
 
-### `POST /workspaces`
+### `POST /workspaces` (Deferred to v1.2)
 
-Purpose: create a workspace and owner membership for the current user.
+Purpose: create an additional workspace and Owner membership after multi-workspace support ships.
+
+v1 behavior: this route is not registered and must not appear in the v1 OpenAPI document.
 
 Auth: bearer token.
 
@@ -457,9 +605,9 @@ Response `200` list item:
 }
 ```
 
-### `POST /workspaces/{workspace_id}/members`
+### `POST /workspaces/{workspace_id}/invitations`
 
-Purpose: invite or add a member.
+Purpose: create a pending invitation. Membership is created only when the invited user registers successfully.
 
 Auth: owner or admin.
 
@@ -472,12 +620,27 @@ Request:
 }
 ```
 
-Response `201`: membership or pending invite representation.
+Response `201`: `WorkspaceInvitation`. The raw invitation token is delivered through the configured local SMTP provider and is never returned by list APIs or stored in plaintext.
 
 Tests:
 
 - Member/viewer cannot invite.
 - Role must be one of `admin`, `member`, `viewer`.
+- Re-inviting an email with an active invitation returns `409` unless the prior invitation is explicitly revoked.
+- An existing active member cannot be invited again.
+
+### `DELETE /workspaces/{workspace_id}/invitations/{invitation_id}`
+
+Purpose: revoke a pending invitation.
+
+Auth: owner or admin.
+
+Response `204`: no body.
+
+Tests:
+
+- Revoked invitation tokens cannot be used for registration.
+- Invitations from another workspace are not disclosed or modified.
 
 ### `PATCH /workspaces/{workspace_id}/members/{user_id}`
 
@@ -538,7 +701,7 @@ Response `200`:
 {
   "data": {
     "extension_token": "opaque-token",
-    "expires_at": "2026-07-08T09:15:00Z",
+    "expires_at": "2026-07-08T17:00:00Z",
     "workspace": {
       "id": "uuid",
       "name": "Engineering",
@@ -558,7 +721,8 @@ Errors:
 Tests:
 
 - Token is scoped to user and workspace.
-- Token expiry is short-lived and enforced by stream/session endpoints.
+- Token is also scoped to a browser-device identifier, has a maximum eight-hour lifetime, and is stored only in `chrome.storage.local` outside content-script access.
+- Token revocation/expiry is enforced by session and stream-token endpoints.
 
 ### `GET /extension/capabilities?workspace_id={workspace_id}`
 
@@ -695,6 +859,44 @@ Tests:
 - Persists source metadata exactly as received after validation/sanitization.
 - Stream token is bound to meeting, workspace, and user.
 
+### `POST /workspaces/{workspace_id}/meetings/{meeting_id}/stream-token`
+
+Purpose: mint a fresh short-lived WebSocket handshake token for reconnecting an active meeting.
+
+Auth: valid extension session token for the same user, device, and default workspace, or a bearer token for the meeting creator.
+
+Request:
+
+```json
+{
+  "client_instance_id": "uuid",
+  "last_acknowledged_sequence": 119
+}
+```
+
+Response `200`:
+
+```json
+{
+  "data": {
+    "stream_url": "wss://host/api/v1/workspaces/{workspace_id}/meetings/{meeting_id}/stream",
+    "stream_token": "opaque-token",
+    "expires_at": "2026-07-08T09:30:00Z"
+  }
+}
+```
+
+Rules:
+
+- The token lifetime is at most 15 minutes and applies to handshake/reconnect only.
+- Expiry does not terminate a WebSocket that was authenticated successfully before expiry.
+- The meeting must still be active and below the eight-hour session limit.
+
+Tests:
+
+- A meeting can reconnect after its original stream token expires.
+- A revoked/expired extension session, wrong device/workspace/user, closed meeting, or unauthorized bearer token is rejected.
+
 ### `POST /workspaces/{workspace_id}/meetings/{meeting_id}/end`
 
 Purpose: end a live capture session and move the meeting toward final processing.
@@ -729,28 +931,34 @@ Tests:
 
 ## MM-402 and MM-405: Live Stream and Status Events
 
+`04-backend/realtime-protocol.md` is normative for framing, Manifest V3 ownership, token lifetime, acknowledgement/replay, heartbeats, backpressure, controls, events, and close codes.
+
 ### `WS /workspaces/{workspace_id}/meetings/{meeting_id}/stream`
 
 Purpose: authenticated live audio stream and bidirectional event channel for extension or standalone capture.
 
-Auth: `stream_token` in the WebSocket query string or `Sec-WebSocket-Protocol`. Token must be bound to the workspace and meeting.
+Auth: `stream_token` in `Sec-WebSocket-Protocol` (preferred) or the query string when the client/runtime cannot set a subprotocol. Token must be bound to the workspace, meeting, user, device, and client instance and must be redacted from access logs.
 
 Client binary messages:
 
 - 250-500ms audio chunk.
-- PCM 16 kHz mono is the default normalized target.
-- Each binary frame must be preceded by or paired with metadata.
+- PCM signed 16-bit little-endian, 16 kHz mono is required.
+- Each frame contains the `MM01` binary header and PCM payload defined in `04-backend/realtime-protocol.md`; separate JSON/binary pairing is forbidden.
 
-Client metadata message:
+Client handshake message:
 
 ```json
 {
-  "type": "audio_chunk",
-  "sequence_number": 42,
-  "started_at_ms": 20500,
-  "duration_ms": 500,
-  "mime_type": "audio/pcm",
-  "sample_rate_hz": 16000
+  "type": "stream_hello",
+  "protocol_version": "1.0",
+  "client_instance_id": "uuid",
+  "resume_from_sequence": 42,
+  "audio": {
+    "encoding": "pcm_s16le",
+    "sample_rate_hz": 16000,
+    "channels": 1,
+    "recommended_chunk_ms": 500
+  }
 }
 ```
 
@@ -758,8 +966,20 @@ Server event examples:
 
 ```json
 {
-  "type": "transcript_interim",
+  "type": "audio_ack",
+  "event_id": "uuid",
   "meeting_id": "uuid",
+  "emitted_at": "2026-07-08T09:00:30Z",
+  "highest_contiguous_sequence": 42
+}
+```
+
+```json
+{
+  "type": "transcript_interim",
+  "event_id": "uuid",
+  "meeting_id": "uuid",
+  "emitted_at": "2026-07-08T09:00:21Z",
   "sequence_number": 42,
   "speaker_label": "Speaker 1",
   "start_time": 20.5,
@@ -772,7 +992,9 @@ Server event examples:
 ```json
 {
   "type": "transcript_final",
+  "event_id": "uuid",
   "meeting_id": "uuid",
+  "emitted_at": "2026-07-08T09:00:25Z",
   "segment": {
     "id": "uuid",
     "speaker_label": "Speaker 1",
@@ -789,8 +1011,18 @@ Server event examples:
 ```json
 {
   "type": "summary_updated",
+  "event_id": "uuid",
   "meeting_id": "uuid",
-  "summary": "The team confirmed extension-first capture for v1.",
+  "emitted_at": "2026-07-08T09:01:00Z",
+  "summary_version": {
+    "id": "uuid",
+    "ai_processing_run_id": "uuid",
+    "version": 3,
+    "kind": "rolling",
+    "executive_summary": "The team confirmed extension-first capture for v1.",
+    "key_points": ["Use the Chrome extension as the primary capture surface"],
+    "status": "current"
+  },
   "citations": [
     {
       "segment_id": "uuid",
@@ -803,7 +1035,65 @@ Server event examples:
 
 ```json
 {
+  "type": "action_item_detected",
+  "event_id": "uuid",
+  "meeting_id": "uuid",
+  "emitted_at": "2026-07-08T09:01:05Z",
+  "action_item": {
+    "id": "uuid",
+    "ai_processing_run_id": "uuid",
+    "text": "Document stream token renewal.",
+    "assignee_name": "Rudra",
+    "due_date": null,
+    "status": "open",
+    "origin": "ai",
+    "confidence_score": null
+  },
+  "citations": [{ "segment_id": "uuid", "start_time": 24.8, "end_time": 30.2 }]
+}
+```
+
+```json
+{
+  "type": "decision_detected",
+  "event_id": "uuid",
+  "meeting_id": "uuid",
+  "emitted_at": "2026-07-08T09:01:10Z",
+  "decision": {
+    "id": "uuid",
+    "ai_processing_run_id": "uuid",
+    "title": "Use WebSocket for v1",
+    "text": "WebRTC is deferred.",
+    "rationale": "One-way PCM ingestion does not require WebRTC signaling.",
+    "origin": "ai",
+    "confidence_score": null
+  },
+  "citations": [{ "segment_id": "uuid", "start_time": 30.2, "end_time": 35.0 }]
+}
+```
+
+```json
+{
+  "type": "meeting_completed",
+  "event_id": "uuid",
+  "meeting_id": "uuid",
+  "emitted_at": "2026-07-08T10:00:05Z",
+  "status": "completed",
+  "counts": {
+    "transcript_segments": 420,
+    "action_items": 6,
+    "decisions": 3
+  },
+  "raw_audio_retained": false
+}
+```
+
+```json
+{
   "type": "error",
+  "event_id": "uuid",
+  "meeting_id": "uuid",
+  "emitted_at": "2026-07-08T09:00:26Z",
   "code": "out_of_order_chunk",
   "message": "Audio chunk sequence was older than the current stream cursor.",
   "recoverable": true
@@ -812,15 +1102,20 @@ Server event examples:
 
 Close behavior:
 
-- Invalid token: close with policy violation code and do not create transcript data.
+- Invalid token: close with `4401` and do not create transcript data.
 - Closed or failed meeting: close with readable error event first when possible.
-- Recoverable network reconnect: client may reconnect with same meeting while token is valid.
+- Recoverable network reconnect: mint a fresh handshake token if needed, send `stream_hello`, and replay only unacknowledged frames retained within the 60-second memory bound.
+- Pause/Resume uses `capture_control` messages and keeps heartbeats active.
+- Missing audio beyond the replay bound is reported through `audio_gap` and surfaced to the user.
 
 Tests:
 
 - Rejects invalid or expired stream tokens.
 - Rejects oversized chunks.
 - Handles duplicate and out-of-order chunks without corrupting transcript sequence.
+- Acknowledges the highest contiguous sequence and deduplicates replayed frames.
+- Supports reconnect after the original 15-minute handshake token expires.
+- Enforces the 60-second client replay bound and eight-hour meeting limit.
 - Persists final transcript segments with workspace ID.
 
 ### `WS /ws/meetings/{meeting_id}/status`
@@ -834,7 +1129,9 @@ Server event:
 ```json
 {
   "type": "meeting_status",
+  "event_id": "uuid",
   "meeting_id": "uuid",
+  "emitted_at": "2026-07-08T09:10:00Z",
   "status": "transcribing",
   "progress": {
     "stage": "stt",
@@ -1017,7 +1314,18 @@ Response `200`:
     "source_url": "https://meet.google.com/abc-defg-hij",
     "source_title": "Sprint Planning - Google Meet",
     "visible_participants": [],
-    "summary": "The team agreed to...",
+    "summary": {
+      "id": "uuid",
+      "ai_processing_run_id": "uuid",
+      "version": 3,
+      "kind": "final",
+      "executive_summary": "The team agreed to use the acknowledged WebSocket protocol.",
+      "key_points": ["WebRTC is deferred"],
+      "status": "current",
+      "citations": [
+        { "segment_id": "uuid", "start_time": 20.5, "end_time": 35.0 }
+      ]
+    },
     "started_at": "2026-07-08T09:00:00Z",
     "ended_at": "2026-07-08T10:00:00Z",
     "duration_seconds": 3600,
@@ -1046,6 +1354,93 @@ Tests:
 
 ## MM-502: Action Items and Decisions API
 
+### `GET /meetings/{meeting_id}/summaries`
+
+Purpose: list summary versions for audit/history, newest first.
+
+Auth: workspace member through meeting lookup.
+
+Response `200`: cursor-paginated list of `SummaryVersion`.
+
+### `POST /meetings/{meeting_id}/summaries/regenerate`
+
+Purpose: queue a new final summary run without overwriting the current version.
+
+Auth: owner, admin, or member.
+
+Request:
+
+```json
+{
+  "reason": "user_requested",
+  "base_summary_version_id": "uuid"
+}
+```
+
+Response `202`:
+
+```json
+{
+  "data": {
+    "meeting_id": "uuid",
+    "ai_processing_run_id": "uuid",
+    "status": "queued"
+  }
+}
+```
+
+Tests:
+
+- Repeated requests with the same idempotency key do not queue duplicate active runs.
+- The existing current summary remains available until a fully cited new version is promoted.
+
+### `PATCH /meetings/{meeting_id}/summaries/{summary_version_id}`
+
+Purpose: create a new user-edited summary version; the referenced version is not mutated.
+
+Auth: owner, admin, or member.
+
+Request:
+
+```json
+{
+  "executive_summary": "Corrected summary text.",
+  "key_points": ["Corrected key point"]
+}
+```
+
+Response `201`: the new `SummaryVersion` with `kind=user_edited`, retained/copied citations, and the editor user ID in persistence metadata.
+
+Tests:
+
+- Original version remains unchanged.
+- Citations must still belong to the same meeting; a user may adjust citations through a later dedicated contract, not arbitrary IDs in this request.
+
+### `POST /meetings/{meeting_id}/ai-feedback`
+
+Purpose: store local thumbs-up/down feedback for one summary version, action item, or decision.
+
+Auth: workspace member through meeting lookup.
+
+Request:
+
+```json
+{
+  "output_type": "summary_version",
+  "output_id": "uuid",
+  "rating": "down",
+  "comment": "The decision rationale is incomplete."
+}
+```
+
+Response `200`: the created or updated feedback record.
+
+Rules:
+
+- `output_type` is `summary_version`, `action_item`, or `decision` and the output must belong to the meeting/workspace.
+- Feedback remains inside operator-controlled infrastructure and is not sent to model providers automatically.
+- Repeated feedback from the same user/output updates the prior rating idempotently.
+
 ### `GET /meetings/{meeting_id}/action-items`
 
 Purpose: list action items for an authorized meeting.
@@ -1063,16 +1458,16 @@ Response item:
   "id": "uuid",
   "workspace_id": "uuid",
   "meeting_id": "uuid",
-  "source_segment_id": "uuid",
+  "ai_processing_run_id": "uuid",
   "text": "Follow up on extension token expiry handling.",
   "assignee_name": "Rudra",
   "due_date": null,
   "status": "open",
-  "citation": {
-    "segment_id": "uuid",
-    "start_time": 114.2,
-    "end_time": 118.6
-  }
+  "origin": "ai",
+  "confidence_score": null,
+  "citations": [
+    { "segment_id": "uuid", "start_time": 114.2, "end_time": 118.6 }
+  ]
 }
 ```
 
@@ -1100,6 +1495,18 @@ Tests:
 - Viewer receives `403`.
 - `item_id` must belong to `meeting_id`.
 
+## MM-505: Workspace Action Item API
+
+### `GET /workspaces/{workspace_id}/action-items`
+
+Purpose: cursor-paginated action items across the authorized workspace.
+
+Auth: workspace member.
+
+Query: optional `filter[status]`, `filter[assignee_user_id]`, `filter[meeting_id]`, `cursor`, and `limit` (default 50, max 100). Response uses the standard list envelope and the action item schema above, ordered by incomplete first, due date, then creation time.
+
+Tests: workspace filter is applied before optional filters/pagination; foreign assignee/meeting filters return no leaked data; Viewer can list but cannot use the PATCH mutation.
+
 ### `GET /meetings/{meeting_id}/decisions`
 
 Purpose: list extracted decisions for an authorized meeting.
@@ -1113,15 +1520,15 @@ Response item:
   "id": "uuid",
   "workspace_id": "uuid",
   "meeting_id": "uuid",
-  "source_segment_id": "uuid",
+  "ai_processing_run_id": "uuid",
   "title": "Extension-first capture remains v1 primary",
   "text": "The team confirmed Chrome extension capture is the primary v1 workflow.",
   "rationale": "It meets users inside existing meeting apps and can capture visible metadata.",
-  "citation": {
-    "segment_id": "uuid",
-    "start_time": 20.5,
-    "end_time": 24.8
-  }
+  "origin": "ai",
+  "confidence_score": null,
+  "citations": [
+    { "segment_id": "uuid", "start_time": 20.5, "end_time": 24.8 }
+  ]
 }
 ```
 
@@ -1242,6 +1649,20 @@ Tests:
 - URL is signed and expires.
 - Object key is verified against meeting workspace before signing.
 
+## MM-506: Markdown Export API
+
+### `GET /meetings/{meeting_id}/exports/markdown`
+
+Purpose: generate the authorized meeting's current visible representation as UTF-8 Markdown locally.
+
+Auth: workspace member through meeting lookup.
+
+Response `200`: `text/markdown; charset=utf-8` with `Content-Disposition: attachment; filename="<sanitized-title>.md"`. Content includes metadata, current summary and citation footnotes, actions, decisions, and timestamped transcript. It excludes internal object keys, signed URLs, hidden/deleted output versions, and raw run prompts.
+
+Errors: `409` if required final data is not ready; normal meeting `403/404` privacy behavior otherwise.
+
+Tests: golden Unicode output; filename/header injection; citation timestamps; cross-workspace denial; no external service calls.
+
 ## MM-603: Ask AI API
 
 ### `POST /workspaces/{workspace_id}/ai/chat`
@@ -1355,6 +1776,18 @@ Tests:
 
 - `segment_id` must belong to `meeting_id`.
 - Cross-workspace citation lookup returns `404` or `403` without leaking existence.
+
+## MM-606: Workspace Keyword Search API
+
+### `GET /workspaces/{workspace_id}/search`
+
+Purpose: non-LLM full-text search over active meeting titles and final transcript segments.
+
+Auth: workspace member.
+
+Query: `q` (1-200 characters), optional `cursor`, and `limit` (default 20, max 100). Response uses the standard list envelope; each typed result contains `result_type` (`meeting|transcript_segment`), meeting ID/title, nullable segment ID/timestamp, escaped text snippet, and numeric rank.
+
+Rules/tests: parameterized PostgreSQL full-text query; workspace and soft-delete filters precede ranking; stable rank/cursor ordering; snippets are escaped; empty/oversized input is `422`; foreign-workspace terms leak neither results nor counts.
 
 ## Ticket-Level API Definition of Done
 

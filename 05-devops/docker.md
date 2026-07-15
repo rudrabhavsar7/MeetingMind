@@ -1,153 +1,47 @@
 ---
 Title: MeetingMind — DevOps: Docker Configuration
-Version: 1.0.0
+Version: 2.0.0
 Status: Approved
 Owner: Lead DevOps Engineer
-Last Updated: 2026-06-28
-Dependencies: 05-devops/infrastructure.md
+Last Updated: 2026-07-11
+Dependencies: 05-devops/infrastructure.md, 02-engineering/deployment.md
 ---
 
 # MeetingMind DevOps: Docker Configuration
 
-## 1. Overview
-MeetingMind utilizes Docker for consistent environments across local development, CI/CD testing, and production deployment.
+## 1. Repository Reality
 
-## 2. Repository Structure
-We use a monorepo approach with multiple `Dockerfiles`.
-```text
-/apps/frontend/Dockerfile
-/apps/backend/Dockerfile
-/docker-compose.yml
-```
+The application scaffolds live under `apps/backend`, `apps/frontend`, and `apps/extension`. A complete production `docker-compose.yml` and production Dockerfiles are not yet present. This document defines their acceptance contract; it is not a runnable Compose example.
 
-## 3. Backend Dockerfile (FastAPI + Celery)
-The backend container is a multi-purpose image. The same image is used to run the API server and the Celery workers, differentiated by the `CMD` passed at runtime.
+## 2. Target Build Artifacts
 
-### 3.1 Base Image
-Use a slim Python image to reduce attack surface.
-```dockerfile
-FROM python:3.11-slim as base
-# Install system dependencies (FFmpeg is critical for audio processing)
-RUN apt-get update && apt-get install -y ffmpeg libpq-dev gcc && rm -rf /var/lib/apt/lists/*
-```
+- `apps/backend/Dockerfile`: multi-stage Python 3.11/3.12 image using the committed Poetry lockfile, FFmpeg/runtime libraries, the existing `app` package, and a non-root runtime user. The same immutable image may run API, migrations, and worker commands.
+- `apps/frontend/Dockerfile`: multi-stage Node build using `npm ci` and Next.js standalone output, with telemetry disabled by default and a non-root runtime user.
+- `apps/extension`: deterministic production build packaged separately; it is not served as a privileged part of the Compose network.
+- Root Compose production profile and a development override/profile.
 
-### 3.2 Dependency Management
-We use `poetry` or `uv` for deterministic dependency resolution.
-```dockerfile
-FROM base as builder
-RUN pip install uv
-COPY requirements.txt .
-RUN uv pip install --system -r requirements.txt
-```
+Do not copy a nonexistent `src` backend package or install from an untracked `requirements.txt`; the current backend source is `apps/backend/app` and dependencies are defined by `pyproject.toml`/`poetry.lock`.
 
-### 3.3 Final Stage
-```dockerfile
-FROM base as final
-# Copy installed packages from builder
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
+## 3. Compose Services and Networks
 
-WORKDIR /app
-COPY ./src /app/src
+The production profile includes `nginx`, `frontend`, `api`, `worker`, `postgres`, `redis`, `minio`, `ollama`, and any explicitly separated local STT/diarization worker. Only Nginx publishes public ports. Internal health checks and dependency readiness are required; startup order alone is not readiness.
 
-# Create non-root user for security
-RUN useradd -m appuser
-USER appuser
+Persistent named volumes cover PostgreSQL, MinIO, and model data. Temporary processing storage is bounded and cleaned. Application containers run non-root, drop unnecessary capabilities, use read-only filesystems where practical, and receive secrets/configuration at runtime.
 
-EXPOSE 8000
-```
+## 4. Development Profile
 
-## 4. Frontend Dockerfile (Next.js)
-Optimized for Next.js standalone output to drastically reduce image size (from >1GB to ~150MB).
+Development may publish database/Redis/MinIO ports to loopback only, mount source code, and use reload commands. It uses disposable data and safe placeholder secrets. Production must never use reload servers, bind internal services publicly, mount the source tree, or contain default passwords.
 
-```dockerfile
-FROM node:20-alpine AS base
+## 5. Image and Runtime Rules
 
-# 1. Install dependencies
-FROM base AS deps
-WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci
+- Pin base images and production service images to reviewed versions/digests; avoid floating `latest` tags.
+- Build reproducibly from lockfiles and emit an SBOM/checksum with releases.
+- Do not bake `.env`, credentials, models with unverified licenses, or user data into images.
+- Emit structured logs to stdout/stderr and configure rotation at the Docker/host layer.
+- Provide health checks for Nginx, frontend, API, PostgreSQL, Redis, MinIO, and local model readiness.
+- Apply CPU/memory limits and GPU reservations based on measured capacity; prevent one model process from exhausting the host.
+- Run Alembic as a controlled one-off release step, not concurrently from every API replica.
 
-# 2. Build the source code
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-# Ensures Next.js builds the standalone directory
-ENV NEXT_TELEMETRY_DISABLED 1
-RUN npm run build
+## 6. Required Verification Before Calling the Bundle Shippable
 
-# 3. Production image
-FROM base AS runner
-WORKDIR /app
-ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
-
-# Copy only the standalone build output
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
-
-EXPOSE 3000
-CMD ["node", "server.js"]
-```
-
-## 5. Local Development (Docker Compose)
-The `docker-compose.yml` spins up the entire stack, including dependencies like Postgres (with pgvector) and Redis.
-
-```yaml
-version: '3.8'
-
-services:
-  postgres:
-    image: ankane/pgvector:latest
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: meetingmind
-    ports:
-      - "5432:5432"
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-
-  api:
-    build: 
-      context: ./apps/backend
-    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
-    volumes:
-      - ./apps/backend/src:/app/src
-    ports:
-      - "8000:8000"
-    depends_on:
-      - postgres
-      - redis
-
-  celery_worker:
-    build: 
-      context: ./apps/backend
-    command: celery -A src.worker.app worker --loglevel=info
-    volumes:
-      - ./apps/backend/src:/app/src
-    depends_on:
-      - redis
-      - postgres
-
-  frontend:
-    build:
-      context: ./apps/frontend
-    command: npm run dev
-    volumes:
-      - ./apps/frontend:/app
-      - /app/node_modules
-    ports:
-      - "3000:3000"
-```
-
-## 6. Production Considerations
-* **Never use `--reload` or `npm run dev` in production.**
-* Ensure logs are routed to `stdout`/`stderr` so the orchestrator (ECS/Kubernetes) can capture them.
-* Do not embed `.env` files in the Docker image. Pass them at runtime via the orchestrator.
+Validate a clean-host install, CPU-only mode, GPU mode where supported, bootstrap/invitation flow, WebSocket audio acknowledgements/reconnect, MinIO signed uploads/downloads, AI processing, restart persistence, backup/restore, internal-port isolation, placeholder-secret rejection, and zero meeting-content egress under the default configuration.

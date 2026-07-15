@@ -1,9 +1,9 @@
 ---
 Title: MeetingMind — API Requirements
-Version: 1.0.0
+Version: 1.1.0
 Status: Approved
 Owner: Principal Software Architect
-Last Updated: 2026-07-08
+Last Updated: 2026-07-10
 Dependencies: 01-product/prd.md
 Related Documents:
   - 02-engineering/api-design.md
@@ -26,13 +26,14 @@ This document defines the overarching requirements, constraints, and conventions
 
 ## 3. Request & Response Formats
 * **Content-Type:** `application/json` is the standard for both requests and responses.
-* **WebSocket Audio:** Chrome extension and fallback web capture use authenticated WebSocket/WebRTC audio chunks rather than REST file upload.
+* **WebSocket Audio:** Chrome extension and fallback web capture use the authenticated, versioned WebSocket protocol in `04-backend/realtime-protocol.md`. WebRTC is deferred beyond v1.
 * **Multipart Form Data:** Required only for recording imports when presigned direct-to-MinIO uploads are not available.
 * **Casing:** Request and response JSON payloads must use `snake_case` to align with Python/PostgreSQL paradigms. The frontend will handle transformation to `camelCase` if necessary.
 
 ## 4. Authentication & Authorization
 * **Bearer Token:** The API must accept JWTs via the `Authorization: Bearer <token>` header.
 * **Workspace Scoping:** Workspace collection routes must carry workspace context in the URL path, for example `/api/v1/workspaces/{workspace_id}/meetings`. Meeting child routes such as `/api/v1/meetings/{meeting_id}/transcript` must derive workspace context from the meeting record and then verify membership. Do not use `X-Workspace-ID` as the primary authorization boundary.
+* **v1 Coverage:** Profile/password updates, workspace action listing, keyword search, and local Markdown export follow the normative contracts in `02-engineering/jira-api-contracts.md` (MM-206, MM-505, MM-506, and MM-606).
 * **RBAC Enforcement:** The API must reject requests with `403 Forbidden` if the user's role in the specified workspace lacks the necessary permissions.
 
 ## 5. Standard Status Codes

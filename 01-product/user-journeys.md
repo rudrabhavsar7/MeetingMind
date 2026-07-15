@@ -1,9 +1,9 @@
 ---
 Title: MeetingMind — User Journeys
-Version: 1.0.0
+Version: 1.1.0
 Status: Approved
 Owner: Lead UX Designer
-Last Updated: 2026-06-28
+Last Updated: 2026-07-10
 Dependencies: 01-product/user-personas.md
 Related Documents:
   - 03-design/pages/meeting-details.md
@@ -62,7 +62,7 @@ sequenceDiagram
 
 **Step-by-Step Flow:**
 1. **Trigger:** An enterprise client complains about IE11 support. Sarah needs to justify the deprecation.
-2. **Action:** Opens MeetingMind and hits `Cmd+K` to open the Command Palette.
+2. **Action (v1.1):** Opens MeetingMind and hits `Cmd+K` to open the Command Palette. In v1.0, the user opens the Search route from primary navigation instead.
 3. **Action:** Types "IE11 support decision". Hits Enter.
 4. **Touchpoint (AI Search):** The search page opens. A skeleton loader pulses briefly.
 5. **Touchpoint (AI Search):** Text streams in: *"In the Q1 Roadmap Sync (Jan 12), the team decided to drop IE11 support because it accounted for <0.5% of traffic but consumed 15% of QA time [1]."* *(Emotion: Relieved)*
@@ -102,7 +102,7 @@ sequenceDiagram
 5. **Touchpoint (CLI):** Watches images pull and containers start.
 6. **Action:** Maps the internal domain `meetings.internal.corp` via Nginx.
 7. **Action:** Navigates to the domain.
-8. **Touchpoint (Auth):** Sees the clean login screen. Registers the first admin account. *(Emotion: Relieved it was that easy)*
+8. **Touchpoint (Auth):** Sees the first-run setup screen. Creates the initial Owner account and names the default workspace. *(Emotion: Relieved it was that easy)*
 9. **Action:** Starts a test Google Meet capture through the Chrome extension. Opens `htop` on the server.
 10. **Touchpoint (CLI):** Watches streaming transcription workers process extension audio chunks continuously, then return to idle after the session ends.
 11. **Action:** Integrates the Prometheus `/metrics` endpoint into the company Grafana.

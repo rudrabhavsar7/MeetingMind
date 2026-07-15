@@ -50,7 +50,7 @@ MeetingMind v1.0 is designed for single-organization, self-hosted deployments.
 ### 4.1 Data Protection
 * **Data at Rest:** Vector embeddings, transcripts, and metadata must be stored in PostgreSQL. (Encryption at rest is delegated to the host OS / volume encryption).
 * **Data in Transit:** All client-server communication MUST occur over HTTPS/TLS 1.2+.
-* **Data Sovereignty:** The system MUST NOT make external API calls to third-party services (e.g., OpenAI, Anthropic, Google) for transcription or summarization. All processing is strictly local.
+* **Data Sovereignty:** The default configuration MUST NOT make external AI, telemetry, storage, email, or integration calls. Transcription, summarization, diarization, embeddings, and storage run locally. An operator may explicitly enable an external adapter only after configuring its destination/credentials and accepting the disclosed data classes; external fallback is never automatic.
 
 ### 4.2 Application Security
 * **Authentication:** Stateless JWT using HS256 algorithm with strong secrets.

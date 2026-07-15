@@ -1,9 +1,9 @@
 ---
 Title: MeetingMind — Authorization (RBAC)
-Version: 1.0.0
+Version: 1.1.0
 Status: Approved
 Owner: Lead DevOps & Security
-Last Updated: 2026-06-28
+Last Updated: 2026-07-10
 Dependencies: 02-engineering/authentication.md
 ---
 
@@ -13,7 +13,9 @@ MeetingMind employs a Role-Based Access Control (RBAC) system. Authorization gua
 
 ## 1. Roles & Permissions Matrix
 
-In MeetingMind v1.0, roles are scoped at the **Workspace** level. A user can have different roles in different workspaces (once multi-workspace is supported).
+In MeetingMind v1.0, roles are scoped at the **Workspace** level. The deployment exposes one default workspace, but the membership model remains ready for users to hold different roles across workspaces when multi-workspace UI/API capabilities ship in v1.2.
+
+The v1 role enum is final: `owner`, `admin`, `member`, and `viewer`. "Advanced RBAC" in v1.2 means custom/granular permissions, not introducing Viewer for the first time.
 
 | Action / Resource | Owner | Admin | Member | Viewer |
 |---|:---:|:---:|:---:|:---:|

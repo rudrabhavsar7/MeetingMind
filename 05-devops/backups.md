@@ -1,56 +1,41 @@
 ---
 Title: MeetingMind — DevOps: Backups & Disaster Recovery
-Version: 1.0.0
+Version: 2.0.0
 Status: Approved
 Owner: Lead DevOps Engineer
-Last Updated: 2026-06-28
-Dependencies: 04-backend/storage.md
+Last Updated: 2026-07-11
+Dependencies: 04-backend/storage.md, 05-devops/infrastructure.md
 ---
 
 # MeetingMind DevOps: Backups & Disaster Recovery
 
-## 1. Overview
-Data loss in MeetingMind means losing a company's historical decisions, action items, and intellectual property. A robust Backup and Disaster Recovery (DR) plan is mandatory.
+## 1. Scope and Ownership
 
-## 2. Relational Database (PostgreSQL)
+The v1 deployment has a single-host failure domain. Operators must back up PostgreSQL, retained MinIO objects, deployment configuration, and the secret material needed to decrypt/restore them. Redis queues, caches, temporary audio, signed URLs, and derived container state are not authoritative backups.
 
-### 2.1 Automated Backups
-* Rely on managed database features (e.g., AWS RDS Automated Backups).
-* Retain automated daily snapshots for **35 days**.
-* Enable **Point-in-Time Recovery (PITR)**, allowing the database to be restored to any specific second within the last 35 days (useful if a developer accidentally drops a critical table).
+## 2. Backup Policy
 
-### 2.2 Logical Backups (Offsite)
-* Perform a nightly logical dump (`pg_dump`) of the database.
-* Encrypt the dump file using GPG/KMS.
-* Store the encrypted dump in an S3 bucket in a *different geographical region* (e.g., Primary: `us-east-1`, Backup: `us-west-2`).
+- Run encrypted logical PostgreSQL backups (`pg_dump`) at least daily; retain 35 days by default.
+- Where the selected PostgreSQL setup supports WAL archiving, enable point-in-time recovery and test it. Do not claim PITR from logical dumps alone.
+- Back up MinIO buckets containing retained/imported media and exports using versioning or an object-aware replication/copy tool.
+- Store at least one encrypted backup copy outside the primary host/failure domain in operator-controlled storage.
+- Back up deployment configuration and secret references, but store encryption keys separately from backup media.
+- Define operator-specific RPO/RTO. The documentation baseline target is RPO 24 hours and RTO 4 hours for a small installation, subject to measured restore results.
 
-## 3. Object Storage (S3 / Media)
+Backup jobs must record start/end time, scope, size, checksum/integrity result, destination, and failure without logging meeting content.
 
-### 3.1 Versioning
-* Enable **S3 Versioning** on the `meetingmind-uploads-prod` bucket. If a file is accidentally overwritten or deleted, the previous version is retained.
+## 3. Restore Procedure
 
-### 3.2 Cross-Region Replication (CRR)
-* For extreme DR compliance (Enterprise tier), enable CRR to replicate all raw meeting media to a backup region.
-* Note: This doubles storage costs. For standard tiers, rely on the fact that S3 inherently provides 99.999999999% (11 9's) of durability within a single region.
+1. Provision an isolated host with compatible pinned service versions.
+2. Restore configuration and secrets through the operator's secure process.
+3. Restore PostgreSQL and run integrity checks before allowing application writes.
+4. Restore MinIO objects and verify database object keys resolve; signed URLs are regenerated, never restored.
+5. Start Redis empty, then application services and workers.
+6. Verify workspace isolation, authentication, transcript/citation integrity, a representative media object, and local AI availability.
+7. Change DNS only after acceptance checks; rotate secrets if compromise caused the recovery.
 
-## 4. Disaster Recovery (DR) Scenarios
+Soft deletion is not a backup. Accidental hard deletion requires a database restore or PITR into an isolated instance followed by controlled recovery. Total-host loss requires the off-host database/object/configuration backups.
 
-### Scenario A: Accidental Data Deletion (User Error)
-* **Situation:** A user deletes a critical workspace.
-* **Response:** Because we use "Soft Deletes" (`is_deleted=True`), the admin can simply run a SQL update to restore the workspace instantly.
+## 4. Verification
 
-### Scenario B: Accidental Data Deletion (Admin Error)
-* **Situation:** An admin runs a hard `DELETE` query dropping records.
-* **Response:** Use RDS Point-in-Time Recovery to spin up a clone of the database to exactly 1 minute before the deletion occurred. Extract the missing records and re-insert them into production.
-
-### Scenario C: Complete Region Failure (e.g., AWS `us-east-1` goes offline)
-* **Situation:** MeetingMind is entirely inaccessible.
-* **Response (RTO: 4 hours, RPO: 24 hours):**
-  1. Update DNS (Route53) to point to the backup region.
-  2. Restore the database from the nightly encrypted cross-region S3 backup.
-  3. Spin up ECS/Fargate containers in the backup region using the Terraform/CloudFormation IaC templates.
-  4. Note: Any meetings uploaded between the last backup and the outage will be temporarily unavailable until the primary region recovers.
-
-## 5. Testing the Backups
-Backups are useless if they cannot be restored.
-* **Quarterly DR Drill:** A DevOps engineer must manually restore the production database into a staging environment from the backup files to verify integrity and measure Time-to-Recovery.
+Run an automated backup-integrity check after every backup and a full isolated restore drill at least quarterly. Record achieved RPO/RTO and remediation. A backup is not considered healthy solely because a file exists.

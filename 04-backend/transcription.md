@@ -1,16 +1,16 @@
 ---
 Title: MeetingMind — Backend: Transcription & Diarization
-Version: 1.0.0
+Version: 1.1.0
 Status: Approved
 Owner: AI Engineer
-Last Updated: 2026-06-28
+Last Updated: 2026-07-10
 Dependencies: 04-backend/ai-pipeline.md
 ---
 
 # MeetingMind Backend: Transcription & Diarization
 
 ## 1. Overview
-This document details the specific sub-system responsible for converting extension-captured live meeting audio into structured, speaker-labeled text. **Chrome Extension Real-Time Streaming** over WebSockets/WebRTC is the primary v1 path. **Batch Processing** with Celery is retained for imported recordings and backfills.
+This document details the specific sub-system responsible for converting extension-captured live meeting audio into structured, speaker-labeled text. **Chrome Extension Real-Time Streaming** through the versioned WebSocket protocol is the primary v1 path; WebRTC is deferred. **Batch Processing** with Celery is retained for imported recordings and backfills.
 
 ## 2. Core Technologies
 * **Transcription (Speech-to-Text):** Local Whisper-compatible streaming STT by default.

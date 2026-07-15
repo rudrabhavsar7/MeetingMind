@@ -6,7 +6,7 @@ Owner: Lead UX/UI Designer
 Last Updated: 2026-06-28
 Dependencies: 00-project/vision.md
 Related Documents:
-  - 03-design/color-palette.md
+  - 03-design/colors.md
   - 03-design/typography.md
   - 03-design/accessibility.md
 ---
@@ -37,7 +37,7 @@ The design system is heavily tokenized using CSS variables injected into the Tai
 * **Backgrounds:** Slate/Zinc neutrals. True dark mode (not pure black, but very dark slate).
 * **Primary Accent:** Emerald (`#10b981`). Represents success, action, and AI-generated insights.
 * **Destructive:** Rose (`#e11d48`). Used for deletions and critical errors.
-* *(See [Color Palette](color-palette.md) for exact hex codes and usage rules).*
+* *(See [Color Palette](colors.md) for exact hex codes and usage rules).*
 
 ### 3.2 Typography (Overview)
 * **Font Family:** `Outfit` (Google Fonts). Geometric, clean, and highly legible for long-form reading.

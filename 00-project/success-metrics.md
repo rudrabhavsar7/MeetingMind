@@ -47,10 +47,10 @@ These metrics track how users derive value from the application.
 
 | Metric | Definition | Baseline | 6-Month Target | 12-Month Target | Measurement Tool |
 |---|---|---|---|---|---|
-| **Action Item Completion Rate** | % of extracted action items marked complete within 14 days | ~30% (industry) | >50% | >70% | App DB (PostHog/Mixpanel) |
+| **Action Item Completion Rate** | % of extracted action items marked complete within 14 days | ~30% (industry) | >50% | >70% | Local application database aggregation |
 | **Search Utilization** | Average number of RAG search queries per active user per week | 0 | 3.5 | 7.0 | App DB Analytics |
 | **Export Frequency** | % of processed meetings exported to PDF/Docs | 0% | 15% | 25% | App DB Analytics |
-| **Time to Discovery** | Time elapsed from search execution to citation click | N/A | < 15s | < 10s | Client Telemetry |
+| **Time to Discovery** | Time elapsed from search execution to citation click | N/A | < 15s | < 10s | Optional consented local product events |
 | **Meeting Coverage** | % of total organizational meetings processed through the platform | < 10% | 30% | 60% | Survey / Self-Report |
 
 ---

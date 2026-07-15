@@ -227,6 +227,12 @@ The current detailed Jira document organizes work into these modules:
 - MM-500: core application UI
 - MM-600: RAG search and Ask AI
 
+Delivery planning follows ADR 015 and `02-engineering/phase-plan.md`: v1 work is organized as
+Release -> dependency-gated Phase -> two-week Sprint -> Jira Ticket -> Implementation Subtask. Jira
+remains authoritative for scope, assignee, points, and acceptance criteria. The phase plan controls
+scheduling, entry/exit gates, shared-surface ownership, and integration handoffs; it does not create
+long-lived phase branches or treat mock-only UI as completed integration.
+
 Newly explicit v1 coverage tickets include MM-206 (profile/password), MM-307 (standalone web capture), MM-505 (workspace Actions), MM-506 (Markdown export), and MM-606 (keyword search).
 
 When implementing a ticket, read `02-engineering/jira-tickets.md` first, then `02-engineering/jira-task-breakdown.md`, then read the matching product, backend, design, and testing docs before editing code.

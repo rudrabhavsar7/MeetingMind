@@ -24,6 +24,7 @@ MeetingMind/
 │   ├── information-architecture.md
 │   ├── feature-matrix.md
 │   ├── functional-requirements.md
+│   ├── requirements-traceability.md
 │   ├── non-functional-requirements.md
 │   ├── api-requirements.md
 │   ├── security-requirements.md
@@ -166,6 +167,8 @@ MeetingMind/
 │
 ├── 04-backend/
 │   ├── database-schema.md
+│   ├── data-dictionary.md
+│   ├── realtime-protocol.md
 │   ├── er-diagram.md
 │   ├── api-specification.md
 │   ├── ai-pipeline.md

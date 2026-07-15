@@ -47,6 +47,8 @@ Use this order when documents disagree:
 
 `PROJECT_MEMORY.md` is an orientation layer, not the final authority.
 
+`01-product/requirements-traceability.md` maps approved v1 requirements to owning tickets, contracts, and verification targets. It is a coverage index, not evidence that code or tests already pass.
+
 ## Current Repository Shape
 
 This repository currently contains the product and engineering documentation. The implementation folders described by the docs, such as `apps/frontend` and `apps/backend`, may not exist yet.
@@ -134,6 +136,10 @@ Keep these in mind before implementing dependent behavior:
 - Local-only AI is the default. Optional external providers are allowed only as explicit operator opt-in paths.
 - Real-time support is now the primary v1 ingestion mode per ADR 006.
 - Chrome extension capture is now the primary v1 capture surface per ADR 007; update stale standalone-first docs when encountered.
+- The v1 live transport is the acknowledged WebSocket protocol in `04-backend/realtime-protocol.md` per ADR 011; WebRTC is deferred. Chrome capture uses a Manifest V3 offscreen owner and requires Chrome 116+.
+- Canonical persistence and AI provenance follow `04-backend/data-dictionary.md` per ADR 012; transcript chunks own embeddings and user-visible AI outputs require exact transcript citations.
+- The normative v1 deployment is operator-controlled Docker Compose with Nginx, MinIO, and local AI per ADR 013; external cloud, AI, telemetry, and notification services are explicit opt-ins, and Compose/Helm artifacts must not be claimed before they exist.
+- Development and staging use only Supabase-managed PostgreSQL/pgvector per ADR 014, isolated as `meetingmind_dev` and `meetingmind_staging` with separate roles. Do not use Supabase Auth, Storage, Realtime, Edge Functions, or client SDK coupling. CI remains disposable/local, and the production database decision is deferred.
 
 Record decisions in `08-resources/decisions-log.md` and update `PROJECT_MEMORY.md` after resolving them.
 

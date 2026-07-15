@@ -19,12 +19,16 @@ Read:
 - `01-product/prd.md`
 - `01-product/functional-requirements.md`
 - `01-product/acceptance-criteria.md`
+- `01-product/requirements-traceability.md`
+- `02-engineering/phase-plan.md`
+- `02-engineering/jira-tickets.md`
 
 ## Ticket Implementation
 
 Read:
 
 - `02-engineering/jira-tickets.md`
+- `02-engineering/phase-plan.md`
 - `02-engineering/jira-task-breakdown.md`
 - The relevant product docs from `01-product/`
 - The relevant design docs from `03-design/`
@@ -66,6 +70,7 @@ Read:
 - `02-engineering/authorization.md`
 - `04-backend/api-specification.md`
 - `04-backend/database-schema.md`
+- `04-backend/data-dictionary.md`
 - Relevant backend domain docs in `04-backend/`
 
 Expected implementation style:
@@ -82,9 +87,11 @@ Expected implementation style:
 Read:
 
 - `04-backend/ai-pipeline.md`
+- `04-backend/realtime-protocol.md`
 - `04-backend/transcription.md`
 - `04-backend/rag-architecture.md`
 - `04-backend/vector-database.md`
+- `04-backend/data-dictionary.md`
 - `04-backend/background-jobs.md`
 - `04-backend/storage.md`
 - `07-prompts/backend-prompts.md`
@@ -100,16 +107,22 @@ Important principles:
 
 Read:
 
+- `02-engineering/deployment.md`
 - `05-devops/docker.md`
 - `05-devops/infrastructure.md`
 - `05-devops/environments.md`
 - `05-devops/secrets-management.md`
 - `05-devops/ci-cd.md`
 - `05-devops/monitoring.md`
+- `05-devops/backups.md`
 
 Expected implementation style:
 
 - Docker Compose for v1
+- Nginx is the v1 reverse proxy
+- Supabase is PostgreSQL/pgvector only for shared development and staging; use isolated schemas/roles and reviewed Alembic migrations
+- Do not adopt Supabase Auth, Storage, Realtime, Edge Functions, or application SDK coupling
+- External AI, cloud, notification, and telemetry adapters are disabled by default
 - No secrets in images or committed env files
 - Separate API, worker, database, Redis, and storage concerns
 - Logs to stdout/stderr
@@ -125,6 +138,7 @@ Read:
 - `06-testing/security-testing.md`
 - `06-testing/performance-testing.md`
 - `06-testing/qa-checklists.md`
+- `01-product/requirements-traceability.md`
 
 Expected testing style:
 

@@ -1,9 +1,9 @@
 ---
 Title: MeetingMind — Component: Recording Status
-Version: 1.0.0
+Version: 1.1.0
 Status: Approved
 Owner: Lead UX Designer
-Last Updated: 2026-06-28
+Last Updated: 2026-07-10
 Dependencies: 03-design/components/foundation/badge.md
 ---
 
@@ -147,4 +147,4 @@ Silent background recording violates user trust.
 * Embed a tiny audio visualizer (waveform) next to the timer to prove audio is being received.
 
 ## 42. CTO Notes
-* WebRTC/MediaRecorder state can be finicky. The UI must exactly match the internal state of the audio stream.
+* Offscreen tab-capture and WebSocket state can diverge during service-worker restart or reconnect. The UI must render the authoritative state reported by the offscreen capture owner/backend rather than inferring it locally.

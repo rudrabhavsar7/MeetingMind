@@ -1,77 +1,78 @@
 ---
 Title: MeetingMind — DevOps: Infrastructure Architecture
-Version: 1.0.0
+Version: 2.0.0
 Status: Approved
 Owner: Lead DevOps Engineer
-Last Updated: 2026-06-28
-Dependencies: None
+Last Updated: 2026-07-11
+Dependencies: 02-engineering/deployment.md, 08-resources/decisions-log.md#adr-013-operator-controlled-docker-compose-as-the-normative-v1-deployment
 ---
 
 # MeetingMind DevOps: Infrastructure Architecture
 
-## 1. Overview
-This document outlines the cloud infrastructure required to run MeetingMind in a production environment. The architecture is designed for high availability, scalable AI processing, and secure data isolation.
+## 1. Normative v1 Target
 
-## 2. Cloud Provider
-**Primary Target:** AWS (Amazon Web Services). 
-*(Note: Can be adapted for GCP or Azure, but AWS services are referenced for clarity).*
+MeetingMind v1 runs on an operator-controlled Linux host with Docker Compose. This is the production reference architecture, not a reduced development profile. By default, meeting audio, transcripts, embeddings, AI outputs, logs, and backups remain within infrastructure selected and controlled by the operator.
 
-## 3. Core Components
+The Compose manifest and production Dockerfiles are target delivery artifacts. Until those files are present in the repository, this document is a specification and must not be treated as a working quickstart.
 
-### 3.1 Networking (VPC)
-* **Public Subnets:** Contains Application Load Balancers (ALB) and NAT Gateways.
-* **Private Subnets:** Contains the FastAPI Application Servers, Celery Workers, Database, and Redis cache. No direct internet access.
+ADR 014 introduces a development/staging-only exception: those environments use the configured Supabase project's managed PostgreSQL/pgvector service with isolated schemas. This does not change the production target or authorize any other Supabase service.
 
-### 3.2 Application Servers (Frontend & API)
-* **Frontend:** Vercel (recommended for Next.js) or AWS Amplify. If self-hosting entirely, ECS Fargate containers behind the ALB.
-* **Backend API (FastAPI):** ECS Fargate (Serverless Containers). Autoscales based on CPU/Memory and HTTP request volume.
-
-### 3.3 The AI Worker Pool (Celery)
-This is the most complex part of the infrastructure, as it requires mixed compute types.
-* **CPU Worker Group (ECS Fargate):** Handles lightweight tasks like webhook dispatching, sending emails, and API routing. Autoscales based on Redis queue depth.
-* **GPU Worker Group (EC2 / EKS):** Handles Whisper transcription and Pyannote diarization. Fargate does not support GPUs. Requires an EC2 Auto Scaling Group using instances like `g4dn.xlarge` (NVIDIA T4). Scales up based on the specific `gpu_tasks` queue depth, and scales down to 0 when idle to save costs.
-
-### 3.4 Data Persistence
-* **Relational/Vector DB:** Amazon RDS for PostgreSQL. Must use an instance type that supports the `pgvector` extension. Recommended: Multi-AZ deployment for high availability.
-* **Cache/Broker:** Amazon ElastiCache for Redis. Serves as the Celery message broker and application cache.
-* **Object Storage:** Amazon S3. 
-  * `meetingmind-uploads-prod`: Stores raw media.
-  * Configured with lifecycle rules (e.g., transition to Glacier after 30 days).
-
-## 4. Architecture Diagram (Conceptual)
+## 2. Service Topology
 
 ```text
-[ User / Browser ]
-       │
-       ▼
-[ Cloudflare / WAF ]
-       │
-   ┌───┴─────────────┐
-   │                 │
-[ Vercel (Next.js) ] [ AWS ALB ]
-                     │
-         ┌───────────┴───────────┐
-         │                       │
- [ FastAPI (Fargate) ]   [ Celery (Fargate/CPU) ]
-         │                       │
-         ├───────────────────────┤
-         │                       │
- [ RDS Postgres ]        [ Redis Broker ]
-   (pgvector)                    │
-                                 │
-                     [ Celery (EC2/GPU) ] <--> [ S3 ]
-                                 │
-                     [ External LLM APIs ]
+Browser / Chrome extension
+          |
+       TLS/WSS
+          |
+        Nginx
+       /     \
+  Next.js   FastAPI ---------- Redis
+               |                 |
+               |              Celery workers
+               |              /      |      \
+        PostgreSQL+pgvector  STT   pyannote  Ollama
+               |
+             MinIO <---------- retained/imported media
 ```
 
-## 5. Security & Compliance
-* **WAF:** AWS WAF or Cloudflare deployed in front of the API to block DDoS, SQLi, and common exploits.
-* **Encryption at Rest:** KMS keys used for RDS, S3, and ElastiCache.
-* **Encryption in Transit:** TLS 1.3 enforced on ALB and Vercel. Internal traffic between ECS and RDS also uses TLS.
-* **IAM:** Strict Least-Privilege IAM roles for ECS tasks (e.g., the API task can generate S3 Presigned URLs, but cannot delete objects. The Celery task can read/write objects, but only in specific buckets).
+Required services:
 
-## 6. Self-Hosted / Open-Source Deployment
-For users wanting to run MeetingMind entirely on-premise (often required for strict data privacy):
-* The entire stack (Next.js, FastAPI, Postgres, Redis, Celery, Ollama) is orchestrated via a single `docker-compose.yml`.
-* MinIO is used as a drop-in, S3-compatible replacement for object storage.
-* Requires a local machine with a capable NVIDIA GPU and CUDA drivers installed for the Whisper/Ollama containers.
+1. `nginx`: TLS termination and routing for HTTPS and WebSocket traffic.
+2. `frontend`: Next.js web console.
+3. `api`: FastAPI HTTP, SSE, and acknowledged WebSocket endpoints.
+4. `worker`: Celery queues for imports, finalization, embeddings, and AI jobs. CPU and GPU queues may use the same image with different commands.
+5. `postgres`: PostgreSQL 16 with pgvector.
+6. `redis`: Celery broker, cache, locks, and ephemeral real-time coordination.
+7. `minio`: private S3-compatible object storage.
+8. `ollama`: local LLM inference.
+9. Local transcription and diarization runtime, colocated with or separated from workers according to GPU capacity.
+
+## 3. Network and Egress Boundary
+
+- Only Nginx exposes host ports publicly. Database, Redis, MinIO administration, Ollama, and worker ports stay on private Compose networks.
+- Nginx must support WebSocket upgrades, long-lived connections, request-size limits for import initiation, and operator-configured TLS.
+- The default stack requires no outbound access after images/models are installed. Model and image acquisition is an explicit administrative operation.
+- External AI, cloud storage, email, analytics, error tracking, and webhook delivery are disabled unless the operator enables the corresponding adapter.
+- Enabling an external adapter requires documenting destination, data classes sent, retention, credentials, and a way to disable it. Meeting content must not be routed to an external provider merely as automatic fallback.
+
+## 4. Capacity Profiles
+
+The v1 topology is single-node but workers can be assigned CPU/GPU resources independently. CPU-only operation is supported with slower processing. GPU acceleration is recommended for concurrent live transcription, diarization, and local LLM inference. Exact capacity limits must be established through the performance suite; documentation must not promise a user count without measured evidence.
+
+Persistent volumes are required for PostgreSQL, MinIO, Redis when durable broker behavior is configured, Ollama models, and operator-selected backup staging. Temporary audio workspaces must have size limits and cleanup policies.
+
+## 5. Security Baseline
+
+- Run application containers as non-root with read-only filesystems where practical.
+- Pin released images by immutable version or digest; do not deploy `latest` in production.
+- Store only private MinIO object keys in PostgreSQL. Generate short-lived signed URLs at request time.
+- Use unique generated database, MinIO, and JWT secrets; never ship production defaults.
+- Encrypt host volumes or the underlying disk and encrypt backups before they leave the host.
+- Apply host firewall rules, OS security updates, Docker security updates, and restricted SSH access.
+- Do not place meeting content in logs, metrics labels, traces, or crash reports.
+
+## 6. Availability and Scaling
+
+The v1 reference architecture has a single-host failure domain. Operators must monitor disk capacity and maintain tested encrypted backups. Vertical scaling and separate GPU workers are the first capacity steps.
+
+Managed databases, cloud object storage, multiple worker nodes, Kubernetes, and Helm are future/optional deployment profiles. They must preserve the same privacy, tenant-isolation, provenance, and explicit-egress rules; they are not prerequisites for v1 and no Helm chart is currently promised.

@@ -1,9 +1,9 @@
 ---
 Title: MeetingMind — Feature Matrix
-Version: 1.0.0
+Version: 1.2.0
 Status: Approved
 Owner: Senior Product Manager
-Last Updated: 2026-06-28
+Last Updated: 2026-07-11
 Dependencies: 01-product/prd.md
 ---
 
@@ -21,13 +21,15 @@ This document maps all planned features across the first four major version rele
 
 | Feature | Description | Priority | v1.0 | v1.1 | v1.2 | v2.0 |
 |---|---|---|---|---|---|---|
-| Email/Pass Registration | Standard JWT based auth | P0 | ✅ | | | |
+| First-Run Owner Bootstrap | Create the initial Owner and default workspace on a fresh deployment | P0 | ✅ | | | |
+| Invitation Registration | New users join the default workspace through expiring invitations | P0 | ✅ | | | |
 | Password Reset | Email flow for forgotten passwords | P0 | ✅ | | | |
 | Default Workspace | Single workspace per deployment | P0 | ✅ | | | |
-| Basic Roles | Admin and Member roles | P0 | ✅ | | | |
-| Profile Management | Update name, avatar, password | P1 | ✅ | | | |
+| Workspace RBAC | Owner, Admin, Member, and Viewer roles | P0 | ✅ | | | |
+| Profile Management | Update display name and password | P1 | ✅ | | | |
+| Profile Avatar | Upload/crop a profile avatar | P2 | | ✅ | | |
 | Multi-Workspace | Support for user belonging to multiple workspaces | P1 | | | ✅ | |
-| Advanced RBAC | Viewer-only roles, granular permissions | P2 | | | ✅ | |
+| Advanced RBAC | Custom roles and granular permissions | P2 | | | ✅ | |
 | SSO / SAML | Enterprise auth integrations (Okta, Azure) | P2 | | | | ✅ |
 
 ## 2. Capture & Import
@@ -40,7 +42,7 @@ This document maps all planned features across the first four major version rele
 | Microsoft Teams Web Support | Detect and capture Teams Web sessions | P1 | | ✅ | | |
 | Meeting Context Sync | Store source app, URL, title, start/end time, and visible participants | P0 | ✅ | | | |
 | Recording Import | MP3, WAV, M4A, MP4, WebM up to 2GB | P1 | ✅ | | | |
-| Standalone Web Capture | Browser microphone capture from MeetingMind console as fallback | P2 | | ✅ | | |
+| Standalone Web Capture | Browser microphone capture from MeetingMind console as fallback | P2 | ✅ | | | |
 | Desktop App Capture | Native desktop capture for Zoom/Teams desktop apps | P2 | | | ✅ | |
 | Mobile Capture | Android/iOS capture integrations where platform permissions allow | P3 | | | | ✅ |
 | Automatic Bot Join | Bot that joins Zoom/Meet calls to record | P3 | | | | ✅ |
@@ -52,8 +54,8 @@ This document maps all planned features across the first four major version rele
 | Local Transcription | Whisper-based English transcription | P0 | ✅ | | | |
 | Basic Diarization | Speaker A, Speaker B separation | P0 | ✅ | | | |
 | Multi-Language Support | Whisper translation/transcription for ES, FR, DE | P2 | | ✅ | | |
-| Speaker Identification | Rename Speaker A to "Maya", applies historically | P1 | | ✅ | | |
-| Audio Playback | Play original audio synced with transcript | P1 | | ✅ | | |
+| Speaker Identification | Rename Speaker A to "Maya", applies historically | P1 | ✅ | | | |
+| Audio Playback | Play retained/imported audio synced with transcript; unavailable when retention is off | P1 | ✅ | | | |
 
 ## 4. AI Analysis (Local LLM)
 

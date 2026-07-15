@@ -1,9 +1,9 @@
 ---
 Title: MeetingMind — Information Architecture
-Version: 1.0.0
+Version: 1.1.0
 Status: Approved
 Owner: Lead UX Designer
-Last Updated: 2026-06-28
+Last Updated: 2026-07-10
 Dependencies: 01-product/prd.md
 Related Documents:
   - 03-design/design-system.md
@@ -65,7 +65,7 @@ graph TD
 
 ### 2.3 Tertiary Navigation
 * **Breadcrumbs:** Used heavily to maintain context (e.g., `Meetings / Weekly Syncs / Q3 Architecture Review`).
-* **Command Palette (Cmd+K):** Universal shortcut for jumping directly to any node in the IA.
+* **Command Palette (Cmd+K, v1.1):** Fast-follow universal shortcut for jumping directly to any node in the IA; it is not a v1.0 release gate.
 
 ## 3. URL Routing Table (Next.js App Router)
 
@@ -73,7 +73,9 @@ graph TD
 |---|---|---|
 | `/` | Landing / Login redirect | Public |
 | `/login` | Authentication form | Public |
-| `/register` | Account creation | Public |
+| `/register` | First-run Owner setup or invitation-bound account creation | Public token/setup gate |
+| `/forgot-password` | Enumeration-safe password-reset request | Public |
+| `/reset-password` | Complete password reset with an expiring token | Public token gate |
 | `/dashboard` | Main application overview | Authenticated |
 | `/meetings` | List of all workspace meetings | Authenticated |
 | `/meetings/new` | Standalone web live capture fallback | Authenticated |
@@ -88,13 +90,15 @@ graph TD
 | `/settings/members` | Role management and invites | Admin Only |
 | `/settings/extension` | Chrome extension connection and capture settings | Authenticated |
 
+v1 exposes one default workspace and therefore does not include create-workspace or workspace-switching navigation. Those surfaces are deferred to v1.2.
+
 ## 4. Content Taxonomy
 
 ### 4.1 Meeting Entities
-* **Meeting Object:** ID, Title, Date, Creator, Duration, SourceType, SourceApp, SourceURL, VisibleParticipants, Status (Detected/Scheduled/Recording/Transcribing/Analyzing/Complete/Failed).
+* **Meeting Object:** ID, Title, Creator, StartedAt/EndedAt, Duration, SourceType, SourceApp, SourceURL, Participants, CurrentSummaryVersion, and durable Status (Scheduled/Recording/Paused/Transcribing/Analyzing/Completed/Failed). Detected/Connecting/Ready are extension-session UI states, not stored meeting statuses.
 * **Segment:** A block of transcript text with StartTime, EndTime, and SpeakerID.
 * **Summary Block:** AI-generated markdown text summarizing the whole meeting or specific topics.
-* **Action Item:** Task Description, Assignee (SpeakerID or UserID), Due Date, Status (Open/Closed).
+* **Action Item:** Task Description, Assignee (SpeakerID or UserID), Due Date, Status (Open/Completed), Origin, Processing Run, and Source Citations.
 * **Decision:** Markdown text detailing a concluded agreement.
 
 ### 4.2 Workspace Entities

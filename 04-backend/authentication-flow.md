@@ -1,9 +1,9 @@
 ---
 Title: MeetingMind — Backend: Authentication Flow
-Version: 1.0.0
+Version: 1.1.0
 Status: Approved
 Owner: Lead Security Engineer
-Last Updated: 2026-06-28
+Last Updated: 2026-07-10
 Dependencies: None
 ---
 
@@ -13,6 +13,11 @@ Dependencies: None
 MeetingMind uses a stateless, token-based authentication system utilizing JSON Web Tokens (JWT). Authorization (RBAC) is enforced at the Workspace level.
 
 ## 2. Authentication (AuthN)
+
+### 2.0 Bootstrap and Registration Modes
+* **Fresh Deployment:** While there are zero users, registration is in `bootstrap` mode. One atomic transaction creates the first user as Owner, the default workspace, and the Owner membership.
+* **Initialized Deployment:** After bootstrap, registration is `invitation_only`. The invitation is single-use, expiring, stored as a hash, and bound to an email, workspace, and proposed role.
+* **v1 Workspace Limit:** Users see at most the deployment's one default workspace. Additional workspace creation and switching are deferred to v1.2, even though authorization remains workspace-scoped internally.
 
 ### 2.1 Supported Methods
 * **Email & Password:** Standard credential hashing using `bcrypt`.
@@ -38,7 +43,7 @@ The payload of the Access Token should be kept minimal to reduce overhead:
 
 ## 3. Authorization (AuthZ) & Multi-Tenancy
 
-MeetingMind is a multi-tenant application. Users do not have global roles; they have roles *within specific workspaces*.
+MeetingMind uses a multi-tenant-ready storage and authorization model. Users do not have global roles; they have roles *within specific workspaces*. v1 exposes one default workspace per deployment, while v1.2 may expose multiple memberships and workspace switching.
 
 ### 3.1 The Context Problem
 A user makes a request to `GET /meetings/uuid-123`. How do we know they are allowed to see it?
@@ -47,7 +52,7 @@ A user makes a request to `GET /meetings/uuid-123`. How do we know they are allo
 1. **Middleware/Dependency Injection:** FastAPI dependencies extract the `user_uuid` from the JWT.
 2. **Resource Lookup:** The backend looks up the requested resource (`Meeting`) to find its `workspace_id`.
 3. **Membership Check:** The backend queries the `WorkspaceMembership` table: Does `user_uuid` belong to `workspace_id`?
-4. **Role Check (Optional):** If the action is destructive (e.g., `DELETE /meetings`), the backend checks if the user's role in that workspace is `admin`.
+4. **Role Check:** If the action is restricted, the backend evaluates the membership role: `owner`, `admin`, `member`, or `viewer`. Only an Owner may grant/remove Owner or delete the workspace.
 
 ### 3.3 FastAPI Dependency Example
 ```python
@@ -70,9 +75,13 @@ async def verify_workspace_access(
 * **Never store Refresh Tokens in LocalStorage.** They are vulnerable to XSS. Use `HttpOnly`, `Secure`, `SameSite=Strict` cookies.
 * **Password Hashing:** Use `passlib` with `bcrypt`. Never log plain text passwords.
 * **Token Invalidation:** Because JWTs are stateless, they cannot be easily revoked before expiration. If immediate revocation is required (e.g., password reset, compromised account), implement a "Token Blocklist" in Redis, or simply rely on the short 15-minute lifespan of the Access Token.
+* **Invitation and Reset Tokens:** Store only cryptographic hashes. Tokens are single-use, expire, can be revoked, and must never be logged or sent to analytics.
+* **Password Reset:** Always return the same response for known and unknown emails. A successful reset revokes all refresh tokens for that user.
 
-## 5. API Key Access (For Integrations)
+## 5. API Key Access (Future v1.2 Integration Work)
 For developers integrating MeetingMind with Zapier or custom scripts:
 * Users can generate Long-Lived API Keys scoped to a specific workspace.
 * These keys act as Bearer tokens but have a different prefix (e.g., `mm_live_...`).
 * The backend must verify these keys against the database on every request, making them stateful, unlike JWTs. Hash the API keys in the database (like passwords); only show the plain text key to the user once upon creation.
+
+These endpoints are not exposed in v1 and require a dedicated Jira/API contract before implementation.

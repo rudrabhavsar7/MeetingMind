@@ -1,10 +1,10 @@
 ---
 Title: MeetingMind — Testing: Strategy
-Version: 1.0.0
+Version: 1.1.0
 Status: Approved
 Owner: QA Engineer
-Last Updated: 2026-06-28
-Dependencies: None
+Last Updated: 2026-07-11
+Dependencies: 05-devops/environments.md
 ---
 
 # MeetingMind Testing: Overall Strategy
@@ -35,12 +35,12 @@ We follow a standard testing pyramid, prioritizing fast, deterministic tests at 
 Traditional assertions (`assert text == "Expected Output"`) fail when testing LLMs because their output is non-deterministic.
 
 ### Strategy for AI Testing:
-1. **Mock the LLM in Standard CI:** During normal PRs, all calls to OpenAI/Ollama are intercepted and mocked to return a static string. This ensures the *pipeline plumbing* works.
-2. **Dedicated "Eval" Suite:** A separate test suite runs on a schedule (e.g., weekly) that *does* call the real LLM. Instead of asserting exact string matches, it uses a stronger LLM (like GPT-4) as a "Judge" to evaluate the output against a rubric (e.g., "Did this summary capture the 3 main points?").
+1. **Mock Providers in Standard CI:** During normal PRs, local-model and optional external-provider adapters return deterministic typed fixtures. CI makes no model-network calls.
+2. **Dedicated Local Eval Suite:** A separate scheduled/manual suite calls the pinned local v1 models against licensed synthetic/golden meeting fixtures and scores task-specific rubrics, citation coverage, and schema validity. An external judge may be used only in a separately authorized opt-in evaluation with non-production inputs and recorded provider/model provenance.
 
 ## 4. Test Environments
 * **CI Environment:** Ephemeral Docker containers spun up by GitHub Actions.
-* **Staging Environment:** A persistent cloud environment used for Playwright E2E tests and manual QA before production.
+* **Staging Environment:** An isolated application deployment using the Supabase PostgreSQL `meetingmind_staging` schema and staging-only role, plus separate local/self-hosted Redis, MinIO, and model services. It uses synthetic QA data and local models/provider fakes for Playwright and manual QA. Supabase services other than PostgreSQL/pgvector are not used.
 
 ## 5. Shift-Left Testing
 Developers are responsible for writing Unit and Integration tests for their own features *before* submitting a PR. The QA team focuses on E2E test automation and complex exploratory testing.

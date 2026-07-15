@@ -1,74 +1,51 @@
 ---
 Title: MeetingMind — Testing: End-to-End (E2E) Testing
-Version: 1.0.0
+Version: 2.0.0
 Status: Approved
 Owner: QA Engineer
-Last Updated: 2026-06-28
-Dependencies: 06-testing/testing-strategy.md
+Last Updated: 2026-07-11
+Dependencies: 06-testing/testing-strategy.md, 01-product/requirements-traceability.md, 04-backend/realtime-protocol.md
 ---
 
-# MeetingMind Testing: E2E Testing
+# MeetingMind Testing: End-to-End Testing
 
-## 1. Overview
-End-to-End (E2E) testing verifies the entire application stack—from the browser UI, through the network, to the API, Database, and Background workers—exactly as a user would experience it.
+## 1. Environment and Principles
 
-## 2. Tools
-* **Framework:** Playwright (preferred over Cypress for its better multi-tab, iframe, and WebKit support).
-* **Environment:** E2E tests should be run against a fully provisioned Staging environment.
+Use Playwright against the isolated staging application with synthetic meeting fixtures, local models/provider fakes, independent secrets/storage, and the Supabase PostgreSQL `meetingmind_staging` schema. Tests must not use the development schema, call any other Supabase service, call external AI/telemetry/email services, or reuse production data.
 
-## 3. Scope of E2E Tests
-E2E tests are slow and brittle. They should *only* cover critical user journeys (the "Happy Path"). Edge cases should be handled by Unit/Integration tests.
+Browser-console tests and packaged-extension tests are separate projects. Chrome extension capture requires persistent Chromium context with the built unpacked MV3 extension and a controlled fake meeting page/audio fixture; it cannot be accurately simulated by clicking a web-console button in an ordinary page fixture.
 
-### Critical Journeys for MeetingMind:
-1. User Registration & Login.
-2. Connecting the Chrome extension and starting a Google Meet capture.
-3. Viewing a completed transcript and summary.
-4. Asking a RAG question in the Chat UI.
-5. Importing a historical recording as a fallback path.
+## 2. v1 Release Journeys
 
-## 4. Writing Playwright Tests
+1. First-run Owner/workspace bootstrap, then invitation-only registration and login/logout/reset.
+2. Extension connect, Google Meet detection, explicit tab-audio capture, live transcript, Pause/Resume, reconnect, stop, cited final outputs.
+3. Standalone `/meetings/new` microphone fallback using the same protocol, including permission denial and device loss.
+4. Recording import through MinIO signed upload and idempotent batch completion.
+5. Meeting detail: cited summary/version history, action/decision, transcript speaker rename, and conditional retained-media timestamp seek.
+6. Workspace Actions filters/edit/citation navigation.
+7. Keyword search and Ask AI as visibly distinct modes, both workspace isolated; cited RAG jump target works.
+8. Display-name/password management with other-session revocation.
+9. Local Markdown export with expected current visible content.
 
-### 4.1 Locators
-Never use fragile CSS selectors (like `.div > span:nth-child(2)`).
-* Prefer `getByRole` (e.g., `getByRole('button', { name: 'Submit' })`).
-* Prefer `getByText`.
-* If necessary, add stable IDs such as `data-testid="start-capture-button"` to extension or console components.
+The traceability IDs in `01-product/requirements-traceability.md` name the required assertions. At least one E2E or lower-level automated test must own each v1 target; edge/security cases should stay in faster integration/unit suites.
 
-### 4.2 Example: The Extension Capture Flow
-```typescript
-import { test, expect } from '@playwright/test';
+## 3. Extension Harness
 
-test('User can capture a meeting and view it', async ({ page, context }) => {
-  // 1. Login (Usually handled via a global setup or fixture)
-  await page.goto('https://staging.meetingmind.app/login');
-  await page.fill('[name="email"]', 'test@example.com');
-  await page.fill('[name="password"]', 'password123');
-  await page.click('button[type="submit"]');
+- Build the extension deterministically and load it with `--disable-extensions-except`/`--load-extension` in a persistent Chromium context.
+- Serve an operator-controlled Google Meet-like fixture page; do not automate or record real third-party meetings.
+- Provide deterministic audio through an approved browser/media fixture and validate sequence/ack behavior at the backend boundary.
+- Assert service-worker/offscreen ownership across popup/side-panel closure and service-worker suspension.
+- Exercise disconnects shorter and longer than the 60-second replay window, fresh handshake-token renewal after 15 minutes, gaps, heartbeat timeout, and the eight-hour limit using controllable clocks where possible.
+- Preserve tab playback and verify no tokens/raw audio enter page content scripts or persistent extension storage.
 
-  // 2. Connect Extension
-  await page.click('text="Connect Extension"');
-  await expect(page.locator('text="Extension connected"')).toBeVisible();
-  
-  // 3. Simulate a supported meeting tab and start capture
-  const meetPage = await context.newPage();
-  await meetPage.goto('https://meet.google.com/abc-defg-hij');
-  await page.click('text="Start Capture"');
-  
-  // 4. Wait for live processing
-  await expect(page.locator('text="Transcribing audio"')).toBeVisible();
-  
-  // Wait up to 2 minutes for processing to finish
-  await expect(page.locator('text="Summary"')).toBeVisible({ timeout: 120000 });
-  
-  // 5. Verify Content
-  await expect(page.locator('text="Action Items"')).toBeVisible();
-});
-```
+## 4. Locators and Data
 
-## 5. Handling AI Non-Determinism
-In the example above, we assert that the text "Summary" and "Action Items" are visible (the UI headers). We do *not* assert the exact text of the summary (e.g., `expect(page.locator('text="Alex approved the budget"')).toBeVisible()`), because the LLM might phrase it differently ("The budget was approved by Alex") and break the test.
+Prefer accessible roles/names, then stable `data-testid` values where the extension shadow/surface boundary requires them. Never depend on generated CSS selectors or production hostnames. Each test creates uniquely identified synthetic workspace/meeting data and removes it through test fixtures or an isolated environment reset.
 
-## 6. Execution Strategy
-* Run E2E tests nightly.
-* Record video artifacts of failed tests for easy debugging.
-* Playwright supports parallel execution; utilize it to keep the suite under 15 minutes.
+AI assertions use typed deterministic fixtures: assert schema, citations, versions, and UI behavior, not arbitrary model wording. A separate local-model evaluation suite measures output quality.
+
+## 5. Artifacts and Privacy
+
+Trace, screenshot, and video artifacts are enabled on failure but contain synthetic data only. Redact bearer/stream tokens, cookies, signed URLs, and secret-bearing request headers. Apply short CI artifact retention.
+
+Run a smoke subset on every release candidate and the complete suite nightly or before release. A v1 release is blocked by failures in bootstrap/auth, workspace isolation, live capture/finalization, import, citation integrity, or default no-egress checks.

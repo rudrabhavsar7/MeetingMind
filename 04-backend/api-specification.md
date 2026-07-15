@@ -1,9 +1,9 @@
 ---
 Title: MeetingMind — Backend: API Specification
-Version: 1.0.0
+Version: 1.1.0
 Status: Approved
 Owner: Lead Backend Engineer
-Last Updated: 2026-07-08
+Last Updated: 2026-07-10
 Dependencies: 04-backend/database-schema.md
 Related Documents:
   - 01-product/api-requirements.md
@@ -53,25 +53,34 @@ Errors must follow RFC 7807 Problem Details directly at the response top level. 
 The list below is an architectural inventory. Implementers must use `02-engineering/jira-api-contracts.md` for exact payloads and test cases.
 
 ### 4.1 Authentication (`/auth`)
-Handled through email/password for v1. OAuth providers may be added later as explicit product work. Authentication issues short-lived bearer access tokens and refresh tokens stored as HttpOnly cookies.
-* `POST /auth/register`
+Handled through email/password for v1. A fresh deployment bootstraps its first Owner and default workspace; registration becomes invitation-only afterward. OAuth providers may be added later as explicit product work. Authentication issues short-lived bearer access tokens and rotating refresh tokens stored as HttpOnly cookies.
+* `GET /auth/bootstrap-status`
+* `POST /auth/register` -> Bootstrap the first Owner/workspace or accept a valid invitation.
+* `GET /auth/invitations/{token}`
+* `POST /auth/password/forgot`
+* `POST /auth/password/reset`
 * `POST /auth/login`
 * `POST /auth/refresh`
 * `POST /auth/logout`
 * `GET /auth/me` -> Returns current user and their accessible workspaces.
+* `POST /auth/change-password` -> Verify current password, update it, and revoke other sessions.
+* `PATCH /users/me` -> Update the current user's display name.
 
 ### 4.2 Workspaces (`/workspaces`)
-* `GET /workspaces` -> List user's workspaces.
+v1 exposes one default workspace per deployment while retaining workspace-scoped paths and membership checks. Additional workspace creation and switching are v1.2 capabilities.
+* `GET /workspaces` -> Return the user's active workspace; at most one item in v1.
 * `GET /workspaces/{id}`
-* `POST /workspaces`
 * `PATCH /workspaces/{id}`
 * `GET /workspaces/{id}/members`
-* `POST /workspaces/{id}/members`
+* `POST /workspaces/{id}/invitations`
+* `DELETE /workspaces/{id}/invitations/{invitation_id}`
 * `PATCH /workspaces/{id}/members/{user_id}`
 * `DELETE /workspaces/{id}/members/{user_id}`
 
+`POST /workspaces` is deferred to v1.2 and must not appear in the v1 OpenAPI schema.
+
 ### 4.3 Extension (`/extension`)
-* `POST /extension/connect` -> Exchange a logged-in browser session for a short-lived extension token scoped to selected workspaces.
+* `POST /extension/connect` -> Exchange a logged-in browser session for a short-lived extension token scoped to the user's default workspace.
 * `GET /extension/capabilities` -> Return supported meeting apps, capture settings, retention policy, and feature flags.
 * `POST /extension/heartbeat` -> Maintain extension connection state and current active tab context.
 
@@ -93,13 +102,23 @@ For accessing the nested resources of a specific meeting. (Can omit workspace ID
 * `GET /meetings/{id}/transcript` -> Returns the list of `TranscriptSegments`.
 * `PATCH /meetings/{id}/transcript/speakers/{speaker_label}` -> Rename or map diarized speaker labels.
 * `GET /meetings/{id}/transcript/search` -> Search inside a single meeting transcript.
+* `GET /meetings/{id}/summaries` -> List immutable summary versions with citations.
+* `POST /meetings/{id}/summaries/regenerate` -> Queue idempotent summary regeneration without replacing the current version early.
+* `PATCH /meetings/{id}/summaries/{summary_version_id}` -> Create a new user-edited summary version.
+* `POST /meetings/{id}/ai-feedback` -> Store local feedback for a summary, action, or decision.
 * `GET /meetings/{id}/action-items`
 * `PATCH /meetings/{id}/action-items/{item_id}` -> E.g., marking complete.
 * `GET /meetings/{id}/decisions`
 * `GET /meetings/{id}/media-url` -> Return a signed media URL when retained media exists and policy allows access.
+* `GET /meetings/{id}/exports/markdown` -> Generate a local UTF-8 Markdown export of current visible meeting data.
 * `GET /meetings/{id}/status` -> HTTP polling fallback for processing status.
 
-### 4.6 AI & RAG (`/workspaces/{workspace_id}/ai`)
+### 4.6 Workspace Actions and Keyword Search
+
+* `GET /workspaces/{wid}/action-items` -> Cursor-paginated workspace action tracker with status/assignee/meeting filters.
+* `GET /workspaces/{wid}/search?q=...` -> Non-LLM full-text search over meeting titles and final transcript segments.
+
+### 4.7 AI & RAG (`/workspaces/{workspace_id}/ai`)
 * `POST /workspaces/{wid}/ai/chat` 
   * **Payload:** `{ "query": "What was the budget for Q3?", "meeting_ids": ["uuid-1", "uuid-2"] }`
   * **Response:** Server-Sent Events (SSE) stream for real-time text generation, OR a JSON response if streaming is disabled.
@@ -130,7 +149,7 @@ FastAPI can handle `UploadFile`, but for large recording imports (1GB+):
 ## 6. Websockets
 
 ### 6.1 Status Tracking
-For tracking live and imported meeting processing (`status` changing from `recording` -> `transcribing` -> `analyzing` -> `completed`):
+For tracking live and imported meeting processing (`recording` <-> `paused`, then `transcribing` -> `analyzing` -> `completed`, with `failed` terminal from any processing stage):
 * Prefer the live stream WebSocket for active sessions.
 * For non-active views, use `WS /ws/meetings/{id}/status`.
 * Fallback to HTTP Polling: `GET /meetings/{id}/status`

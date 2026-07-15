@@ -1,9 +1,9 @@
 ---
 Title: MeetingMind — Settings Pages
-Version: 1.0.0
+Version: 1.1.0
 Status: Approved
 Owner: Lead UX Designer
-Last Updated: 2026-06-28
+Last Updated: 2026-07-10
 Dependencies: 01-product/information-architecture.md
 ---
 
@@ -22,6 +22,7 @@ The settings area uses a specialized layout distinct from the main App Shell, th
 
 ## 2. Workspace Settings (`/settings/workspace`)
 * **Purpose:** High-level workspace configuration.
+* **v1 Boundary:** This page edits the deployment's one default workspace. It does not offer create-workspace or workspace-switching controls.
 * **Elements:**
   * Workspace Name Input.
   * Danger Zone (Red border):
@@ -36,6 +37,9 @@ The settings area uses a specialized layout distinct from the main App Shell, th
 * **Interactions:**
   * Role column is a dropdown, allowing instant role changes (optimistic UI update).
   * Actions column contains a `MoreVertical` (meatballs) menu with "Remove User".
+  * Inviting creates a pending, expiring invitation; the person does not appear as an active member until registration succeeds.
+  * Only Owners can grant or remove Owner. The last Owner cannot be downgraded or removed.
+  * Pending invitations show expiry and a Revoke action.
 
 ## 4. Integrations (`/settings/integrations`) - *v1.2+*
 * **Purpose:** Connect MeetingMind to external tools.

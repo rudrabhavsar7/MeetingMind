@@ -57,7 +57,7 @@ React apps crash entirely if an unhandled exception occurs during render (the "W
 
 ## 13. Content Guidelines
 * Never show raw stack traces to the end user.
-* Log the real error to Sentry/PostHog in the background.
+* Emit a sanitized error to local structured logging. Hosted error tracking is optional, operator-enabled, and must never receive meeting content or secrets.
 
 ## 14. Icon Rules
 * Use `--destructive` colored icons for severe errors.

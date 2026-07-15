@@ -1,16 +1,16 @@
 ---
 Title: MeetingMind — Component: AI Confidence
-Version: 1.0.0
+Version: 1.1.0
 Status: Approved
 Owner: Lead UX Designer
-Last Updated: 2026-06-28
+Last Updated: 2026-07-11
 Dependencies: 03-design/components/foundation/badge.md
 ---
 
 # MeetingMind Component: AI Confidence
 
 ## 1. Overview
-A visual indicator (usually a badge or a color-coded dot) that communicates the LLM's self-reported certainty regarding a specific claim or extracted action item.
+A visual indicator for a calibrated/heuristic confidence score returned for an entire transcript segment, Action Item, or Decision. v1 does not present an LLM's uncalibrated self-reported certainty or per-word summary confidence as fact.
 
 ## 2. Design Philosophy
 Transparency builds trust. If the AI is unsure about a name, a date, or a complex technical term in a transcript, it should visually flag it for human review.
@@ -23,11 +23,11 @@ LLMs hallucinate confidently. Users might blindly trust a summary that contains 
 * Prompt the user to verify against the source.
 
 ## 5. Usage Guidelines
-* Attach to specific extracted entities (Names, Numbers, Dates).
-* Attach to Action Items.
+* Attach to a whole transcript segment, Action Item, or Decision only when the backend returns a documented score.
+* Always pair uncertainty with source citations so users can verify the evidence.
 
 ## 6. When to Use
-* When confidence score returned by the backend is < 80%.
+* When a non-null confidence score returned by the backend is < 80%.
 
 ## 7. When NOT to Use
 * For high-confidence (95%+) data. Too many green "High Confidence" badges create visual noise. Only flag the low-confidence ones.
@@ -47,7 +47,7 @@ LLMs hallucinate confidently. Users might blindly trust a summary that contains 
 * Static.
 
 ## 12. Layout Rules
-* Usually floats next to an Action Item or is rendered as a dotted underline beneath a specific word.
+* Usually appears next to an Action Item, Decision, or transcript segment. Per-word dotted underlines are deferred.
 
 ## 13. Content Guidelines
 * Tooltip should say "AI is unsure about this information. Please review the transcript."
@@ -101,7 +101,8 @@ LLMs hallucinate confidently. Users might blindly trust a summary that contains 
 * Uses Tooltip.
 
 ## 28. AI Usage Guidelines
-* The backend must support returning token logprobs or structured confidence scores. (Ollama can return logprobs, but structuring it into the UI requires careful parsing).
+* A missing score renders no confidence badge. Citations and human review remain the primary trust mechanism.
+* v1 scores may come from STT confidence or a documented extraction heuristic; do not label raw LLM logprobs as calibrated confidence.
 
 ## 29. Error Handling
 * N/A.
@@ -131,7 +132,7 @@ LLMs hallucinate confidently. Users might blindly trust a summary that contains 
 * `underline decoration-dashed decoration-warning`
 
 ## 38. Implementation Notes
-* Easiest implementation: The backend highlights low-confidence words by wrapping them in a custom markdown tag `<lowconf>word</lowconf>`, which the frontend ReactMarkdown parses into this component.
+* Consume the nullable entity-level `confidence_score` from the typed API contract. Never inject custom unsanitized model tags into Markdown.
 
 ## 39. QA Checklist
 * N/A.
@@ -143,4 +144,4 @@ LLMs hallucinate confidently. Users might blindly trust a summary that contains 
 * Allow user to click the word and type a manual correction.
 
 ## 42. CTO Notes
-* Extracting confidence per-word from an LLM API requires specific backend configuration (returning logprobs) and complex chunk mapping. For v1, you might restrict this to just attaching a single confidence score to whole Action Items rather than per-word inline highlights.
+* Per-word confidence and calibrated summary-claim confidence require a future evaluation-backed contract.

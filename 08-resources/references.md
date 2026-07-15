@@ -1,9 +1,9 @@
 ---
 Title: MeetingMind — Resources: External References
-Version: 1.0.0
+Version: 1.1.0
 Status: Approved
 Owner: Lead Architect
-Last Updated: 2026-06-28
+Last Updated: 2026-07-10
 Dependencies: None
 ---
 
@@ -27,6 +27,11 @@ This document catalogs all external documentation, libraries, SDKs, and research
 * **TanStack Query (React Query) v5:** [https://tanstack.com/query/latest/docs/react/overview](https://tanstack.com/query/latest/docs/react/overview)
 * **Zustand (State Management):** [https://docs.pmnd.rs/zustand/getting-started/introduction](https://docs.pmnd.rs/zustand/getting-started/introduction)
 * **TanStack Virtual (for large transcripts):** [https://tanstack.com/virtual/latest](https://tanstack.com/virtual/latest)
+
+### 2.3 Chrome Extension Capture
+* **Chrome `tabCapture` API:** [https://developer.chrome.com/docs/extensions/reference/api/tabCapture](https://developer.chrome.com/docs/extensions/reference/api/tabCapture)
+* **Chrome Offscreen API:** [https://developer.chrome.com/docs/extensions/reference/api/offscreen](https://developer.chrome.com/docs/extensions/reference/api/offscreen)
+* **Chrome Audio Recording and Screen Capture Guide:** [https://developer.chrome.com/docs/extensions/how-to/web-platform/screen-capture](https://developer.chrome.com/docs/extensions/how-to/web-platform/screen-capture)
 
 ## 3. Backend Dependencies
 

@@ -31,9 +31,9 @@ The sidebar is the anchor of the user experience.
 * **Token:** `bg-muted text-primary font-medium`.
 * **Inactive Token:** `text-muted-foreground hover:bg-muted/50 hover:text-foreground`.
 
-## 2. Global Command Palette (Cmd+K)
+## 2. Global Command Palette (Cmd+K, v1.1)
 
-Because power users (engineers, PMs) prefer keyboards, MeetingMind features a global command palette triggered by `Cmd+K` (Mac) or `Ctrl+K` (Windows).
+As a v1.1 fast-follow, MeetingMind adds a global command palette triggered by `Cmd+K` (Mac) or `Ctrl+K` (Windows). v1.0 uses the visible sidebar/Search route and must not depend on this component.
 
 ### Functionality
 * **Fuzzy Search:** Typing "sync" will surface recent meetings titled "Weekly Sync" or "Marketing Sync".

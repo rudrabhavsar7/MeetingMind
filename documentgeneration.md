@@ -21,6 +21,7 @@
 - [x] 01-product/information-architecture.md
 - [x] 01-product/feature-matrix.md
 - [x] 01-product/functional-requirements.md
+- [x] 01-product/requirements-traceability.md
 - [x] 01-product/non-functional-requirements.md
 - [x] 01-product/api-requirements.md
 - [x] 01-product/security-requirements.md
@@ -162,6 +163,8 @@
 
 ## 04-backend/
 - [x] 04-backend/database-schema.md
+- [x] 04-backend/data-dictionary.md
+- [x] 04-backend/realtime-protocol.md
 - [x] 04-backend/er-diagram.md
 - [x] 04-backend/api-specification.md
 - [x] 04-backend/ai-pipeline.md

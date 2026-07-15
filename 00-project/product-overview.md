@@ -1,9 +1,9 @@
 ---
 Title: MeetingMind — Product Overview
-Version: 1.0.0
+Version: 1.1.0
 Status: Approved
 Owner: MeetingMind Product Team
-Last Updated: 2026-06-28
+Last Updated: 2026-07-10
 Dependencies: []
 Related Documents:
   - 00-project/architecture-overview.md
@@ -19,7 +19,7 @@ Related Documents:
 
 MeetingMind is a self-hosted, AI-powered meeting intelligence platform delivered as a Chrome extension plus a web console. The extension captures live meeting audio from existing meeting apps, starting with Google Meet, and transforms it into structured, searchable, and actionable organisational knowledge as the meeting happens. It is designed for organisations that require the productivity gains of AI meeting analysis without compromising data sovereignty by routing sensitive conversations through third-party cloud AI services.
 
-The extension detects supported meeting pages, captures tab audio with explicit user permission, streams audio over WebSockets/WebRTC, and syncs available meeting context such as source app, URL, title, and visible participants. The backend transcribes speech with local Whisper-compatible streaming STT and runs rolling structured extraction - summaries, action items, decisions, and topic segmentation - through local Large Language Models (LLMs) served by Ollama. Recording import and standalone web capture remain supported as fallbacks, but v1 is extension-first. All extracted content is indexed in a pgvector-backed knowledge base, enabling hybrid semantic search and Retrieval-Augmented Generation (RAG) Q&A across the entire meeting corpus.
+The extension detects supported meeting pages, captures tab audio with explicit user permission, streams audio over the versioned v1 WebSocket protocol, and syncs available meeting context such as source app, URL, title, and visible participants. The backend transcribes speech with local Whisper-compatible streaming STT and runs rolling structured extraction - summaries, action items, decisions, and topic segmentation - through local Large Language Models (LLMs) served by Ollama. Recording import and standalone web capture remain supported as fallbacks, but v1 is extension-first. All extracted content is indexed in a pgvector-backed knowledge base, enabling hybrid semantic search and Retrieval-Augmented Generation (RAG) Q&A across the entire meeting corpus.
 
 **The core value proposition:** teams gain the institutional knowledge embedded in their meetings — without giving that knowledge to an external cloud provider.
 
@@ -136,7 +136,7 @@ The following matrix positions MeetingMind relative to the primary alternatives:
 | **RAG Q&A** | ✅ Full RAG | ❌ | ❌ | ✅ Limited | ❌ None |
 | **Speaker Diarization** | ✅ pyannote | ✅ | ✅ | ❌ | ⚠️ Manual |
 | **Local LLM Inference** | ✅ Ollama | ❌ | ❌ | ❌ | ❌ |
-| **Workspace / RBAC** | ✅ Multi-workspace | ✅ | ✅ | ✅ | ❌ None |
+| **Workspace / RBAC** | ✅ Four-role RBAC in v1; multi-workspace UI in v1.2 | ✅ | ✅ | ✅ | ❌ None |
 | **Export (PDF/DOCX/MD)** | ✅ All three | ✅ Partial | ✅ Partial | ✅ | ❌ None |
 | **On-premise Deployment** | ✅ Docker Compose | ❌ | ❌ | ❌ | ✅ |
 | **Open Source** | ✅ MIT | ❌ | ❌ | ❌ | ✅ |
@@ -247,9 +247,10 @@ timeline
 
 | Integration | Target Version | Direction | Description |
 |---|---|---|---|
-| MinIO / AWS S3 | v1.0.0 ✅ | Outbound | Object storage for audio and exports |
-| SMTP | v1.0.0 ✅ | Outbound | Transactional email (invitations, notifications) |
-| Ollama | v1.0.0 ✅ | Outbound | Local LLM inference |
+| MinIO | v1.0.0 ✅ | Internal | Default private object storage for audio and exports |
+| External S3-compatible storage | Optional v1.0.0 | Outbound | Operator-enabled replacement for MinIO after egress/residency review |
+| SMTP | Optional v1.0.0 | Outbound | Operator-enabled invitation delivery; the baseline can surface an admin-copyable invitation link |
+| Ollama | v1.0.0 ✅ | Internal | Default local LLM inference |
 | REST API (public) | v1.2.0 | Inbound | External systems query MeetingMind data |
 | Webhooks | v1.2.0 | Outbound | Push events to external systems on meeting completion |
 | Chrome Extension | v1.0.0 ✅ | Inbound | Capture Google Meet tab audio and meeting page context |
@@ -265,7 +266,7 @@ timeline
 
 ## Pricing Model Overview
 
-MeetingMind is open-source (MIT licence). The pricing model applies to the managed hosting service (future commercial offering) and professional support:
+MeetingMind is intended to be open source, but the repository license file and copyright holder must be finalized before a specific license is claimed. The following managed-hosting model is a future concept, not a v1 application billing feature:
 
 | Tier | Target | Pricing Model | Inclusions |
 |---|---|---|---|

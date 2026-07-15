@@ -1,9 +1,9 @@
 ---
 Title: MeetingMind — Technical Requirements Document (TRD)
-Version: 1.0.0
+Version: 1.1.0
 Status: Approved
 Owner: Principal Software Architect
-Last Updated: 2026-06-28
+Last Updated: 2026-07-10
 Dependencies: 01-product/prd.md
 Related Documents:
   - 00-project/architecture-overview.md
@@ -78,7 +78,7 @@ graph TD
 ## 5. Security & Data Sovereignty
 
 * **Data Isolation:** All data (audio, transcripts, vectors) MUST remain on the host machine. No external API calls (e.g., OpenAI, Anthropic) are permitted in the default configuration.
-* **Authentication:** Stateless JWT implementation. Access tokens (15m expiry), Refresh tokens (7d expiry, HTTP-only, secure, SameSite=Lax).
+* **Authentication:** Short-lived JWT access tokens (15m expiry) plus rotating, stateful refresh tokens (7d expiry) in HTTP-only, secure, SameSite=Strict cookies. A fresh deployment bootstraps one Owner/default workspace atomically; registration is invitation-only afterward.
 * **Password Hashing:** Bcrypt with a minimum work factor of 12.
 * **Input Validation:** All API inputs must be strictly validated using Pydantic schemas.
 * **Stream & Import Security:** Live audio chunks must be authenticated, rate-limited, and bounded by session limits. Imported files must be validated by MIME type and magic numbers, with max import size strictly enforced at the reverse proxy (Nginx) and application levels (2GB).

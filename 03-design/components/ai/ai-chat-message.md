@@ -135,7 +135,7 @@ Raw text streams look like a single block of text, making it hard to parse who a
 * `flex gap-4 p-4`
 
 ## 38. Implementation Notes
-* Strongly consider using Vercel's `ai` SDK (`useChat`) to manage the streaming state seamlessly.
+* Use the project's typed SSE client and TanStack Query conventions. Do not add a provider-specific SDK merely for stream state.
 
 ## 39. QA Checklist
 * Test long contiguous strings to ensure word-wrap works.

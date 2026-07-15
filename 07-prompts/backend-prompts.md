@@ -1,10 +1,10 @@
 ---
 Title: MeetingMind — Prompts: Backend Generation
-Version: 1.0.0
+Version: 1.1.0
 Status: Approved
 Owner: Lead Backend Engineer
-Last Updated: 2026-06-28
-Dependencies: None
+Last Updated: 2026-07-11
+Dependencies: 04-backend/data-dictionary.md, 04-backend/rag-architecture.md
 ---
 
 # MeetingMind: Backend Generation Prompts
@@ -29,14 +29,17 @@ These prompts are designed to guide AI assistants to write backend Python code t
 
 ## 4. Generating a RAG Query (pgvector)
 > "Write an asynchronous SQLAlchemy query using `pgvector`.
-> - I have a `TranscriptSegment` table with an `embedding` column (type `Vector(768)`).
+> - I have a `TranscriptChunk` table with an `embedding` column (type `Vector(768)`) and segment-boundary metadata.
 > - I have a `query_vector` array of floats.
-> - Write a query that finds the top 5 segments using Cosine Distance (`cosine_distance`).
-> - CRITICAL: The query must join the `Meeting` table and filter by a specific `workspace_id` to prevent data leakage."
+> - Write a query that finds the top 5 chunks using Cosine Distance (`cosine_distance`).
+> - CRITICAL: Filter `TranscriptChunk.workspace_id` by the authenticated workspace and verify meeting membership to prevent data leakage.
+> - Return citation metadata that can resolve the chunk back to its exact source transcript segments."
 
 ## 5. Generating an LLM Prompt Wrapper
-> "Write a Python utility function using the official `openai` Python SDK.
+> "Write an async Python provider adapter for the configured MeetingMind LLM. Use the local Ollama-compatible provider by default; do not require an external API key.
 > - The function should be async.
 > - It takes a `transcript_text` string and returns a Pydantic model called `MeetingSummary` (which you should also define).
-> - Use the `response_format` parameter to force the LLM to output valid JSON matching the Pydantic model.
-> - Handle the `RateLimitError` gracefully."
+> - Request structured JSON and validate it with the Pydantic model; do not trust raw model output.
+> - Return the configured provider/model identifiers so the caller can persist `AIProcessingRun` lineage.
+> - Handle timeout, unavailable-model, invalid-output, and retryable provider errors without logging meeting content.
+> - Treat external providers as optional operator-enabled adapters only."

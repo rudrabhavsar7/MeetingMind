@@ -143,7 +143,7 @@ Can be composed with Tooltips if the button is `icon` only.
 * Ensure buttons executing sensitive mutations (Delete) are gated by RBAC hooks (see `authorization.md`).
 
 ## 33. Analytics Events
-* Add `data-analytics-id` prop for PostHog tracking on critical conversion buttons (e.g., "Sign Up").
+* If local product analytics is explicitly enabled, allow a generic `data-analytics-id` that contains no user, workspace, meeting, or content data. Do not couple the primitive to a hosted analytics vendor.
 
 ## 34. Storybook Stories
 * Default, All Variants, All Sizes, Loading State, Disabled State, Icon Left, Icon Right.

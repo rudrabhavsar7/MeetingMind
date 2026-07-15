@@ -1,9 +1,9 @@
 ---
 Title: MeetingMind — Component: AI Summary Block
-Version: 1.0.0
+Version: 1.1.0
 Status: Approved
 Owner: Lead UX Designer
-Last Updated: 2026-06-28
+Last Updated: 2026-07-11
 Dependencies: 03-design/components/data-display/card.md
 ---
 
@@ -106,10 +106,10 @@ Dumping raw Markdown text from an LLM onto the screen looks unfinished and doesn
 ```
 
 ## 25. Props Reference
-* `content` (Markdown string), `isStreaming` (Boolean).
+* `summaryVersionId` (UUID), `version` (Number), `content` (Markdown string), `citations` (Array), `isStreaming` (Boolean).
 
 ## 26. Events
-* `onCopy`, `onFeedback`.
+* `onCopy`, `onCitationClick`, `onFeedback`. Feedback posts the summary version ID to `/meetings/{meeting_id}/ai-feedback` and remains local by default.
 
 ## 27. Composition
 * Uses Card, Button, ReactMarkdown.
@@ -130,7 +130,7 @@ Dumping raw Markdown text from an LLM onto the screen looks unfinished and doesn
 * **CRITICAL:** Use a sanitizer (like `rehype-sanitize`) with `react-markdown` to prevent XSS if the LLM hallucinates an `<img src=x onerror=alert(1)>` tag.
 
 ## 33. Analytics Events
-* Track Feedback (Thumbs up/down) to improve prompts.
+* Store Feedback (Thumbs up/down) in `AIOutputFeedback` for local prompt/evaluation review. Do not send it to an external analytics/model provider automatically.
 
 ## 34. Storybook Stories
 * Streaming, Complete, With Markdown.
@@ -154,7 +154,7 @@ Dumping raw Markdown text from an LLM onto the screen looks unfinished and doesn
 * Renders LLM output beautifully and safely.
 
 ## 41. Future Enhancements
-* Interactive citations that, when clicked, scroll the transcript pane to the exact timestamp.
+* Claim-level citation grouping and citation editing. Basic interactive citations are required in v1.
 
 ## 42. CTO Notes
 * The Markdown sanitizer is non-negotiable. Even though the LLM shouldn't generate malicious scripts, prompt injection is a real threat.

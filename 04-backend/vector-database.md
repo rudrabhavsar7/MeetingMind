@@ -1,9 +1,9 @@
 ---
 Title: MeetingMind — Backend: Vector Database
-Version: 1.0.0
+Version: 1.1.0
 Status: Approved
 Owner: Lead Backend Engineer
-Last Updated: 2026-06-28
+Last Updated: 2026-07-10
 Dependencies: 04-backend/database-schema.md
 ---
 
@@ -22,17 +22,29 @@ CREATE EXTENSION IF NOT EXISTS vector;
 
 ### Table Definition (SQLAlchemy Example)
 ```python
-from sqlmodel import Field, SQLModel
-from pgvector.sqlalchemy import Vector
+import uuid
 
-class TranscriptSegment(SQLModel, table=True):
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    meeting_id: uuid.UUID = Field(foreign_key="meeting.id")
-    text: str
-    start_time: float
-    end_time: float
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.db.base import Base
+
+class TranscriptChunk(Base):
+    __tablename__ = "transcript_chunks"
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id"))
+    meeting_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("meetings.id"))
+    first_segment_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("transcript_segments.id"))
+    last_segment_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("transcript_segments.id"))
+    text: Mapped[str] = mapped_column(Text)
+    start_time: Mapped[float]
+    end_time: Mapped[float]
+    content_hash: Mapped[str] = mapped_column(String(64))
+    chunker_version: Mapped[str] = mapped_column(String(64))
+    embedding_model: Mapped[str] = mapped_column(String(255))
     # Dimension matches the default local BAAI BGE embedding model.
-    embedding: list[float] = Field(sa_type=Vector(768))
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(768), nullable=True)
 ```
 
 ## 3. Indexing Strategy
@@ -43,7 +55,8 @@ Hierarchical Navigable Small World (HNSW) is the recommended index type for `pgv
 
 ```sql
 -- Create an HNSW index using cosine similarity
-CREATE INDEX ON transcriptsegment USING hnsw (embedding vector_cosine_ops);
+CREATE INDEX ix_transcript_chunks_embedding_hnsw
+ON transcript_chunks USING hnsw (embedding vector_cosine_ops);
 ```
 
 **Important considerations for HNSW:**
@@ -63,12 +76,12 @@ from pgvector.sqlalchemy import Vector
 query_vector = get_embedding("What was the budget decision?")
 
 stmt = (
-    select(TranscriptSegment, Meeting)
-    .join(Meeting)
-    .where(Meeting.workspace_id == current_user.workspace_id) # CRITICAL: Security filter
+    select(TranscriptChunk, Meeting)
+    .join(Meeting, Meeting.id == TranscriptChunk.meeting_id)
+    .where(TranscriptChunk.workspace_id == current_workspace_id) # CRITICAL
     # Optionally filter by specific meeting IDs if the user selected them in the UI
     # .where(Meeting.id.in_(requested_meeting_ids))
-    .order_by(TranscriptSegment.embedding.cosine_distance(query_vector))
+    .order_by(TranscriptChunk.embedding.cosine_distance(query_vector))
     .limit(10)
 )
 
@@ -85,4 +98,4 @@ results = await session.execute(stmt)
 ## 6. Maintenance & Performance
 * Unlike some managed vector databases, PostgreSQL memory management applies here. Ensure `shared_buffers` is large enough to hold the HNSW index in memory.
 * Periodically `VACUUM` the table if there are many deletions, though meeting transcripts are mostly append-only.
-* If a workspace hits millions of rows and search slows down, consider partitioning the `TranscriptSegment` table by `workspace_id`.
+* If a workspace hits millions of rows and search slows down, consider partitioning `TranscriptChunk` by workspace/date. Source transcript segments remain independent of embedding model migrations.

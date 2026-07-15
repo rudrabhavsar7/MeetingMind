@@ -1,15 +1,19 @@
 ---
 Title: MeetingMind - Engineering: Jira Task Breakdown
-Version: 1.0.0
+Version: 1.1.1
 Status: Approved
 Owner: Project Manager
-Last Updated: 2026-07-04
+Last Updated: 2026-07-15
 Dependencies: 02-engineering/jira-tickets.md, 02-engineering/jira-api-contracts.md, PROJECT_MEMORY.md, AGENTS.md
 ---
 
 # MeetingMind: Jira Task Breakdown
 
 This document expands the high-level Jira tickets into implementation-ready work. `02-engineering/jira-tickets.md` remains the backlog source of truth for ticket title, owner, points, description, and acceptance criteria. This file adds suggested subtasks, dependencies, verification, and handoff notes. API-owning tickets must also follow `02-engineering/jira-api-contracts.md` for endpoint payloads, auth rules, status codes, stream events, and required tests.
+
+`02-engineering/phase-plan.md` assigns the tickets to dependency-gated phases and proposed two-week
+sprints. Scheduling changes belong there; implementation dependencies and verification details stay
+in this document.
 
 ## Working Rules
 
@@ -19,6 +23,7 @@ This document expands the high-level Jira tickets into implementation-ready work
 - Treat recording import and standalone web capture as fallback/backfill paths.
 - Keep external AI providers opt-in only; local Ollama/STT/embedding providers are the default.
 - Every tenant-scoped API and database query must enforce workspace membership.
+- Per ADR 010, v1 exposes one default workspace; additional workspace creation and switching are deferred to v1.2.
 - Do not implement an API ticket from endpoint names alone; read `02-engineering/jira-api-contracts.md` and add any missing contract details before coding.
 
 ## Dependency Map
@@ -107,22 +112,22 @@ graph TD
 - `/docs` loads without import errors.
 - Backend lint/type/test commands pass.
 
-### MM-104: Create Local Docker Compose
+### MM-104: Deliver v1 Self-Hosted Docker Compose
 
 **Implementation subtasks**
-- Add local services for API, worker, PostgreSQL 16 with pgvector, Redis, and MinIO.
-- Add local environment template without secrets.
-- Configure service health checks and dependency ordering.
-- Mount local volumes for PostgreSQL and MinIO data.
-- Add seed or bootstrap instructions for local owner/admin user if needed.
-- Document common commands for logs, migrations, tests, and reset.
+- Create production Dockerfiles matching the current `app` backend package/Poetry lock and Next.js standalone build.
+- Add Nginx, frontend, API, worker, PostgreSQL 16+pgvector, Redis, MinIO, Ollama, and local STT/diarization services plus a safe development profile.
+- Add a runtime environment template with placeholders only; reject production placeholders and require no external-provider key.
+- Keep internal ports private, configure HTTPS/WSS routing, health/readiness checks, non-root execution, pinned images, resource limits, and persistent volumes.
+- Add controlled Alembic migration, backup/restore, CPU-only, optional GPU, logs, and upgrade/rollback instructions.
+- Add clean-host smoke and default no-meeting-content-egress verification.
 
 **Dependencies:** MM-103 can run in parallel after MM-101.
 
 **Verification**
-- `docker compose up` starts all services.
-- API connects to PostgreSQL and Redis.
-- MinIO bucket is reachable from backend using local credentials.
+- A clean supported Linux host starts the complete target stack and only Nginx is public.
+- Bootstrap, live WebSocket capture, import, local processing, restart persistence, and restore smoke tests pass.
+- The default stack works without external credentials or content egress.
 
 ## Module 2: Database and Authentication
 
@@ -131,9 +136,11 @@ graph TD
 **Implementation subtasks**
 - Create SQLAlchemy base model utilities with UUID primary keys and timestamps.
 - Define `User`, `Workspace`, `WorkspaceMembership`, `Meeting`, `TranscriptSegment`, `ActionItem`, and `Decision`.
+- Define `WorkspaceInvitation` and `PasswordResetToken` with hashed tokens, expiry, revocation, and consumption fields.
+- Define participants, media objects, extension sessions, transcript chunks, AI processing runs, summary versions, output citations, and audit logs from `04-backend/data-dictionary.md`.
 - Add workspace foreign keys to tenant-scoped tables.
 - Model meeting source fields: `source_type`, `source_app`, `source_url`, `source_title`, visible participants, status, duration, retention flags.
-- Add enum definitions for role, meeting status, source type, and processing status.
+- Add enum definitions for the final four roles (`owner`, `admin`, `member`, `viewer`), meeting status, source type, and processing status.
 - Add indexes for workspace filtering, meeting status, created date, and transcript lookup.
 
 **Dependencies:** MM-103.
@@ -165,7 +172,9 @@ graph TD
 **Implementation subtasks**
 - Follow the MM-203 endpoint contracts in `02-engineering/jira-api-contracts.md`.
 - Add password hashing service using bcrypt or argon2.
-- Implement register, login, refresh, logout, and current-user endpoints.
+- Implement bootstrap-status, bootstrap/invitation registration, invitation validation, password forgot/reset, login, refresh, logout, and current-user endpoints.
+- Make initial Owner/workspace creation atomic and reject bootstrap races.
+- Close public registration after initialization; consume invitation and create membership atomically.
 - Store refresh tokens as HttpOnly cookies with secure settings for production.
 - Add JWT signing, validation, expiry handling, and token revocation strategy.
 - Add duplicate-email, invalid-credentials, and inactive-user handling.
@@ -175,13 +184,13 @@ graph TD
 
 **Verification**
 - Unit tests cover password hashing and token validation.
-- Integration tests cover register, login, refresh, logout, and unauthorized access.
+- Integration tests cover bootstrap races, closed registration, invitation expiry/reuse/revocation, password-reset privacy, login, refresh, logout, and unauthorized access.
 - Cookies use secure settings in production config.
 
 ### MM-204: Frontend Auth UI and Session State
 
 **Implementation subtasks**
-- Build `/login` and `/register` pages with validated forms.
+- Build `/login`, bootstrap/invitation `/register`, `/forgot-password`, and `/reset-password` pages with validated forms.
 - Add auth API client with typed request/response contracts.
 - Add session bootstrap flow for current user.
 - Add protected route handling for dashboard and settings.
@@ -200,6 +209,8 @@ graph TD
 **Implementation subtasks**
 - Follow the MM-205 workspace and membership contracts in `02-engineering/jira-api-contracts.md`.
 - Add workspace membership dependency for FastAPI routes.
+- Keep `POST /workspaces` out of the v1 router/OpenAPI schema and return at most one workspace from the v1 list.
+- Implement pending invitation creation/revocation; do not create membership before acceptance.
 - Support Owner/Admin/Member/Viewer role checks.
 - Add helper APIs for `require_workspace_member` and `require_workspace_role`.
 - Apply dependency to workspace, meeting, action item, transcript, extension, and AI endpoints.
@@ -212,6 +223,22 @@ graph TD
 - Cross-workspace access returns 403.
 - Valid workspace members can access allowed routes.
 - Role-specific routes reject insufficient roles.
+
+### MM-206: Profile and Password Management
+
+**Implementation subtasks**
+- Follow the MM-206 contracts in `02-engineering/jira-api-contracts.md`.
+- Add current-user display-name update with length/normalization validation.
+- Add current-password verification and v1 password-policy validation.
+- Revoke other refresh and extension sessions after password change and write an audit event.
+- Build the profile/security settings form; defer avatar upload to v1.1.
+
+**Dependencies:** MM-203, MM-204.
+
+**Verification**
+- Wrong current password and weak new password are rejected without session changes.
+- Successful change invalidates other sessions.
+- One user cannot edit another user's profile.
 
 ## Module 3: Chrome Extension Capture and Storage
 
@@ -237,9 +264,10 @@ graph TD
 **Implementation subtasks**
 - Follow the MM-302 endpoint contracts in `02-engineering/jira-api-contracts.md`.
 - Implement `POST /extension/connect`.
-- Issue short-lived extension tokens scoped to user and workspace.
+- Issue revocable eight-hour extension session tokens scoped to user, device, and default workspace.
 - Implement `GET /extension/capabilities` and `POST /extension/heartbeat`.
 - Implement `POST /workspaces/{workspace_id}/meetings/live`.
+- Implement fresh 15-minute stream-handshake token minting for reconnecting active meetings.
 - Validate source app, URL, title, client type, participants, and workspace membership.
 - Return meeting ID, stream URL, and stream token.
 
@@ -249,12 +277,15 @@ graph TD
 - Authenticated workspace member can connect extension.
 - Non-member gets 403.
 - Live session creates a meeting with status `recording`.
-- Stream token expires and is scoped to one meeting.
+- Handshake token expires and is scoped to one meeting; expiry does not terminate an accepted socket, and a fresh token permits reconnect.
 
 ### MM-303: Chrome Extension Capture UI
 
 **Implementation subtasks**
 - Create `apps/extension` Manifest V3 project.
+- Set minimum Chrome version 116 and request only required `activeTab`, `tabCapture`, `offscreen`, `storage`, and narrow host permissions.
+- Create one `USER_MEDIA` offscreen document that owns the MediaStream, AudioWorklet, WebSocket, heartbeat, and replay buffer.
+- Keep extension/session tokens and raw audio inaccessible to content scripts.
 - Build popup or side panel with authenticated, disconnected, unsupported page, ready, recording, paused, failed, and completed states.
 - Detect Google Meet tabs by URL and page context.
 - Show explicit Start Capture and Stop Capture controls.
@@ -274,9 +305,13 @@ graph TD
 
 **Implementation subtasks**
 - Capture tab audio with Chrome extension APIs after user consent.
-- Encode or normalize audio into supported chunk format.
-- Open authenticated WebSocket/WebRTC stream using meeting stream token.
+- Preserve local tab playback and resample audio to 16 kHz mono PCM s16le.
+- Frame each 250-500ms chunk with the normative `MM01` binary header.
+- Open the authenticated v1 WebSocket stream using a meeting handshake token.
 - Send 250-500ms chunks with sequence numbers and timestamps.
+- Process highest-contiguous acknowledgements and keep at most 60 seconds of unacknowledged audio in memory.
+- Replay retained audio after reconnect and emit `audio_gap` for unrecoverable ranges.
+- Add 15-second heartbeat, 45-second timeout, jittered reconnect, handshake-token renewal, Pause/Resume, and eight-hour session enforcement.
 - Send visible meeting metadata when available.
 - Handle transcript and AI events from backend.
 - Add reconnect/recoverable error handling for network interruptions.
@@ -312,7 +347,7 @@ graph TD
 **Implementation subtasks**
 - Build `/settings/extension`.
 - Show extension connection status and last heartbeat.
-- Let user choose default workspace for captures.
+- Show the fixed default workspace for captures; do not offer create/switch controls in v1.
 - Display supported apps and current rollout flags.
 - Display raw audio retention policy.
 - Provide install/open-extension guidance.
@@ -322,8 +357,24 @@ graph TD
 
 **Verification**
 - Settings page reflects backend capabilities.
-- Workspace selection persists.
+- Default workspace identity is read-only and stable in v1.
 - Disconnected extension state is clear.
+
+### MM-307: Standalone Web Capture Fallback
+
+**Implementation subtasks**
+- Build `/meetings/new` with explicit microphone consent and device error handling.
+- Reuse MM-302 session creation and MM-304 protocol client with standalone source metadata.
+- Convert browser microphone audio to the normative PCM frame format.
+- Implement acknowledgement, heartbeat, pause/resume, reconnect/replay/gap, and end behavior.
+- Explain that standalone capture records the chosen microphone, not meeting-tab audio.
+
+**Dependencies:** MM-302, MM-304, MM-405.
+
+**Verification**
+- Browser permission denial and device removal fail clearly.
+- Reconnect does not create a duplicate meeting or transcript segment.
+- The same backend protocol tests pass for extension and standalone clients.
 
 ## Module 4: AI Pipeline
 
@@ -348,10 +399,11 @@ graph TD
 
 **Implementation subtasks**
 - Follow the MM-402 WebSocket contract in `02-engineering/jira-api-contracts.md`.
+- Follow the normative framing/lifecycle contract in `04-backend/realtime-protocol.md`.
 - Implement WebSocket receive loop for authenticated meeting streams.
-- Validate stream token, workspace, meeting status, and chunk metadata.
+- Validate handshake token, workspace, meeting status, protocol version, and `MM01` frame header.
 - Normalize incoming audio into STT-compatible format.
-- Track sequence numbers and recover or reject invalid chunks.
+- Track sequence numbers, acknowledge the highest contiguous sequence, deduplicate replay, and recover or reject invalid chunks.
 - Buffer chunks safely without unbounded memory growth.
 - Publish ingestion status events.
 
@@ -386,6 +438,9 @@ graph TD
 - Build prompt templates for summary, action items, and decisions.
 - Use structured JSON output and validation.
 - Store summary/action/decision data with citations to transcript segments.
+- Store provider/model/prompt/input lineage in `AIProcessingRun` and summaries as immutable versions.
+- Require same-workspace, same-meeting citations before AI-origin output becomes current/user-visible.
+- Make regeneration append/version based and idempotent.
 - Add retry handling for malformed LLM output.
 - Add rolling summary updates during live capture.
 
@@ -400,12 +455,12 @@ graph TD
 
 **Implementation subtasks**
 - Follow the MM-405 status event contracts in `02-engineering/jira-api-contracts.md`.
-- Define event schema for status, transcript, action item, summary, error, and completion events.
+- Define the complete event registry from `04-backend/realtime-protocol.md`, including IDs/timestamps, acknowledgement, transcript, action, decision, summary, slow-down, gap, pause/resume, error, and completion.
 - Implement event publisher from backend pipeline.
 - Add WebSocket delivery to active extension and console clients.
 - Add fallback polling for non-active views.
-- Add reconnection behavior and missed-event recovery.
-- Add frontend state mapping for `recording`, `transcribing`, `analyzing`, `completed`, and `failed`.
+- Add reconnection behavior, current-state recovery, and event replay/deduplication by `event_id` where persisted.
+- Map durable meeting states to `recording`, `paused`, `transcribing`, `analyzing`, `completed`, and `failed`; keep detected/connecting/ready as extension UI states.
 
 **Dependencies:** MM-402, MM-403, MM-404, MM-303.
 
@@ -440,6 +495,8 @@ graph TD
 - Follow the MM-502 action item and decision API contracts in `02-engineering/jira-api-contracts.md`.
 - Build meeting details route.
 - Fetch meeting, summary, action items, decisions, and source metadata.
+- Fetch the current summary version with citations while preserving version identifiers for regeneration/audit.
+- Add summary history, idempotent regeneration, and append-only user-edit interactions for authorized roles.
 - Render summary with cited sections where available.
 - Render editable/checkable action items.
 - Render decisions with rationale and timestamps.
@@ -449,6 +506,7 @@ graph TD
 
 **Verification**
 - Completed meeting shows summary and actions.
+- Summary regeneration/edit creates a new cited version and leaves the prior version readable.
 - Processing meeting updates status.
 - Action item completion persists after refresh.
 
@@ -488,13 +546,42 @@ graph TD
 - Expired signed URL refreshes or shows clear error.
 - Meeting without retained media still shows transcript and summary.
 
+### MM-505: Workspace Action Item Tracker
+
+**Implementation subtasks**
+- Follow the workspace action-list contract in `02-engineering/jira-api-contracts.md`.
+- Build cursor pagination and status/assignee/meeting filters.
+- Build the Actions route with accessible states, meeting/citation links, and authorized inline edits.
+- Reuse the meeting action-item PATCH mutation and invalidate global and meeting caches.
+
+**Dependencies:** MM-205, MM-404, MM-502.
+
+**Verification**
+- Workspace isolation applies before filtering/pagination.
+- Viewer cannot mutate; allowed roles persist edits.
+- Citation link opens the correct meeting timestamp.
+
+### MM-506: Markdown Meeting Export
+
+**Implementation subtasks**
+- Follow the MM-506 export contract in `02-engineering/jira-api-contracts.md`.
+- Render deterministic Markdown from current visible data and exact citations.
+- Sanitize the download filename and escape document structure safely.
+- Add export action and handle not-ready/unauthorized states.
+
+**Dependencies:** MM-404, MM-502, MM-503.
+
+**Verification**
+- Golden-file test covers Unicode, citations, actions, decisions, and timestamps.
+- Export excludes internal object keys, signed URLs, hidden versions, and other workspaces.
+
 ## Module 6: RAG Search and Ask AI
 
 ### MM-601: Setup pgvector and Indexes
 
 **Implementation subtasks**
 - Enable pgvector extension in migration.
-- Add `embedding vector(768)` column to transcript segments or a dedicated transcript chunk table.
+- Add the canonical `TranscriptChunk` table with direct workspace/meeting IDs, source segment boundaries, content/model versions, and `embedding vector(768)`; source segments remain embedding-free.
 - Add HNSW cosine index.
 - Add workspace/meeting filters for vector search.
 - Add migration tests or schema assertions.
@@ -511,7 +598,7 @@ graph TD
 **Implementation subtasks**
 - Chunk finalized transcript text into retrieval-friendly units.
 - Generate embeddings using the default local BGE provider.
-- Persist vectors with transcript segment references and workspace ID.
+- Persist vectors with direct workspace/meeting IDs, first/last source segment references, content hash, chunker version, and embedding model.
 - Add idempotent re-embedding behavior.
 - Add batch backfill task for imported or existing meetings.
 - Add failure handling and retry strategy.
@@ -576,6 +663,22 @@ graph TD
 - Citation click opens correct meeting and timestamp.
 - Empty workspace returns helpful state.
 - API errors do not lose typed input.
+
+### MM-606: Workspace Keyword Search
+
+**Implementation subtasks**
+- Follow the MM-606 search contract in `02-engineering/jira-api-contracts.md`.
+- Add PostgreSQL full-text indexes/query over meeting titles and transcript text.
+- Apply workspace and soft-delete filters before ranking and cursor pagination.
+- Return typed results with escaped snippets and timestamp targets.
+- Add keyword-result mode to Search, distinct from Ask AI.
+
+**Dependencies:** MM-205, MM-403, MM-501.
+
+**Verification**
+- Cross-workspace terms never leak result counts or snippets.
+- Query input is parameterized and bounded.
+- Ranked fixture results and pagination are deterministic.
 
 ## Cross-Cutting Definition of Done
 

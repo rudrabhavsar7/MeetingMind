@@ -1,9 +1,9 @@
 ---
 Title: MeetingMind — Product Requirements Document (PRD)
-Version: 1.0.0
+Version: 1.1.0
 Status: Approved
 Owner: Senior Product Manager
-Last Updated: 2026-06-28
+Last Updated: 2026-07-10
 Dependencies: 00-project/vision.md, 00-project/success-metrics.md
 Related Documents:
   - 01-product/trd.md
@@ -34,7 +34,7 @@ Teams lose critical context, decisions, and action items shortly after meetings 
 
 ### 3.2 Non-Goals (v1.0)
 * Native mobile applications (iOS/Android).
-* Multi-workspace SaaS architecture.
+* User-facing creation or switching among multiple workspaces (deferred to v1.2).
 * Real-time collaborative editing of transcripts/summaries.
 
 ## 4. User Personas Summary
@@ -71,16 +71,18 @@ journey
 ## 6. Functional Requirements (Epics)
 
 ### Epic 1: Authentication & Workspace
-* **Req 1.1:** Users must be able to register with email/password.
-* **Req 1.2:** Users must be grouped into a single default workspace (v1.0).
-* **Req 1.3:** Workspace Admins can invite new users via email link.
-* **Req 1.4:** Password reset flow via secure email link.
+* **Req 1.1:** On a fresh deployment with zero users, the first-run setup flow must atomically create the initial Owner account and the deployment's default workspace.
+* **Req 1.2:** After first-run setup completes, public registration must close and new users may register only through a valid, single-use, expiring workspace invitation.
+* **Req 1.3:** v1 exposes one active default workspace per deployment. The underlying workspace-scoped data model remains ready for future multi-workspace support, but arbitrary workspace creation and switching are not exposed until v1.2.
+* **Req 1.4:** v1 workspace roles are Owner, Admin, Member, and Viewer. Authorization must be enforced by the backend for every workspace-scoped resource.
+* **Req 1.5:** Owners and Admins can invite users by email with an allowed role; only an Owner can grant or remove the Owner role.
+* **Req 1.6:** Password reset uses a single-use, expiring token and must not reveal whether an email address exists.
 
 ### Epic 2: Extension-Based Real-Time Meeting Capture
 * **Req 2.1:** Users can install and authenticate the MeetingMind Chrome extension.
 * **Req 2.2:** The extension detects supported meeting pages, starting with Google Meet.
 * **Req 2.3:** Users can manually start/stop MeetingMind capture from the extension side panel or popup.
-* **Req 2.4:** The extension captures tab audio with explicit user permission and streams 250-500ms chunks to the backend over WebSocket/WebRTC.
+* **Req 2.4:** The extension captures tab audio with explicit user permission and streams self-framed 250-500ms PCM chunks through the versioned v1 WebSocket protocol. WebRTC is not a v1 transport.
 * **Req 2.5:** The extension syncs available meeting context, including source app, meeting URL, visible title, start/end time, and visible participants where accessible.
 * **Req 2.6:** The extension UI must show capture state (Detected -> Connecting -> Recording -> Transcribing -> Analyzing -> Completed/Failed).
 * **Req 2.7:** Users see interim and final transcript segments update during the meeting in the extension side panel and web console when open.
@@ -90,15 +92,16 @@ journey
 ### Epic 3: AI Processing & Display
 * **Req 3.1:** The system must generate a speaker-diarized transcript.
 * **Req 3.2:** The transcript viewer must support clicking a segment to copy it or link to it.
-* **Req 3.3:** The system must generate a structured summary with Executive Summary and Key Points.
-* **Req 3.4:** The system must extract explicit Action Items (Task, Assignee, Due Date).
-* **Req 3.5:** The system must extract explicit Decisions with context.
+* **Req 3.3:** The system must generate versioned structured summaries with Executive Summary, Key Points, and citations to exact transcript segments.
+* **Req 3.4:** The system must extract explicit Action Items (Task, Assignee, Due Date) with source citations and preserve user edits.
+* **Req 3.5:** The system must extract explicit Decisions with context, rationale, and source citations.
+* **Req 3.6:** Reprocessing must record provider/model/prompt/input lineage and append new output versions without silently overwriting earlier auditable output.
 
 ### Epic 4: Knowledge Retrieval
 * **Req 4.1:** Users can execute semantic search across all meetings in the workspace.
 * **Req 4.2:** The search engine must answer natural language questions using RAG.
 * **Req 4.3:** AI answers must include clickable citations linking to the exact meeting transcript segment.
-* **Req 4.4:** Global Command Palette (Cmd+K) for quick navigation to recent meetings.
+* **Req 4.4 (v1.1 fast-follow, not v1 acceptance):** Global Command Palette (Cmd+K) for quick navigation to recent meetings.
 
 ## 7. Success Criteria
 * **Engagement:** 50% of captured or imported meetings have their action items reviewed/checked off within 7 days.

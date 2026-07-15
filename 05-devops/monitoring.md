@@ -1,75 +1,40 @@
 ---
 Title: MeetingMind — DevOps: Monitoring & Alerting
-Version: 1.0.0
+Version: 2.0.0
 Status: Approved
 Owner: Lead DevOps Engineer
-Last Updated: 2026-06-28
-Dependencies: None
+Last Updated: 2026-07-11
+Dependencies: 05-devops/infrastructure.md
 ---
 
 # MeetingMind DevOps: Monitoring & Alerting
 
-## 1. Overview
-MeetingMind relies on extensive AI processing. Standard HTTP monitoring is insufficient; we must monitor queue depths, LLM latency, and transcription failure rates.
+## 1. Default Local Stack
 
-## 2. Core Telemetry Stack
-* **APM & Logging:** DataDog or Sentry + PostHog.
-* **Metrics:** Prometheus & Grafana.
-* **Alerting:** PagerDuty.
+Services emit structured JSON to stdout/stderr. Prometheus collects application and host metrics, Grafana displays local dashboards, and Flower may be enabled for Celery operations on an administrator-only network. Alertmanager can route notifications to an operator-configured local or external destination.
 
-## 3. Key Metrics to Monitor
+Hosted error tracking, product analytics, APM, and paging are optional and disabled by default. Enabling them requires an egress/data review; transcript text, audio, summary text, participant names/emails, access tokens, signed URLs, and prompt bodies must never be sent as telemetry.
 
-### 3.1 Infrastructure Metrics
-* CPU/Memory usage of ECS Fargate containers (API & Celery).
-* GPU utilization on EC2 instances (Transcription workers).
-* Database CPU and Disk I/O (PostgreSQL).
-* Redis Memory Usage (Ensure Celery broker isn't OOMing).
+## 2. Required Signals
 
-### 3.2 Application Metrics (API)
-* **P99 Latency:** HTTP Response times (Exclude `/upload` endpoints, focus on `/chat` and general navigation).
-* **Error Rate (5xx):** Should be < 0.1%.
+- Host/container CPU, memory, disk capacity, filesystem errors, restarts, and GPU utilization/VRAM where present.
+- API request count, duration, status, active WebSockets, handshake failures, reconnects, sequence gaps, and heartbeat timeouts.
+- PostgreSQL connection saturation, query latency, storage growth, backup age, and pgvector query duration.
+- Redis availability, memory, evictions, Celery queue depth/age, retries, and dead-letter/final failures.
+- MinIO capacity, request failures, and retained-media growth.
+- Local STT, diarization, embedding, and LLM duration/failure metrics labeled by non-sensitive model/version identifiers.
+- Pipeline time-to-first-transcript, finalization duration, citation-validation failures, and uncited-output rejection count.
 
-### 3.3 AI Pipeline Metrics (Crucial)
-* **Celery Queue Depth:** Track the number of tasks in `cpu_tasks` and `gpu_tasks` queues. If `gpu_tasks` > 50, auto-scale up EC2 instances.
-* **Pipeline Duration (Time-to-Interactive):** Measure time from user upload completion to summary generation. Goal: < 3x the duration of the audio file.
-* **LLM API Errors/Rate Limits:** Track 429s from OpenAI/Anthropic to trigger fallback logic or alert.
-* **Token Usage:** Track total tokens consumed per workspace per day for billing/cost analysis.
+Workspace and meeting UUIDs may appear in access-controlled logs for correlation but should not be unbounded metric labels. Never log raw WebSocket frames or AI input/output bodies.
 
-## 4. Logging Strategy
+## 3. Baseline Alerts
 
-### 4.1 Structured Logging
-All backend logs MUST be emitted as JSON so they can be easily parsed by Logstash/DataDog.
-```json
-{
-  "timestamp": "2026-10-15T14:30:00Z",
-  "level": "INFO",
-  "logger": "myapp.tasks.transcribe",
-  "message": "Transcription completed",
-  "workspace_id": "uuid-123",
-  "meeting_id": "uuid-456",
-  "duration_ms": 45000
-}
-```
+- **Critical:** API unavailable, PostgreSQL/Redis/MinIO unavailable, disk above 95%, repeated backup failure, or citation/workspace-isolation invariant failure.
+- **High:** five-minute API error rate above 5%, oldest live-processing queue item above the measured SLO, WebSocket gap spike, GPU out-of-memory loop, or disk above 85%.
+- **Warning:** model latency regression, repeated processing failure for one meeting, certificate nearing expiry, backup restore drill overdue, or retained-media growth outside forecast.
 
-### 4.2 Frontend Error Tracking
-Use **Sentry** in the Next.js app to capture unhandled exceptions (React Error Boundaries) and network failures. Sentry automatically groups similar errors and maps them back to the source map.
+Thresholds should be tuned from measured baselines. Alerts must identify the affected component and link to a runbook; they must not include meeting content.
 
-## 5. Alerting Policies
+## 4. Health Dashboard
 
-* **SEV-1 (Critical - PagerDuty Call):** 
-  * API Error Rate > 5% for 5 minutes.
-  * Database CPU > 95% for 10 minutes.
-  * Redis down.
-* **SEV-2 (High - Slack Notification):**
-  * Celery `gpu_tasks` queue age > 30 minutes (Processing is severely delayed).
-  * 3 consecutive LLM API failures.
-* **SEV-3 (Low/Warning - Dashboard Only):**
-  * 404 Error Rate spike.
-  * Individual meeting processing failure (handled via in-app UI to user).
-
-## 6. Dashboards
-Create a primary "MeetingMind Health" Grafana dashboard displaying:
-1. Active API Requests / sec.
-2. Active processing pipelines.
-3. Live queue depths.
-4. Recent 500 errors.
+The local MeetingMind dashboard should show service health, request/error latency, active live sessions, queue depth/age, AI-stage latency/failures, database/object-store capacity, last successful backup, and certificate expiry. Retention for logs and metrics is operator-configurable and should default to the minimum needed for operations.

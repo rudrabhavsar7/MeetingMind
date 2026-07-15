@@ -1,9 +1,9 @@
 ---
 Title: MeetingMind — Component: Action Item
-Version: 1.0.0
+Version: 1.1.0
 Status: Approved
 Owner: Lead UX Designer
-Last Updated: 2026-06-28
+Last Updated: 2026-07-11
 Dependencies: 03-design/components/forms/checkbox.md, 03-design/components/ai/ai-citation.md
 ---
 
@@ -111,7 +111,7 @@ Bullet points in a summary are static. Users need to check them off, reassign th
 * Combines Checkbox, Badge, Citation.
 
 ## 28. AI Usage Guidelines
-* The backend prompt must be tuned to extract a strict JSON schema `{ task: string, assignee: string, citation_timestamp: string }` to populate this component reliably.
+* The backend uses a validated schema containing `text`, optional assignee/due date/confidence, and one or more source segment citations. Persisted AI-origin actions also reference their `AIProcessingRun`; a lone timestamp is not sufficient provenance.
 
 ## 29. Error Handling
 * Can show a red toast if the toggle fails to save to the backend.

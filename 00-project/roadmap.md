@@ -1,18 +1,24 @@
 ---
 Title: MeetingMind — Product Roadmap
-Version: 1.0.0
+Version: 1.1.1
 Status: Approved
 Owner: Head of Product / CTO
-Last Updated: 2026-06-28
+Last Updated: 2026-07-15
 Dependencies: 00-project/vision.md, 01-product/prd.md
 Related Documents:
   - 00-project/product-overview.md
   - 00-project/success-metrics.md
+  - 02-engineering/phase-plan.md
 ---
 
 # MeetingMind — Product Roadmap
 
 This document outlines the strategic 24-month roadmap for the MeetingMind platform. It is organized by major version milestones and quarters, detailing product features, infrastructure investments, and technical debt resolution.
+
+This roadmap owns release themes and strategic target windows. `02-engineering/phase-plan.md` owns
+the dependency-gated execution sequence and proposed sprint allocation for the approved v1 backlog.
+Roadmap bars are planning targets, not evidence that Jira acceptance criteria or phase exit gates
+have passed.
 
 ## 1. Roadmap Overview
 
@@ -23,9 +29,9 @@ gantt
     axisFormat  %Y-Q%q
 
     section v1.0 (MVP)
-    Core Infrastructure   :done, 2026-07, 4w
-    Streaming STT & Websockets :done, 2026-08, 4w
-    UI & UX MVP           :active, 2026-09, 4w
+    Core Infrastructure   :active, 2026-07, 4w
+    Streaming STT & Websockets :2026-08, 4w
+    UI & UX MVP           :2026-09, 4w
 
     section v1.1 (Scale)
     Export & Analytics    :2026-10, 6w
@@ -50,9 +56,9 @@ gantt
 **Theme:** Prove the privacy-first meeting intelligence loop.
 
 ### Product Features
-* **Authentication & Workspaces:** Single-workspace registration, basic JWT auth, role management (Admin/Member).
+* **Authentication & Workspaces:** First-run Owner/default-workspace bootstrap, invitation-only registration afterward, rotating JWT sessions, password reset, and fixed Owner/Admin/Member/Viewer roles.
 * **Chrome Extension Capture:** Manifest V3 extension for Google Meet detection, tab-audio capture, live side panel, and secure workspace connection.
-* **Real-Time Pipeline:** WebSocket/WebRTC architecture to stream audio live from the extension to the backend. Recording import and standalone web capture remain supported as fallback/backfill paths.
+* **Real-Time Pipeline:** Versioned WebSocket architecture with acknowledgements, bounded replay, Pause/Resume, and recoverable reconnects. WebRTC is deferred. Recording import and standalone web capture remain supported as fallback/backfill paths.
 * **Streaming STT Engine:** Local streaming Whisper variants for live word-by-word transcription. External streaming STT providers are opt-in only.
 * **Speaker Diarization:** Real-time continuous speaker tagging.
 * **Rolling AI Extraction:** Live summaries and action items populated in real-time via streaming LLM output.
@@ -93,7 +99,7 @@ gantt
 
 ### Product Features
 * **Multi-Workspace:** Users can belong to and switch between multiple workspaces.
-* **Advanced RBAC:** Custom roles, granular permission matrices, viewer-only seats.
+* **Advanced RBAC:** Custom roles and granular permission matrices beyond the fixed v1 Owner/Admin/Member/Viewer roles.
 * **Public API:** Documented REST API for external consumption with API key management.
 * **Webhooks:** Outbound webhooks for events (`meeting.processed`, `action_item.created`).
 * **SSO / SAML:** Enterprise authentication integrations (Okta, Azure AD).

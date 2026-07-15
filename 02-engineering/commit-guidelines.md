@@ -56,7 +56,7 @@ Scopes help contextualize the commit. Allowed scopes in MeetingMind:
 * `search` (RAG)
 * `workspace`
 * `export`
-* `devops` (Docker, Traefik)
+* `devops` (Docker, Nginx, deployment)
 * `deps` (Dependency updates)
 
 ## 4. Best Practices

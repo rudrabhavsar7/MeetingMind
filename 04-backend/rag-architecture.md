@@ -1,9 +1,9 @@
 ---
 Title: MeetingMind — Backend: RAG Architecture
-Version: 1.0.0
+Version: 1.1.0
 Status: Approved
 Owner: AI Engineer
-Last Updated: 2026-06-28
+Last Updated: 2026-07-10
 Dependencies: 04-backend/vector-database.md
 ---
 
@@ -20,14 +20,14 @@ An LLM has a limited Context Window (e.g., 8k or 128k tokens). A user might have
 ### Phase 1: Ingestion (During Meeting Processing)
 1. The raw transcript is divided into "Chunks".
    * *Strategy:* Chunk by speaker segment, or if a segment is too long, chunk by overlapping rolling windows (e.g., 500 characters, 100 character overlap).
-2. Each chunk is passed to an Embedding Model (e.g., `text-embedding-3-small` or local `nomic-embed-text`).
-3. The resulting vector (array of floats) is saved to the `TranscriptSegments` table in PostgreSQL alongside the original text.
+2. Each chunk is passed to the default local BAAI BGE 768-dimensional embedding provider.
+3. The resulting vector and chunk/model/content versions are saved to `TranscriptChunk`, which references the immutable first/last source `TranscriptSegment` rows.
 
 ### Phase 2: Retrieval (When user asks a question)
 1. **User Query:** User asks "What is the marketing budget?"
 2. **Query Vectorization:** The backend passes the user's question through the *exact same* Embedding Model to get a Query Vector.
 3. **Similarity Search:** The backend queries PostgreSQL (`pgvector`) to find the top K chunks in the database whose vectors are closest (cosine similarity) to the Query Vector.
-   * *Crucial:* The SQL query MUST filter by `workspace_id` to prevent data leakage.
+   * *Crucial:* The SQL query MUST filter `TranscriptChunk.workspace_id` before distance ordering to prevent data leakage.
 4. **Context Assembly:** The backend retrieves the raw text of those top K chunks.
 
 ### Phase 3: Generation

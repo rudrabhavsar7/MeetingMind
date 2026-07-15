@@ -1,9 +1,9 @@
 ---
 Title: MeetingMind — Backend: Celery Task Tests
-Version: 1.0.0
+Version: 1.1.0
 Status: Approved
 Owner: QA Engineer
-Last Updated: 2026-06-28
+Last Updated: 2026-07-11
 Dependencies: 04-backend/ai-pipeline.md
 ---
 
@@ -68,8 +68,15 @@ def test_generate_action_items(mocker, db_session):
 ## 6. Testing the Vector Pipeline
 1. Mock the embedding provider to return a random array of 768 floats (e.g., `[0.1, -0.4, ...]`).
 2. Run the chunking and embedding task.
-3. Query the test PostgreSQL database and assert the rows were inserted.
+3. Query the test PostgreSQL database and assert versioned `TranscriptChunk` rows were inserted with workspace/meeting IDs, first/last source segments, content hash, chunker version, and embedding model.
 4. Execute a similarity search query using a mocked query vector and assert it returns the expected chunk.
+
+## 6.1 Testing AI Provenance
+1. Mock structured local-model output containing summary, action, decision, and cited source segment IDs.
+2. Assert one `AIProcessingRun` captures model, provider, prompt version, input hash/range, and terminal status.
+3. Assert current AI-origin outputs have valid `AIOutputCitation` rows in the same workspace/meeting.
+4. Repeat the task with the same idempotency key and verify no duplicate current outputs.
+5. Regenerate with a new input hash and verify a new SummaryVersion is appended without mutating the previous version.
 
 ## 7. Testing the Failure Path
 Celery tasks must handle failure gracefully.
