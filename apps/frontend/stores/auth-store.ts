@@ -12,6 +12,11 @@ interface LoginPayload {
   password: string;
 }
 
+interface ChangePasswordPayload {
+  current_password: string;
+  new_password: string;
+}
+
 interface RegisterPayload {
   email: string;
   password: string;
@@ -26,6 +31,8 @@ interface AuthState {
   error: string | null;
   login: (payload: LoginPayload) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<void>;
+  updateProfile: (fullName: string) => Promise<void>;
+  changePassword: (payload: ChangePasswordPayload) => Promise<void>;
   getBootstrapStatus: () => Promise<BootstrapStatus>;
   logout: () => Promise<void>;
   hydrateFromSession: () => Promise<void>;
@@ -63,6 +70,28 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ user: data.data.user, isLoading: false });
     } catch (error: unknown) {
       set({ error: errorMessage(error, "Registration failed. Please try again."), isLoading: false });
+      throw error;
+    }
+  },
+
+  updateProfile: async (fullName: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data } = await apiClient.patch<ApiResponse<User>>("/users/me", { full_name: fullName });
+      set({ user: data.data, isLoading: false });
+    } catch (error: unknown) {
+      set({ error: errorMessage(error, "Failed to update profile."), isLoading: false });
+      throw error;
+    }
+  },
+
+  changePassword: async (payload: ChangePasswordPayload) => {
+    set({ isLoading: true, error: null });
+    try {
+      await apiClient.post("/auth/change-password", payload);
+      set({ isLoading: false });
+    } catch (error: unknown) {
+      set({ error: errorMessage(error, "Failed to change password."), isLoading: false });
       throw error;
     }
   },

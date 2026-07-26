@@ -134,3 +134,22 @@ class InvitationDetails(BaseModel):
 
 class InvitationDetailsEnvelope(BaseModel):
     data: InvitationDetails
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        return _validate_password(value)
+
+
+class ChangePasswordResponse(BaseModel):
+    status: str
+    other_sessions_revoked: bool
+
+
+class ChangePasswordEnvelope(BaseModel):
+    data: ChangePasswordResponse

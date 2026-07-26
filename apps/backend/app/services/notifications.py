@@ -9,6 +9,7 @@ from urllib.parse import urlencode
 
 from app.core.config import Settings
 from app.services.auth import PasswordResetDispatch
+from app.services.workspace import WorkspaceInvitationDispatch
 
 
 class PasswordResetNotifier(Protocol):
@@ -17,6 +18,15 @@ class PasswordResetNotifier(Protocol):
 
 class DisabledPasswordResetNotifier:
     async def send(self, dispatch: PasswordResetDispatch) -> None:
+        return None
+
+
+class WorkspaceInvitationNotifier(Protocol):
+    async def send(self, dispatch: WorkspaceInvitationDispatch) -> None: ...
+
+
+class DisabledWorkspaceInvitationNotifier:
+    async def send(self, dispatch: WorkspaceInvitationDispatch) -> None:
         return None
 
 
@@ -64,7 +74,57 @@ class SMTPPasswordResetNotifier:
             smtp.send_message(message)
 
 
+class SMTPWorkspaceInvitationNotifier:
+    def __init__(self, settings: Settings) -> None:
+        smtp_host = settings.smtp_host
+        smtp_from_email = settings.smtp_from_email
+        if smtp_host is None or smtp_from_email is None:
+            raise ValueError("SMTP notifier requires a host and sender")
+        self._settings = settings
+        self._smtp_host = smtp_host
+        self._smtp_from_email = smtp_from_email
+
+    async def send(self, dispatch: WorkspaceInvitationDispatch) -> None:
+        await asyncio.to_thread(self._send_sync, dispatch)
+
+    def _send_sync(self, dispatch: WorkspaceInvitationDispatch) -> None:
+        register_url = (
+            f"{self._settings.frontend_url.rstrip('/')}/register#"
+            f"{urlencode({'token': dispatch.token})}"
+        )
+        message = EmailMessage()
+        message["Subject"] = f"You've been invited to join {dispatch.workspace_name} on MeetingMind"
+        message["From"] = self._smtp_from_email
+        message["To"] = dispatch.email
+        message.set_content(
+            f"You have been invited to join the {dispatch.workspace_name} workspace.\n\n"
+            f"Accept the invitation and create your account: {register_url}\n\n"
+            f"This link expires at {dispatch.expires_at.isoformat()}. "
+            "If you did not expect this invitation, you can ignore this message."
+        )
+
+        with smtplib.SMTP(
+            self._smtp_host,
+            self._settings.smtp_port,
+            timeout=self._settings.smtp_timeout_seconds,
+        ) as smtp:
+            if self._settings.smtp_starttls:
+                smtp.starttls(context=ssl.create_default_context())
+            if self._settings.smtp_username is not None:
+                password = self._settings.smtp_password
+                if password is None:
+                    raise ValueError("SMTP password is required with SMTP username")
+                smtp.login(self._settings.smtp_username, password.get_secret_value())
+            smtp.send_message(message)
+
+
 def build_password_reset_notifier(settings: Settings) -> PasswordResetNotifier:
     if settings.password_reset_notifier == "smtp":
         return SMTPPasswordResetNotifier(settings)
     return DisabledPasswordResetNotifier()
+
+
+def build_workspace_invitation_notifier(settings: Settings) -> WorkspaceInvitationNotifier:
+    if settings.password_reset_notifier == "smtp":
+        return SMTPWorkspaceInvitationNotifier(settings)
+    return DisabledWorkspaceInvitationNotifier()

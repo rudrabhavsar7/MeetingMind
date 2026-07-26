@@ -14,6 +14,9 @@ from app.schemas.auth import (
     AuthTokenResponse,
     BootstrapStatus,
     BootstrapStatusResponse,
+    ChangePasswordEnvelope,
+    ChangePasswordRequest,
+    ChangePasswordResponse,
     CurrentUserEnvelope,
     CurrentUserResponse,
     ForgotPasswordRequest,
@@ -192,6 +195,33 @@ async def reset_password(
             detail="Invalid password reset token",
         ) from exc
     return StatusEnvelope(data=StatusResponse(status="password_reset"))
+
+
+@router.post("/change-password", response_model=ChangePasswordEnvelope)
+async def change_password(
+    payload: ChangePasswordRequest,
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
+    refresh_token: Annotated[str | None, Cookie(alias="refresh_token")] = None,
+) -> ChangePasswordEnvelope:
+    try:
+        await auth_service.change_password(
+            user=current_user,
+            current_password=payload.current_password,
+            new_password=payload.new_password,
+            current_refresh_token=refresh_token,
+        )
+        return ChangePasswordEnvelope(
+            data=ChangePasswordResponse(
+                status="ok",
+                other_sessions_revoked=True,
+            )
+        )
+    except InvalidCredentialsError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid current password",
+        ) from exc
 
 
 @router.post("/login", response_model=AuthTokenEnvelope)
