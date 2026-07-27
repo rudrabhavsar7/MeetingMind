@@ -1,73 +1,91 @@
 ---
 Title: MeetingMind — Design System
-Version: 1.0.0
+Version: 2.0.0
 Status: Approved
 Owner: Lead UX/UI Designer
-Last Updated: 2026-06-28
-Dependencies: 00-project/vision.md
-Related Documents:
-  - 03-design/colors.md
-  - 03-design/typography.md
-  - 03-design/accessibility.md
+Last Updated: 2026-07-27
+Dependencies: 00-project/vision.md, 03-design/accessibility.md
 ---
 
-# MeetingMind — Design System
+# MeetingMind design system
 
-The MeetingMind design system ensures consistency, accessibility, and high development velocity across the platform. It is built on top of Tailwind CSS and Radix UI primitives (via shadcn/ui).
+MeetingMind is a calm, professional, information-dense application. The UI should
+help users understand transcripts and act on cited meeting intelligence without
+drawing attention to decorative interface chrome.
 
-## 1. Design Philosophy
+## Foundation
 
-1. **Content First:** Meeting transcripts and summaries are information-dense. The UI should recede into the background, providing a neutral canvas that allows the text and AI insights to pop.
-2. **Professional & Trustworthy:** As an enterprise tool handling sensitive data, the aesthetic must feel secure, stable, and polished. We avoid playful or overly casual design trends.
-3. **Action-Oriented:** The primary goal of the app is not just reading, but acting on decisions and tasks. Interactive elements must be distinct and immediately recognizable.
+- Next.js 15, React 19, Tailwind CSS v4, shadcn/ui, and Radix UI
+- Lucide React as the only general icon library
+- Semantic CSS variables for light, dark, and system themes
+- Outfit loaded through `next/font`, with a system sans-serif fallback
+- WCAG 2.2 AA as the accessibility baseline
 
-## 2. The Tech Stack
+Generic component behavior comes from shadcn/ui and Radix. Typed frontend code owns
+component APIs. Page specifications own durable MeetingMind interaction behavior.
 
-* **Tailwind CSS v4:** For all utility-based styling and responsive design.
-* **Radix UI:** Unstyled, accessible React primitives (Dialog, Dropdown, Tabs).
-* **shadcn/ui:** Copy-paste component wrappers around Radix + Tailwind.
-* **Framer Motion:** For layout transitions and micro-interactions.
-* **Lucide React:** The official icon library.
+## Visual tokens
 
-## 3. Core Tokens
+Use functional token names such as `background`, `foreground`, `card`, `muted`,
+`primary`, `destructive`, `border`, `input`, and `ring`. Do not hardcode light-mode
+colors where semantic utilities exist.
 
-The design system is heavily tokenized using CSS variables injected into the Tailwind theme configuration.
+- Primary: Emerald 500 (`#10b981`), with accessible hover/foreground combinations
+- Neutral surfaces: Slate/Zinc scale
+- Destructive/error: Rose
+- Warning or review-needed: Amber
+- Information: Blue
+- Base spacing unit: 4px using Tailwind's standard scale
+- Standard radius: `0.5rem`
+- Transcript/summary reading measure: approximately 65–80 characters
+- Main dashboard maximum width: `1280px`
 
-### 3.1 Colors (Overview)
-* **Backgrounds:** Slate/Zinc neutrals. True dark mode (not pure black, but very dark slate).
-* **Primary Accent:** Emerald (`#10b981`). Represents success, action, and AI-generated insights.
-* **Destructive:** Rose (`#e11d48`). Used for deletions and critical errors.
-* *(See [Color Palette](colors.md) for exact hex codes and usage rules).*
+Use color as reinforcement, never as the only status signal. Verify contrast in the
+actual theme; palette names alone do not prove WCAG compliance.
 
-### 3.2 Typography (Overview)
-* **Font Family:** `Outfit` (Google Fonts). Geometric, clean, and highly legible for long-form reading.
-* **Scale:** Based on a major third scale.
-* *(See [Typography](typography.md) for precise sizing and weights).*
+## Typography and icons
 
-### 3.3 Spacing & Layout
-* **Base Unit:** 4px (Tailwind's default `0.25rem`).
-* **Container Widths:** 
-  * Max reading width for transcripts: `80ch` (approx `800px`).
-  * Dashboard max width: `1280px` (`max-w-7xl`).
-* **Border Radius:** `0.5rem` (`rounded-lg`) for most components (cards, dialogs). `0.375rem` (`rounded-md`) for smaller interactive elements (buttons, inputs).
+Use Tailwind's type scale. Body and transcript text starts at `text-base` with
+comfortable line height; metadata commonly uses `text-sm`; page headings normally
+use `text-2xl` through `text-4xl`. Restrict font weights to regular, medium, and
+bold unless an implementation demonstrates a need.
 
-## 4. Component Architecture
+Lucide icons normally use 16px inline, 20px in navigation, and 24–32px for larger
+states. Decorative icons are hidden from assistive technology. Icon-only controls
+require an accessible name.
 
-All UI components are categorized into three levels:
+## Layout and responsiveness
 
-1. **Foundation (`components/ui/`):** The atomic layer. Buttons, Inputs, Labels, Badges. Managed via shadcn/ui CLI.
-2. **Patterns (`components/forms/`, `components/layout/`):** Combinations of foundation components. A form group with an input, label, and error message. A sidebar navigation menu.
-3. **Features (`components/meeting/`):** Domain-specific assemblies. The Transcript Viewer. The AI Summary Card.
+Use mobile-first Tailwind breakpoints and container-aware behavior where useful.
 
-## 5. Theming (Dark Mode)
+- Below `md`: replace the desktop sidebar with an accessible sheet or drawer.
+- At `md` and above: show the authenticated application sidebar.
+- Below `lg`: meeting details use a single-column or tabbed presentation.
+- At `lg` and above: meeting details may use transcript and insight panes.
+- Tables become readable stacked views or horizontal regions on narrow containers.
+- Interactive targets should be at least 44 by 44 CSS pixels on touch surfaces.
+- Auth/setup views use a focused centered layout without application navigation.
 
-MeetingMind supports Light, Dark, and System-Preference modes.
-* Theming is handled via CSS variables in `globals.css` (e.g., `--background`, `--foreground`, `--primary`).
-* Tailwind classes use semantic names (`bg-background text-foreground`) rather than hardcoded colors (`bg-white text-black`), ensuring automatic theme switching.
+The browser URL and history remain authoritative for navigable state. v1 uses visible
+navigation and search; the command palette is a v1.1 enhancement.
 
-## 6. Contribution Guidelines
+## Feedback, motion, and AI trust
 
-Before introducing a new design pattern or component:
-1. Check if a Radix UI primitive or shadcn/ui component already solves the problem.
-2. Ensure the component meets WCAG 2.2 AA accessibility standards.
-3. Document the component in the `03-design/components/` directory using the standard 42-section template.
+- Prefer skeletons shaped like expected content over blank screens.
+- Optimistic updates must roll back and explain recoverable failures.
+- Inline validation remains adjacent and programmatically associated with its field.
+- Destructive actions require explicit confirmation.
+- Most transitions finish within 200ms and explain a state change.
+- Respect `prefers-reduced-motion`; motion is never required to understand state.
+- AI-generated user-visible claims require exact transcript citations.
+- Low-confidence or incomplete outputs use text/icon indicators in addition to color.
+
+## Contribution rules
+
+Before introducing a pattern:
+
+1. Check whether shadcn/ui, Radix, Tailwind, or an existing frontend pattern solves it.
+2. Read the owning page specification and accessibility requirements.
+3. Keep props and implementation details in strict TypeScript.
+4. Document lasting product behavior in the owning page, requirement, API contract,
+   or data contract—not in a parallel component manual.

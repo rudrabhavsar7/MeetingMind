@@ -1,6 +1,6 @@
 # MeetingMind Project Memory
 
-Last reviewed: 2026-07-15
+Last reviewed: 2026-07-27
 
 ## What This Repository Is
 
@@ -279,12 +279,12 @@ Root is mostly markdown documentation plus the initial backend scaffold. Key fol
 - `00-project`: vision, roadmap, architecture, glossary, metrics
 - `01-product`: PRD, TRD, requirements, personas, journeys, acceptance criteria
 - `02-engineering`: standards, auth, API design, folder structure, Jira tickets
-- `03-design`: design system, pages, components, tokens, accessibility
+- `03-design`: consolidated design system, accessibility guidance, and page-level
+  interaction specifications; component APIs live in typed frontend code
 - `04-backend`: API spec, DB schema, AI pipeline, RAG, storage, auth flow, tests
 - `05-devops`: Docker, CI/CD, infrastructure, environments, secrets
 - `06-testing`: test strategy, QA checklists, unit/integration/e2e/security/performance
-- `07-prompts`: agent and assistant prompt/rule docs
-- `08-resources`: templates, references, release notes, decision log
+- `08-resources`: the durable architecture and product decisions log
 - `apps/backend`: FastAPI backend scaffold with Poetry, app factory, health/auth routes, settings, logging, SQLAlchemy models, Alembic migration, and starter tests
 - `apps/frontend`: early Next.js frontend scaffold with auth/app routes and initial UI components
 - `apps/extension`: early Chrome extension scaffold with Vite/TypeScript files
@@ -316,3 +316,14 @@ Uncommitted changes were present during review in several docs, including:
 - `.agents/`
 
 Do not revert these unless explicitly asked.
+
+## Documentation Organization
+
+The active documentation was consolidated on 2026-07-27. `DOCUMENTATION.md` is
+the human-readable source-of-truth map and `.agents/context-map.md` remains the
+task-routing map for agents. The redundant component-description layer was removed:
+shadcn/ui and Radix own generic primitive behavior, typed frontend code owns
+component APIs, and durable product interactions belong to page/product/API
+contracts. Completed generation inventories, duplicated tool prompt copies, and
+the duplicate engineering testing strategy were also removed. Git history preserves
+the superseded material.

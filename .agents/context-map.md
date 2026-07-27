@@ -45,7 +45,7 @@ Read:
 - `03-design/design-system.md`
 - `03-design/accessibility.md`
 - Relevant page docs in `03-design/pages/`
-- Relevant component docs in `03-design/components/`
+- Existing implementation patterns in `apps/frontend/components/`
 
 Expected implementation style:
 
@@ -94,7 +94,6 @@ Read:
 - `04-backend/data-dictionary.md`
 - `04-backend/background-jobs.md`
 - `04-backend/storage.md`
-- `07-prompts/backend-prompts.md`
 
 Important principles:
 
@@ -147,18 +146,18 @@ Expected testing style:
 - E2E: Playwright
 - Mock AI providers in deterministic CI tests
 
-## Documentation Generation
+## Documentation Maintenance
 
 Read:
 
-- `PROMPT.MD`
-- `FOLDER.md`
-- `documentgeneration.md`
-- `08-resources/templates/`
+- `DOCUMENTATION.md`
+- `AGENTS.md`
+- `.agents/context-map.md`
 
 Expected documentation style:
 
 - Frontmatter on every markdown document
-- Enterprise-grade specificity
+- One authoritative home for each contract
+- Prefer updating an existing source of truth over adding another document
 - Mermaid diagrams where helpful
 - Rationale, security, scalability, testing, and accessibility where relevant

@@ -1,67 +1,39 @@
 ---
-Title: MeetingMind — Error Pages
-Version: 1.0.0
+Title: MeetingMind — Error and Not-Found Pages
+Version: 2.0.0
 Status: Approved
 Owner: Lead UX Designer
-Last Updated: 2026-06-28
-Dependencies: 02-engineering/error-handling.md
+Last Updated: 2026-07-27
+Dependencies: 02-engineering/error-handling.md, 03-design/design-system.md
 ---
 
-# MeetingMind — Error Pages (`app/error.tsx`, `app/global-error.tsx`)
+# Error and not-found pages
 
-Error pages catch unhandled exceptions during React rendering or Next.js server-side data fetching. They are the last line of defense against the "White Screen of Death".
+## Route errors
 
-## 1. Page Purpose
-To prevent catastrophic UI crashes, inform the user something went wrong technically, and provide a way to recover.
+`app/error.tsx` is a Client Component that replaces the failed route segment while
+preserving the application shell. It shows a generic production-safe explanation
+and a retry action wired to Next.js `reset()`. Development may expose additional
+diagnostic detail, but production must not display stack traces or secrets.
 
-## 2. Types of Error Boundaries
+## Global errors
 
-### 2.1 Route Error Boundary (`app/error.tsx`)
-Catches errors within a specific route segment (e.g., inside `/meetings`). 
-* **Layout:** This boundary *preserves* the App Shell (Sidebar/Header). The error UI replaces only the main content area.
-* **Content:**
-  * Icon: `AlertTriangle` (Rose color).
-  * Headline: "Something went wrong loading this view."
-  * Body: `error.message` (in development) or a generic apology (in production).
-  * Action: "Try Again" Button. This button calls the `reset()` function provided by Next.js to attempt re-rendering the segment.
+`app/global-error.tsx` renders a minimal standalone HTML document because the root
+layout may be unavailable. It provides a reload action and cannot depend on the
+normal application shell.
 
-### 2.2 Global Error Boundary (`app/global-error.tsx`)
-Catches errors at the absolute root of the application (e.g., if the root layout fails to render because the main CSS bundle is corrupt).
-* **Layout:** Full bare-bones HTML page. It *cannot* rely on standard layouts.
-* **Content:** Very minimal "Critical Application Error" screen with a hard "Reload Page" button (`window.location.reload()`).
+## Not found
 
-## 3. Implementation Example
+`app/not-found.tsx` handles unmatched routes and resources rejected through
+`notFound()`. It uses a neutral "Page not found" message and a primary route to the
+dashboard. The message must not reveal whether a protected meeting exists. A
+browser-back action may be offered only as a secondary convenience.
 
-```tsx
-'use client' // Error boundaries must be Client Components
- 
-import { useEffect } from 'react'
-import { Button } from '@/components/ui/button'
-import { AlertTriangle } from 'lucide-react'
- 
-export default function Error({
-  error,
-  reset,
-}: {
-  error: Error & { digest?: string }
-  reset: () => void
-}) {
-  useEffect(() => {
-    // Log the error to an error reporting service
-    console.error(error)
-  }, [error])
- 
-  return (
-    <div className="flex h-[50vh] flex-col items-center justify-center space-y-4">
-      <AlertTriangle className="h-10 w-10 text-destructive" />
-      <h2 className="text-xl font-semibold">Something went wrong!</h2>
-      <p className="text-sm text-muted-foreground max-w-md text-center">
-        We encountered an unexpected error while rendering this page. 
-      </p>
-      <Button variant="outline" onClick={() => reset()}>
-        Try again
-      </Button>
-    </div>
-  )
-}
-```
+## Shared requirements
+
+- Provide one clear heading and recovery action.
+- Preserve keyboard focus and accessible names.
+- Do not expose raw exception messages, internal IDs, or resource existence.
+- Log errors through the approved application logging path with sensitive-data
+  redaction.
+- Use semantic error tokens and do not rely on color alone.

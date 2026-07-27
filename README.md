@@ -1,53 +1,47 @@
-# 🧠 MeetingMind
+# MeetingMind
 
-**MeetingMind** is an enterprise-grade AI meeting assistant delivered as a Chrome extension plus a web console. The extension captures live meeting audio from tools like Google Meet, streams it to the MeetingMind backend, and the console stores transcripts, summaries, action items, decisions, recordings, and RAG search across meeting history. Recording import remains available as a fallback/backfill path.
+MeetingMind is a privacy-first, self-hosted AI meeting intelligence platform.
+A Chrome extension captures live meeting audio, starting with Google Meet, and
+the web console provides speaker-aware transcripts, summaries, action items,
+decisions, recordings, and cited search across meeting history. Recording import
+and standalone web capture are secondary fallback paths.
 
----
+## Start here
 
-## 👥 The Team
-* **Rudra:** Backend & AI Engineer (FastAPI, Celery, Whisper, LLMs)
-* **Jenil:** Product Manager / Full Stack (User Flows, API Integration, Auth)
-* **Prashant:** Frontend Engineer (Next.js, Tailwind, shadcn/ui)
-* **Arnish:** DevOps & DB Engineer (PostgreSQL, self-hosting, Docker, CI/CD)
+- [Documentation map](./DOCUMENTATION.md)
+- [Phase and sprint plan](./02-engineering/phase-plan.md)
+- [Jira backlog](./02-engineering/jira-tickets.md)
+- [Product requirements](./01-product/prd.md)
+- [UI design system](./03-design/design-system.md)
+- [Database contract](./04-backend/data-dictionary.md)
+- [API specification](./04-backend/api-specification.md)
+- [Live capture protocol](./04-backend/realtime-protocol.md)
 
----
+The application scaffolds exist, but production Dockerfiles and the root Compose
+bundle are not complete. Do not treat the repository as a working one-command
+deployment until the foundation ticket delivers and verifies those artifacts.
 
-## 🚀 Quick Start & Important Links
-Before writing any code, team members should review their assigned tickets and the related architecture documents.
+## Applications
 
-The application scaffolds exist, but the production Dockerfiles and root Compose bundle are not complete yet. Do not treat this repository as having a working one-command deployment until the foundation ticket delivers and verifies those artifacts.
+- `apps/extension`: Chrome Manifest V3 capture extension
+- `apps/frontend`: Next.js 15 web console
+- `apps/backend`: FastAPI API and backend services
 
-* **🎯 Phase & Sprint Plan:** [02-engineering/phase-plan.md](./02-engineering/phase-plan.md) *(Start here!)*
-* **📋 Jira Backlog:** [02-engineering/jira-tickets.md](./02-engineering/jira-tickets.md)
-* **🎨 UI & Components:** [03-design/design-system.md](./03-design/design-system.md)
-* **🗄️ Database Schema:** [04-backend/database-schema.md](./04-backend/database-schema.md)
-* **🔌 API Specification:** [04-backend/api-specification.md](./04-backend/api-specification.md)
-* **🤖 AI Pipeline:** [04-backend/ai-pipeline.md](./04-backend/ai-pipeline.md)
+## Core stack
 
-*(View the `documentgeneration.md` tracker to see the full list of 150+ generated design documents.)*
+- Frontend: React 19, TypeScript, Tailwind CSS, shadcn/ui, Radix UI, TanStack Query,
+  and Zustand
+- Backend: FastAPI, async SQLAlchemy, Pydantic, Celery, Redis, and PostgreSQL with
+  pgvector
+- AI: local Whisper/faster-whisper, pyannote.audio, Ollama, and BGE embeddings
+- Infrastructure: operator-controlled Docker Compose with Nginx and MinIO as the
+  normative v1 target
 
----
+External AI, telemetry, notification, and cloud integrations are explicit operator
+opt-ins. Meeting content stays inside operator-controlled infrastructure by default.
 
-## 🛠️ Tech Stack
-* **Frontend:** Chrome Extension (Manifest V3) for capture, plus Next.js 15 (App Router), React, TypeScript, Tailwind CSS, Zustand, TanStack Query for the web console.
-* **Backend:** FastAPI (Python), SQLAlchemy (Async), Pydantic.
-* **AI/ML:** Local Whisper/faster-whisper, pyannote.audio, Ollama, BGE embeddings, and Celery. External AI providers are optional operator opt-ins only.
-* **Infrastructure:** Docker Compose target with Nginx, PostgreSQL + `pgvector`, Redis, MinIO, and local observability.
+## Working with agents
 
----
-
-## 🤖 Using the AI Agent Workflows
-This repository is configured with a `.agents` directory to supercharge your development speed.
-
-### Global Rules
-Any AI agent working in this repository should begin with the root `AGENTS.md`, `PROJECT_MEMORY.md`, and `.agents/context-map.md`.
-
-### Custom Skills
-You can instruct your AI to use the following custom skills:
-1. **`implement-ticket`**: Tell the AI *"Use the implement-ticket skill to build MM-303"*. The AI will automatically read the Jira ticket, look up the frontend/backend design documents, and write the code exactly to spec.
-2. **`doc-research`**: Tell the AI *"Use the doc-research skill to answer this from the MeetingMind docs"*. The AI will search the documented product, architecture, and implementation specs before answering.
-3. **`spec-sync`**: Tell the AI *"Use the spec-sync skill to align the docs with this decision"*. The AI will find stale requirements, update the smallest needed set of docs, and keep project memory current.
-
----
-
-*“The best code is the code you never wrote.”*
+Every agent starts with `AGENTS.md`, `PROJECT_MEMORY.md`, and
+`.agents/context-map.md`. Local skills support ticket implementation,
+documentation-grounded research, and specification synchronization.
