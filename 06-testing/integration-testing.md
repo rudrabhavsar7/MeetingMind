@@ -100,3 +100,25 @@ test('loads and displays meetings', async () => {
 - Re-running chunking/embedding with the same content hash, chunker version, and model does not create duplicates.
 - Vector queries filter `TranscriptChunk.workspace_id` and never retrieve soft-deleted or cross-workspace content.
 - Database rows persist private object keys only; signed URLs are generated at response time and never stored.
+
+## 6. FastAPI integration rules
+
+- Use `httpx.AsyncClient` for async endpoints and protocol-oriented tests.
+- Override dependencies explicitly and restore overrides after each test.
+- Exercise authentication, workspace isolation, validation, RFC 7807 errors, and
+  successful persistence—not only response status codes.
+- Use real PostgreSQL with pgvector. SQLite cannot verify the project's PostgreSQL,
+  JSONB, constraint, migration, or vector behavior.
+- Never use development, staging, or production databases for automated tests.
+
+## 7. Celery and AI pipeline integration rules
+
+- Test pure transformation logic without Celery context.
+- Run task integration tests eagerly with exceptions propagated.
+- Use tiny licensed/synthetic media fixtures for FFmpeg paths.
+- Mock model and embedding providers with deterministic typed responses.
+- Verify task idempotency, retries, terminal failure status, and cleanup.
+- Verify `AIProcessingRun` lineage, immutable summary versions, exact citations,
+  versioned transcript chunks, and workspace-filtered vector retrieval.
+- CI supplies PostgreSQL/pgvector, Redis or an approved test broker, and FFmpeg as
+  service/runtime dependencies; it makes no external model or cloud calls.

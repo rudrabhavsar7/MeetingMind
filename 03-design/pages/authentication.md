@@ -4,7 +4,7 @@ Version: 1.1.0
 Status: Approved
 Owner: Lead UX Designer
 Last Updated: 2026-07-10
-Dependencies: 03-design/layouts.md
+Dependencies: 03-design/design-system.md
 ---
 
 # MeetingMind — Authentication Pages (`/login`, `/register`, `/forgot-password`)

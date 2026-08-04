@@ -4,7 +4,7 @@ Version: 1.0.0
 Status: Approved
 Owner: Lead UX Designer
 Last Updated: 2026-06-28
-Dependencies: 03-design/layouts.md
+Dependencies: 03-design/design-system.md
 ---
 
 # MeetingMind — Meeting Details Page (`/meetings/[id]`)

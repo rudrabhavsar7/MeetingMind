@@ -21,7 +21,9 @@ Read:
 Do not write code immediately.
 
 - If a Jira ticket is named, read `02-engineering/jira-tickets.md`.
-- If it's a UI component, check `03-design/components/`.
+- If it's a UI component, read `03-design/design-system.md`, the owning page
+  specification in `03-design/pages/`, and existing patterns in
+  `apps/frontend/components/`.
 - If it's a page, check `03-design/pages/`.
 - If it's an API or backend feature, check `04-backend/api-specification.md`, `04-backend/database-schema.md`, and related backend docs.
 - If it affects deployment, check `05-devops/`.
