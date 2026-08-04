@@ -1,30 +1,29 @@
 "use client";
 
-import { useState } from "react";
 import {
   Puzzle,
   CheckCircle2,
   XCircle,
   ExternalLink,
-  ChevronDown,
   Shield,
   Info,
+  Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/stores/auth-store";
 
 type ConnectionStatus = "connected" | "disconnected" | "pending";
 
-const workspaces = [
-  { id: "ws1", name: "MeetingMind Engineering" },
-  { id: "ws2", name: "Product Team" },
-];
-
 export default function ExtensionSettingsClient() {
-  const [status] = useState<ConnectionStatus>("disconnected");
-  const [selectedWorkspace, setSelectedWorkspace] = useState(workspaces[0].id);
-  const [retainAudio] = useState(false);
+  const { user } = useAuthStore();
+  // v1: one fixed default workspace per deployment (ADR 010) — no switching
+  const defaultWorkspace = user?.workspaces?.[0];
+
+  // In a real implementation, connection status comes from the extension heartbeat API
+  const status: ConnectionStatus = "disconnected" as ConnectionStatus;
+  const retainAudio = false;
 
   const isConnected = status === "connected";
 
@@ -96,34 +95,27 @@ export default function ExtensionSettingsClient() {
         </CardContent>
       </Card>
 
-      {/* Default Workspace */}
+      {/* Default Workspace — v1: fixed, no switching (ADR 010) */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Default Workspace</CardTitle>
+          <div className="flex items-center gap-2">
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-base">Default Workspace</CardTitle>
+          </div>
           <CardDescription>
-            New captures will be saved to this workspace automatically.
+            In v1, all captures go to your deployment&apos;s single default workspace.
+            Workspace switching is not available in this release.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="relative">
-            <select
-              id="default-workspace"
-              value={selectedWorkspace}
-              onChange={(e) => setSelectedWorkspace(e.target.value)}
-              className="w-full appearance-none rounded-md border border-input bg-background px-3 py-2 pr-8 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              aria-label="Select default workspace"
-            >
-              {workspaces.map((ws) => (
-                <option key={ws.id} value={ws.id}>
-                  {ws.name}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="rounded-lg border border-border bg-muted/20 px-4 py-3">
+            <p className="text-sm font-medium text-foreground">
+              {defaultWorkspace?.name ?? "Default Workspace"}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Role: <span className="capitalize">{defaultWorkspace?.role ?? "member"}</span>
+            </p>
           </div>
-          <Button size="sm" className="mt-3">
-            Save
-          </Button>
         </CardContent>
       </Card>
 
