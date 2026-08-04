@@ -5,6 +5,8 @@ import { Send, Sparkles, Loader2, User, Bot, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { useAskAI } from "@/lib/queries/chat";
+import { useAuthStore } from "@/stores/auth-store";
 import type { ChatMessage, Citation } from "@/types/api.types";
 
 // ─── Mock data ──────────────────────────────────────────────────────────────
@@ -132,18 +134,23 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 export default function SearchClient() {
+  const { user } = useAuthStore();
+  const workspaceId = user?.workspaces?.[0]?.id ?? "default";
+
   const [query, setQuery] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const { mutateAsync: askAI, isPending } = useAskAI();
+  const isLoading = isPending;
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading]);
+  }, [messages, isPending]);
 
   async function handleSubmit(q: string = query) {
-    if (!q.trim() || isLoading) return;
+    if (!q.trim() || isPending) return;
 
     const userMsg: ChatMessage = {
       id: `u-${crypto.randomUUID()}`,
@@ -155,12 +162,22 @@ export default function SearchClient() {
 
     setMessages((prev) => [...prev, userMsg]);
     setQuery("");
-    setIsLoading(true);
 
-    // Simulate streaming delay
-    await new Promise((r) => setTimeout(r, 1400));
-    setMessages((prev) => [...prev, { ...mockResponse, id: `r-${crypto.randomUUID()}` }]);
-    setIsLoading(false);
+    try {
+      const result = await askAI({ workspaceId, query: q.trim() });
+      const assistantMsg: ChatMessage = {
+        id: `r-${crypto.randomUUID()}`,
+        role: "assistant",
+        content: result.answer,
+        citations: result.citations,
+        created_at: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, assistantMsg]);
+    } catch {
+      // Backend offline — use mock response for demo
+      await new Promise((r) => setTimeout(r, 1000));
+      setMessages((prev) => [...prev, { ...mockResponse, id: `r-${crypto.randomUUID()}` }]);
+    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {

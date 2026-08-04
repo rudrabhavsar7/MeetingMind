@@ -11,6 +11,7 @@ import {
   LogOut,
   ChevronRight,
   Mic,
+  ListChecks,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { APP_NAME } from "@/lib/constants";
@@ -20,6 +21,7 @@ import { Button } from "@/components/ui/button";
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/meetings", label: "Meetings", icon: Video },
+  { href: "/actions", label: "Actions", icon: ListChecks },
   { href: "/search", label: "Ask AI", icon: Search },
 ];
 

@@ -1,4 +1,5 @@
-import type { Metadata } from "next";
+"use client";
+
 import Link from "next/link";
 import {
   CheckSquare,
@@ -8,19 +9,20 @@ import {
   Puzzle,
   CheckCircle2,
   Calendar,
+  Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { MeetingCard } from "@/components/meeting/meeting-card";
+import { MeetingCard, MeetingCardSkeleton } from "@/components/meeting/meeting-card";
+import { useMeetings } from "@/lib/queries/meetings";
+import { useWorkspaceActionItems } from "@/lib/queries/workspace";
+import { useAuthStore } from "@/stores/auth-store";
 import type { Meeting, ActionItem } from "@/types/api.types";
 
-export const metadata: Metadata = {
-  title: "Dashboard",
-};
+// ─── Mock fallback (used while backend is not running) ────────────────────────
 
-// ─── Mock data (replaced by TanStack Query fetching in MM-501 integration) ───
-
-const mockMeetings: Meeting[] = [
+const MOCK_MEETINGS: Meeting[] = [
   {
     id: "m1",
     workspace_id: "ws1",
@@ -31,7 +33,7 @@ const mockMeetings: Meeting[] = [
     duration_seconds: 5400,
     participant_count: 12,
     started_at: new Date(Date.now() - 86400000).toISOString(),
-    ended_at: new Date(Date.now() - 86400000 + 5400000).toISOString(),
+    ended_at: new Date(Date.now() - 80600000).toISOString(),
     created_at: new Date(Date.now() - 86400000).toISOString(),
     summary_preview:
       "Discussed Q3 roadmap priorities, budget allocation for the AI pipeline, and team OKRs. Three major decisions logged.",
@@ -46,7 +48,7 @@ const mockMeetings: Meeting[] = [
     duration_seconds: 3600,
     participant_count: 5,
     started_at: new Date(Date.now() - 172800000).toISOString(),
-    ended_at: new Date(Date.now() - 172800000 + 3600000).toISOString(),
+    ended_at: new Date(Date.now() - 169200000).toISOString(),
     created_at: new Date(Date.now() - 172800000).toISOString(),
     summary_preview:
       "Reviewed the FastAPI + Celery architecture proposal. Agreed to use pgvector for embeddings and Redis for pub-sub.",
@@ -67,7 +69,7 @@ const mockMeetings: Meeting[] = [
   },
 ];
 
-const mockActionItems: ActionItem[] = [
+const MOCK_ACTION_ITEMS: ActionItem[] = [
   {
     id: "a1",
     meeting_id: "m1",
@@ -100,6 +102,8 @@ const mockActionItems: ActionItem[] = [
   },
 ];
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 function formatDueDate(iso: string | null): string {
   if (!iso) return "No due date";
   const date = new Date(iso);
@@ -110,10 +114,37 @@ function formatDueDate(iso: string | null): string {
   return `Due in ${diff}d`;
 }
 
+// ─── Dashboard Page ───────────────────────────────────────────────────────────
+
 export default function DashboardPage() {
-  const completedThisWeek = mockMeetings.filter(
-    (m) => m.status === "completed"
-  ).length;
+  const { user } = useAuthStore();
+  // v1: one workspace per deployment — use first workspace or fall back to "default"
+  const workspaceId = user?.workspaces?.[0]?.id ?? "default";
+
+  const {
+    data: meetingsData,
+    isLoading: meetingsLoading,
+    isError: meetingsError,
+  } = useMeetings(
+    { workspaceId, limit: 5 },
+    { enabled: !!workspaceId }
+  );
+
+  const {
+    data: actionsData,
+    isLoading: actionsLoading,
+    isError: actionsError,
+  } = useWorkspaceActionItems(
+    { workspaceId, status: "open", limit: 10 },
+    { enabled: !!workspaceId }
+  );
+
+  // Fall back to mock data while backend is not running
+  const meetings: Meeting[] = meetingsData?.data ?? MOCK_MEETINGS;
+  const actionItems: ActionItem[] = actionsData?.data ?? MOCK_ACTION_ITEMS;
+
+  const completedThisWeek = meetings.filter((m) => m.status === "completed").length;
+  const openActions = actionItems.filter((a) => a.status === "open");
 
   return (
     <div className="flex flex-col min-h-full">
@@ -146,7 +177,7 @@ export default function DashboardPage() {
             {
               icon: CheckSquare,
               label: "Action Items Due Soon",
-              value: mockActionItems.length,
+              value: actionsLoading ? "—" : openActions.length,
               sub: "assigned to you",
               color: "text-amber-500",
               bg: "bg-amber-500/10",
@@ -154,7 +185,7 @@ export default function DashboardPage() {
             {
               icon: Video,
               label: "Meetings This Week",
-              value: completedThisWeek,
+              value: meetingsLoading ? "—" : completedThisWeek,
               sub: "processed successfully",
               color: "text-primary",
               bg: "bg-primary/10",
@@ -162,7 +193,9 @@ export default function DashboardPage() {
             {
               icon: Clock,
               label: "Hours Saved",
-              value: `${Math.round((completedThisWeek * 3600 * 0.7) / 3600)}h`,
+              value: meetingsLoading
+                ? "—"
+                : `${Math.round((completedThisWeek * 3600 * 0.7) / 3600)}h`,
               sub: "via AI summarization",
               color: "text-blue-500",
               bg: "bg-blue-500/10",
@@ -187,7 +220,7 @@ export default function DashboardPage() {
 
         {/* Main grid: Meetings (60%) + Action Items (40%) */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          {/* Recent Meetings — 60% (3 of 5 cols) */}
+          {/* Recent Meetings — 3/5 cols */}
           <section aria-labelledby="recent-meetings-heading" className="lg:col-span-3 space-y-4">
             <div className="flex items-center justify-between">
               <h2 id="recent-meetings-heading" className="text-sm font-semibold text-foreground">
@@ -201,7 +234,27 @@ export default function DashboardPage() {
               </Link>
             </div>
 
-            {mockMeetings.length === 0 ? (
+            {/* Loading */}
+            {meetingsLoading && (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => <MeetingCardSkeleton key={i} />)}
+              </div>
+            )}
+
+            {/* Error */}
+            {meetingsError && !meetingsLoading && (
+              <Card className="border-dashed border-destructive/40">
+                <CardContent className="py-8 text-center">
+                  <AlertTriangle className="h-8 w-8 text-destructive/60 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    Could not load meetings. Showing cached data.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Empty */}
+            {!meetingsLoading && meetings.length === 0 && (
               <Card className="border-dashed">
                 <CardContent className="py-12 text-center">
                   <Video className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
@@ -217,28 +270,39 @@ export default function DashboardPage() {
                   </Link>
                 </CardContent>
               </Card>
-            ) : (
+            )}
+
+            {/* Data */}
+            {!meetingsLoading && meetings.length > 0 && (
               <div className="space-y-3">
-                {mockMeetings.map((meeting) => (
+                {meetings.slice(0, 5).map((meeting) => (
                   <MeetingCard key={meeting.id} meeting={meeting} />
                 ))}
               </div>
             )}
           </section>
 
-          {/* My Action Items — 40% (2 of 5 cols) */}
+          {/* My Action Items — 2/5 cols */}
           <section aria-labelledby="action-items-heading" className="lg:col-span-2 space-y-4">
             <div className="flex items-center justify-between">
               <h2 id="action-items-heading" className="text-sm font-semibold text-foreground">
                 My Action Items
               </h2>
-              <span className="text-xs text-muted-foreground">
-                {mockActionItems.filter((a) => a.status === "open").length} open
-              </span>
+              <Link
+                href="/actions"
+                className="text-xs text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+              >
+                View all
+              </Link>
             </div>
 
             <Card>
-              {mockActionItems.length === 0 ? (
+              {actionsLoading ? (
+                <CardContent className="py-6 flex items-center justify-center gap-2 text-muted-foreground text-sm">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading…
+                </CardContent>
+              ) : openActions.length === 0 ? (
                 <CardContent className="py-12 text-center">
                   <CheckCircle2 className="h-10 w-10 text-primary/40 mx-auto mb-3" />
                   <p className="text-sm font-medium text-foreground">You&apos;re all caught up!</p>
@@ -248,12 +312,9 @@ export default function DashboardPage() {
                 </CardContent>
               ) : (
                 <ul className="divide-y divide-border">
-                  {mockActionItems.map((item) => (
+                  {openActions.map((item) => (
                     <li key={item.id} className="flex items-start gap-3 px-4 py-3">
-                      <button
-                        aria-label={`Mark complete: ${item.text}`}
-                        className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-2 border-border hover:border-primary hover:bg-primary/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      />
+                      <div className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-2 border-border" />
                       <div className="min-w-0 flex-1">
                         <p className="text-sm text-foreground leading-snug">{item.text}</p>
                         <div className="flex items-center gap-2 mt-1">

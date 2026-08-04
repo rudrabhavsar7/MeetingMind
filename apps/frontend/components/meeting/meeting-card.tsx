@@ -27,10 +27,20 @@ const statusConfig: Record<
   MeetingStatus,
   { label: string; icon: React.ComponentType<{ className?: string }>; className: string }
 > = {
+  scheduled: {
+    label: "Scheduled",
+    icon: Calendar,
+    className: "text-muted-foreground bg-muted",
+  },
   recording: {
     label: "Recording",
     icon: Mic,
     className: "text-red-500 bg-red-500/10",
+  },
+  paused: {
+    label: "Paused",
+    icon: Clock,
+    className: "text-amber-500 bg-amber-500/10",
   },
   transcribing: {
     label: "Transcribing",
