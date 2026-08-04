@@ -58,25 +58,37 @@ Detailed conventions live in `02-engineering/`. API-owning tickets also require
 
 ## Verification
 
-Run the checks supported by the affected application:
+Run all checks from the repository root:
 
-```powershell
+```bash
+make ci          # lint + typecheck + test + build for all apps
+make lint        # lint only
+make typecheck   # type-check only
+make test        # tests only
+make help        # list all available targets
+```
+
+Or run checks for individual applications:
+
+```bash
 cd apps/frontend
 npm run lint
+npm run typecheck
 npm run build
 ```
 
-```powershell
+```bash
 cd apps/extension
 npm run lint
 npm run typecheck
 npm run build
 ```
 
-```powershell
+```bash
 cd apps/backend
 poetry run ruff check .
-poetry run mypy .
+poetry run ruff format --check .
+poetry run mypy app
 poetry run pytest
 ```
 
@@ -93,6 +105,22 @@ provider fakes in standard CI. Never point automated tests at shared environment
 
 Reviewers prioritize correctness, workspace isolation, citation provenance,
 accessibility, failure handling, migrations, and focused tests.
+
+## Branch Protection
+
+The `main` branch requires the following status checks to pass before merge:
+
+| Required check | CI job | What it validates |
+|---|---|---|
+| `Backend (Ruff · MyPy · pytest)` | `.github/workflows/ci.yml` → `backend` | Ruff lint + format, MyPy strict, pytest |
+| `Frontend (ESLint · tsc · build)` | `.github/workflows/ci.yml` → `frontend` | ESLint, TypeScript strict, Next.js build |
+| `Extension (ESLint · tsc · build)` | `.github/workflows/ci.yml` → `extension` | ESLint, TypeScript strict, Vite build |
+
+To enable: **Settings → Branches → Branch protection rules → Add rule** for `main`:
+- ✅ Require a pull request before merging
+- ✅ Require status checks to pass before merging → add the three job names above
+- ✅ Require branches to be up to date before merging
+- ✅ Do not allow bypassing the above settings
 
 ## Security
 

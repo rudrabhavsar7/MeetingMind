@@ -1,0 +1,140 @@
+name: MeetingMind CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# --------------------------------------------------------------------------- #
+# Backend CI — Python lint, type-check, and tests
+# --------------------------------------------------------------------------- #
+jobs:
+  backend:
+    name: Backend (Ruff · MyPy · pytest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        run: pipx install poetry
+
+      - name: Cache Poetry virtualenv
+        uses: actions/cache@v4
+        with:
+          path: |
+            apps/backend/.venv
+            ~/.cache/pypoetry
+          key: backend-poetry-${{ runner.os }}-py3.11-${{ hashFiles('apps/backend/poetry.lock') }}
+          restore-keys: |
+            backend-poetry-${{ runner.os }}-py3.11-
+
+      - name: Install dependencies
+        run: |
+          poetry config virtualenvs.in-project true
+          poetry install --no-interaction --no-ansi
+
+      - name: Ruff lint
+        run: poetry run ruff check .
+
+      - name: Ruff format check
+        run: poetry run ruff format --check .
+
+      - name: MyPy type-check
+        run: poetry run mypy app
+
+      - name: Pytest
+        run: poetry run pytest --tb=short -q
+        env:
+          # Prevent tests from requiring a real database or external services
+          DATABASE_URL: "sqlite+aiosqlite://"
+          TESTING: "1"
+
+  # --------------------------------------------------------------------------- #
+  # Frontend CI — ESLint, TypeScript strict check, and production build
+  # --------------------------------------------------------------------------- #
+  frontend:
+    name: Frontend (ESLint · tsc · build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: apps/frontend/node_modules
+          key: frontend-npm-${{ runner.os }}-${{ hashFiles('apps/frontend/package-lock.json') }}
+          restore-keys: |
+            frontend-npm-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: TypeScript type-check
+        run: npm run typecheck
+
+      - name: Production build
+        run: npm run build
+
+  # --------------------------------------------------------------------------- #
+  # Extension CI — ESLint, TypeScript strict check, and Vite build
+  # --------------------------------------------------------------------------- #
+  extension:
+    name: Extension (ESLint · tsc · build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/extension
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: apps/extension/node_modules
+          key: extension-npm-${{ runner.os }}-${{ hashFiles('apps/extension/package-lock.json') }}
+          restore-keys: |
+            extension-npm-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: TypeScript type-check
+        run: npm run typecheck
+
+      - name: Vite build
+        run: npm run build
