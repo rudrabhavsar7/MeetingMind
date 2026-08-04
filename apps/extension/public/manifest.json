@@ -21,7 +21,8 @@
     "activeTab",
     "storage",
     "tabCapture",
-    "scripting"
+    "scripting",
+    "offscreen"
   ],
   "host_permissions": [
     "https://meet.google.com/*",

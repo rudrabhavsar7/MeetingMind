@@ -17,8 +17,11 @@ class Settings(BaseSettings):
     )
     database_url: str = "postgresql+asyncpg://meetingmind:meetingmind@localhost:5432/meetingmind"
     redis_url: str = "redis://localhost:6379/0"
-    storage_endpoint: AnyUrl | None = None
+    storage_endpoint: str | None = None
     storage_bucket: str = "meetingmind"
+    storage_access_key: str | None = None
+    storage_secret_key: SecretStr | None = None
+    storage_region: str = "us-east-1"
     jwt_secret: SecretStr = SecretStr("change-me")
     jwt_algorithm: str = "HS256"
     access_token_minutes: int = 15
