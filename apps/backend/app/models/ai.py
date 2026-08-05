@@ -77,8 +77,17 @@ class AIProcessingRun(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     workspace: Mapped[Workspace] = relationship()
     meeting: Mapped[Meeting] = relationship(back_populates="processing_runs")
+<<<<<<< HEAD
     input_first_segment: Mapped[TranscriptSegment | None] = relationship(foreign_keys=[input_first_segment_id])
     input_last_segment: Mapped[TranscriptSegment | None] = relationship(foreign_keys=[input_last_segment_id])
+=======
+    input_first_segment: Mapped[TranscriptSegment | None] = relationship(
+        foreign_keys=[input_first_segment_id]
+    )
+    input_last_segment: Mapped[TranscriptSegment | None] = relationship(
+        foreign_keys=[input_last_segment_id]
+    )
+>>>>>>> 504309e (fix(ci): ruff format + feat(mm-104): docker compose bundle)
     summary_versions: Mapped[list[SummaryVersion]] = relationship(back_populates="processing_run")
     action_items: Mapped[list[ActionItem]] = relationship(back_populates="processing_run")
     decisions: Mapped[list[Decision]] = relationship(back_populates="processing_run")
@@ -119,7 +128,13 @@ class SummaryVersion(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     edited_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     workspace: Mapped[Workspace] = relationship()
+<<<<<<< HEAD
     meeting: Mapped[Meeting] = relationship(back_populates="summary_versions", foreign_keys=[meeting_id])
+=======
+    meeting: Mapped[Meeting] = relationship(
+        back_populates="summary_versions", foreign_keys=[meeting_id]
+    )
+>>>>>>> 504309e (fix(ci): ruff format + feat(mm-104): docker compose bundle)
     processing_run: Mapped[AIProcessingRun | None] = relationship(back_populates="summary_versions")
     edited_by: Mapped[User | None] = relationship()
     citations: Mapped[list[AIOutputCitation]] = relationship(back_populates="summary_version", cascade="all, delete-orphan")

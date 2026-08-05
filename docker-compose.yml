@@ -1,0 +1,232 @@
+# ===========================================================================
+# MeetingMind — Production Docker Compose
+#
+# Usage:
+#   cp .env.example .env   # then edit with generated secrets
+#   docker compose up -d
+#   docker compose exec api alembic upgrade head   # run migrations
+#
+# See docker-compose.override.yml for development overrides.
+# ===========================================================================
+
+services:
+  # -----------------------------------------------------------------------
+  # Nginx — only public-facing service
+  # -----------------------------------------------------------------------
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "${MEETINGMIND_HTTP_PORT:-80}:80"
+      # Uncomment for production TLS:
+      # - "${MEETINGMIND_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      # Uncomment for production TLS:
+      # - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      api:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/nginx-health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - meetingmind
+
+  # -----------------------------------------------------------------------
+  # Frontend — Next.js web console
+  # -----------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./apps/frontend
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - meetingmind
+
+  # -----------------------------------------------------------------------
+  # API — FastAPI HTTP + WebSocket server
+  # -----------------------------------------------------------------------
+  api:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8000
+      --workers ${MEETINGMIND_API_WORKERS:-2}
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - MEETINGMIND_ENV=${MEETINGMIND_ENV:-production}
+      - MEETINGMIND_DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-meetingmind}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-meetingmind}
+      - MEETINGMIND_REDIS_URL=redis://redis:6379/0
+      - MEETINGMIND_STORAGE_ENDPOINT=http://minio:9000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - meetingmind
+
+  # -----------------------------------------------------------------------
+  # Worker — Celery task consumer
+  # -----------------------------------------------------------------------
+  worker:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    command: >
+      celery -A app.tasks worker
+      --loglevel=info
+      --concurrency=${MEETINGMIND_WORKER_CONCURRENCY:-2}
+      --queues=default,ai,embedding
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - MEETINGMIND_ENV=${MEETINGMIND_ENV:-production}
+      - MEETINGMIND_DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-meetingmind}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-meetingmind}
+      - MEETINGMIND_REDIS_URL=redis://redis:6379/0
+      - MEETINGMIND_STORAGE_ENDPOINT=http://minio:9000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - meetingmind
+
+  # -----------------------------------------------------------------------
+  # PostgreSQL 16 + pgvector
+  # -----------------------------------------------------------------------
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-meetingmind}
+      POSTGRES_USER: ${POSTGRES_USER:-meetingmind}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-meetingmind} -d ${POSTGRES_DB:-meetingmind}"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - meetingmind
+
+  # -----------------------------------------------------------------------
+  # Redis — Celery broker, cache, pub/sub
+  # -----------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - meetingmind
+
+  # -----------------------------------------------------------------------
+  # MinIO — private S3-compatible object storage
+  # -----------------------------------------------------------------------
+  minio:
+    image: minio/minio:RELEASE.2024-12-18T13-15-44Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - meetingmind
+
+  # -----------------------------------------------------------------------
+  # Ollama — local LLM inference
+  # -----------------------------------------------------------------------
+  ollama:
+    image: ollama/ollama:0.5.4
+    volumes:
+      - ollamadata:/root/.ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - meetingmind
+    # GPU support: uncomment the deploy section below
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+# =========================================================================
+# Volumes — persistent data
+# =========================================================================
+volumes:
+  pgdata:
+    driver: local
+  redisdata:
+    driver: local
+  miniodata:
+    driver: local
+  ollamadata:
+    driver: local
+
+# =========================================================================
+# Networks — internal only; Nginx is the sole public gateway
+# =========================================================================
+networks:
+  meetingmind:
+    driver: bridge

@@ -1,0 +1,75 @@
+# ===========================================================================
+# MeetingMind — Development Overrides
+#
+# Automatically applied when running `docker compose up`.
+# Exposes database/Redis/MinIO ports on loopback for local development tools.
+# Mounts source code for hot-reload.
+#
+# NOTE: This file is NOT used in production. Production uses only
+#       docker-compose.yml with `docker compose -f docker-compose.yml up`.
+# ===========================================================================
+
+services:
+  # -----------------------------------------------------------------------
+  # API — hot-reload with mounted source
+  # -----------------------------------------------------------------------
+  api:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+      target: runtime
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+    volumes:
+      - ./apps/backend/app:/app/app:ro
+      - ./apps/backend/migrations:/app/migrations:ro
+    environment:
+      - MEETINGMIND_ENV=development
+      - MEETINGMIND_DEBUG=true
+
+  # -----------------------------------------------------------------------
+  # Worker — hot-reload
+  # -----------------------------------------------------------------------
+  worker:
+    volumes:
+      - ./apps/backend/app:/app/app:ro
+    environment:
+      - MEETINGMIND_ENV=development
+      - MEETINGMIND_DEBUG=true
+
+  # -----------------------------------------------------------------------
+  # PostgreSQL — expose to loopback for local tools (pgAdmin, DBeaver)
+  # -----------------------------------------------------------------------
+  postgres:
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_PASSWORD: meetingmind_dev
+
+  # -----------------------------------------------------------------------
+  # Redis — expose to loopback for redis-cli
+  # -----------------------------------------------------------------------
+  redis:
+    ports:
+      - "127.0.0.1:6379:6379"
+
+  # -----------------------------------------------------------------------
+  # MinIO — expose API + console to loopback
+  # -----------------------------------------------------------------------
+  minio:
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+
+  # -----------------------------------------------------------------------
+  # Ollama — expose to loopback for local model management
+  # -----------------------------------------------------------------------
+  ollama:
+    ports:
+      - "127.0.0.1:11434:11434"

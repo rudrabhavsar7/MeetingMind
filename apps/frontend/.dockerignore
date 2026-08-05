@@ -1,0 +1,9 @@
+node_modules/
+.next/
+dist/
+build/
+.git/
+.env
+.env.*
+!.env.example
+*.md

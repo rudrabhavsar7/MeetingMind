@@ -100,7 +100,13 @@ def _ensure_pgvector() -> None:
         END $$
         """
     )
+<<<<<<< HEAD
     op.execute("SELECT set_config(" "'search_path', current_setting('search_path') || ',extensions', true)")
+=======
+    op.execute(
+        "SELECT set_config('search_path', current_setting('search_path') || ',extensions', true)"
+    )
+>>>>>>> 504309e (fix(ci): ruff format + feat(mm-104): docker compose bundle)
 
 
 def _drop_new_enum_types() -> None:

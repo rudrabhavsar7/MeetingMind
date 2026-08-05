@@ -89,3 +89,23 @@ build-extension: ## Vite extension build
 # ===========================================================================
 .PHONY: ci
 ci: lint typecheck test build ## Run the full CI check suite locally
+
+# ===========================================================================
+# Docker Compose
+# ===========================================================================
+.PHONY: up down logs migrate docker-build
+
+up: ## Start all services (development mode)
+	docker compose up -d
+
+down: ## Stop all services
+	docker compose down
+
+logs: ## Tail service logs
+	docker compose logs -f --tail=100
+
+migrate: ## Run Alembic migrations inside the API container
+	docker compose exec api alembic upgrade head
+
+docker-build: ## Build all Docker images
+	docker compose build

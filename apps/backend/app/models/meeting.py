@@ -186,8 +186,17 @@ class TranscriptSegment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         ),
     )
 
+<<<<<<< HEAD
     workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
     meeting_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("meetings.id", ondelete="CASCADE"), nullable=False)
+=======
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    meeting_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("meetings.id", ondelete="CASCADE"), nullable=False
+    )
+>>>>>>> 504309e (fix(ci): ruff format + feat(mm-104): docker compose bundle)
     client_instance_id: Mapped[uuid.UUID] = mapped_column(Uuid, default=uuid.uuid4, nullable=False)
     speaker_label: Mapped[str] = mapped_column(String(120), nullable=False)
     speaker_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
