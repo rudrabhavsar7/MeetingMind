@@ -62,7 +62,7 @@ class Settings(BaseSettings):
             secret = self.jwt_secret.get_secret_value()
             known_placeholders = {"change-me", "change-me-in-local-env"}
             if len(secret.encode("utf-8")) < 32 or secret in known_placeholders:
-                raise ValueError("MEETINGMIND_JWT_SECRET must contain at least 32 bytes of generated entropy " "in staging and production")
+                raise ValueError("MEETINGMIND_JWT_SECRET must contain at least 32 bytes of generated entropy in staging and production")
 
         if self.password_reset_notifier == "smtp":
             missing = [

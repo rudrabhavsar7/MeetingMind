@@ -100,13 +100,7 @@ def _ensure_pgvector() -> None:
         END $$
         """
     )
-<<<<<<< HEAD
-    op.execute("SELECT set_config(" "'search_path', current_setting('search_path') || ',extensions', true)")
-=======
-    op.execute(
-        "SELECT set_config('search_path', current_setting('search_path') || ',extensions', true)"
-    )
->>>>>>> 504309e (fix(ci): ruff format + feat(mm-104): docker compose bundle)
+    op.execute("SELECT set_config('search_path', current_setting('search_path') || ',extensions', true)")
 
 
 def _drop_new_enum_types() -> None:
@@ -119,17 +113,13 @@ def _replace_v1_enums() -> None:
     op.execute("ALTER TABLE meetings ALTER COLUMN status DROP DEFAULT")
     op.execute("ALTER TABLE meetings ALTER COLUMN source_type DROP DEFAULT")
     op.execute(
-        "CREATE TYPE meeting_status_v2 AS ENUM "
-        "('scheduled', 'recording', 'paused', 'transcribing', 'analyzing', "
-        "'completed', 'failed')"
+        "CREATE TYPE meeting_status_v2 AS ENUM ('scheduled', 'recording', 'paused', 'transcribing', 'analyzing', 'completed', 'failed')"
     )
-    op.execute("ALTER TABLE meetings ALTER COLUMN status TYPE meeting_status_v2 " "USING status::text::meeting_status_v2")
+    op.execute("ALTER TABLE meetings ALTER COLUMN status TYPE meeting_status_v2 USING status::text::meeting_status_v2")
     op.execute("DROP TYPE meeting_status")
     op.execute("ALTER TYPE meeting_status_v2 RENAME TO meeting_status")
-    op.execute("CREATE TYPE meeting_source_type_v2 AS ENUM " "('extension_capture', 'standalone_web_capture', 'recording_import')")
-    op.execute(
-        "ALTER TABLE meetings ALTER COLUMN source_type TYPE meeting_source_type_v2 " "USING source_type::text::meeting_source_type_v2"
-    )
+    op.execute("CREATE TYPE meeting_source_type_v2 AS ENUM ('extension_capture', 'standalone_web_capture', 'recording_import')")
+    op.execute("ALTER TABLE meetings ALTER COLUMN source_type TYPE meeting_source_type_v2 USING source_type::text::meeting_source_type_v2")
     op.execute("DROP TYPE meeting_source_type")
     op.execute("ALTER TYPE meeting_source_type_v2 RENAME TO meeting_source_type")
 
@@ -137,16 +127,12 @@ def _replace_v1_enums() -> None:
 def _restore_legacy_enums() -> None:
     op.execute("ALTER TABLE meetings ALTER COLUMN status DROP DEFAULT")
     op.execute("ALTER TABLE meetings ALTER COLUMN source_type DROP DEFAULT")
-    op.execute("CREATE TYPE meeting_status_v1 AS ENUM " "('scheduled', 'recording', 'transcribing', 'analyzing', 'completed', 'failed')")
-    op.execute("ALTER TABLE meetings ALTER COLUMN status TYPE meeting_status_v1 " "USING status::text::meeting_status_v1")
+    op.execute("CREATE TYPE meeting_status_v1 AS ENUM ('scheduled', 'recording', 'transcribing', 'analyzing', 'completed', 'failed')")
+    op.execute("ALTER TABLE meetings ALTER COLUMN status TYPE meeting_status_v1 USING status::text::meeting_status_v1")
     op.execute("DROP TYPE meeting_status")
     op.execute("ALTER TYPE meeting_status_v1 RENAME TO meeting_status")
-    op.execute(
-        "CREATE TYPE meeting_source_type_v1 AS ENUM " "('extension_capture', 'standalone_web_capture', 'recording_import', 'bot_join')"
-    )
-    op.execute(
-        "ALTER TABLE meetings ALTER COLUMN source_type TYPE meeting_source_type_v1 " "USING source_type::text::meeting_source_type_v1"
-    )
+    op.execute("CREATE TYPE meeting_source_type_v1 AS ENUM ('extension_capture', 'standalone_web_capture', 'recording_import', 'bot_join')")
+    op.execute("ALTER TABLE meetings ALTER COLUMN source_type TYPE meeting_source_type_v1 USING source_type::text::meeting_source_type_v1")
     op.execute("DROP TYPE meeting_source_type")
     op.execute("ALTER TYPE meeting_source_type_v1 RENAME TO meeting_source_type")
 

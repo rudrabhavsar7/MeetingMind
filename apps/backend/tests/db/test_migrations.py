@@ -36,13 +36,7 @@ def test_initial_revision_includes_core_tables() -> None:
 
 
 def test_canonical_model_revision_includes_required_storage() -> None:
-<<<<<<< HEAD
     migration = BACKEND_ROOT / "migrations" / "versions" / "f7f4ecb2373b_align_canonical_data_model.py"
-=======
-    migration = (
-        BACKEND_ROOT / "migrations" / "versions" / "f7f4ecb2373b_align_canonical_data_model.py"
-    )
->>>>>>> 504309e (fix(ci): ruff format + feat(mm-104): docker compose bundle)
     migration_text = migration.read_text(encoding="utf-8")
 
     for table_name in [

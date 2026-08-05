@@ -14,7 +14,7 @@ def test_sensitive_token_filter_redacts_invitation_paths_and_token_queries() -> 
         msg="HTTP Request: %s %s",
         args=(
             "GET",
-            f"http://testserver/api/v1/auth/invitations/{invitation_token}" f"?reset_token={reset_token}",
+            f"http://testserver/api/v1/auth/invitations/{invitation_token}?reset_token={reset_token}",
         ),
         exc_info=None,
     )
