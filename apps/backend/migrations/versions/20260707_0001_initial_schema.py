@@ -73,18 +73,9 @@ def upgrade() -> None:
         """
     )
     op.execute("CREATE TYPE workspace_role AS ENUM ('owner', 'admin', 'member', 'viewer')")
-    op.execute(
-        "CREATE TYPE meeting_status AS ENUM "
-        "('scheduled', 'recording', 'transcribing', 'analyzing', 'completed', 'failed')"
-    )
-    op.execute(
-        "CREATE TYPE meeting_source_type AS ENUM "
-        "('extension_capture', 'standalone_web_capture', 'recording_import', 'bot_join')"
-    )
-    op.execute(
-        "CREATE TYPE meeting_source_app AS ENUM "
-        "('google_meet', 'zoom_web', 'teams_web', 'standalone_web', 'import')"
-    )
+    op.execute("CREATE TYPE meeting_status AS ENUM " "('scheduled', 'recording', 'transcribing', 'analyzing', 'completed', 'failed')")
+    op.execute("CREATE TYPE meeting_source_type AS ENUM " "('extension_capture', 'standalone_web_capture', 'recording_import', 'bot_join')")
+    op.execute("CREATE TYPE meeting_source_app AS ENUM " "('google_meet', 'zoom_web', 'teams_web', 'standalone_web', 'import')")
     op.execute("CREATE TYPE action_item_status AS ENUM ('open', 'completed')")
 
     op.create_table(

@@ -55,10 +55,7 @@ async def verify_connection(database_url: URL) -> None:
         async with engine.connect() as connection:
             await connection.execute(text("select 1"))
     except Exception as exc:
-        raise SystemExit(
-            f"Pooler connection failed ({exc.__class__.__name__}); "
-            "local configuration was unchanged"
-        ) from None
+        raise SystemExit(f"Pooler connection failed ({exc.__class__.__name__}); " "local configuration was unchanged") from None
     finally:
         await engine.dispose()
 

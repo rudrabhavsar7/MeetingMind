@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Callable
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import Depends, HTTPException, Path, status
 from sqlalchemy import select
@@ -26,7 +26,7 @@ def _role_level(role: WorkspaceRole) -> int:
     return mapping[role]
 
 
-def require_workspace_role(required_role: WorkspaceRole) -> Callable:
+def require_workspace_role(required_role: WorkspaceRole) -> Callable[..., Any]:
     async def role_checker(
         workspace_id: Annotated[uuid.UUID, Path(...)],
         user: Annotated[User, Depends(get_current_user)],

@@ -12,9 +12,7 @@ class Settings(BaseSettings):
     debug: bool = False
     api_v1_prefix: str = "/api/v1"
 
-    cors_origins: Annotated[list[str], NoDecode] = Field(
-        default_factory=lambda: ["http://localhost:3000"]
-    )
+    cors_origins: Annotated[list[str], NoDecode] = Field(default_factory=lambda: ["http://localhost:3000"])
     database_url: str = "postgresql+asyncpg://meetingmind:meetingmind@localhost:5432/meetingmind"
     redis_url: str = "redis://localhost:6379/0"
     storage_endpoint: str | None = None
@@ -64,10 +62,7 @@ class Settings(BaseSettings):
             secret = self.jwt_secret.get_secret_value()
             known_placeholders = {"change-me", "change-me-in-local-env"}
             if len(secret.encode("utf-8")) < 32 or secret in known_placeholders:
-                raise ValueError(
-                    "MEETINGMIND_JWT_SECRET must contain at least 32 bytes of generated entropy "
-                    "in staging and production"
-                )
+                raise ValueError("MEETINGMIND_JWT_SECRET must contain at least 32 bytes of generated entropy " "in staging and production")
 
         if self.password_reset_notifier == "smtp":
             missing = [
@@ -81,9 +76,7 @@ class Settings(BaseSettings):
             if missing:
                 raise ValueError("SMTP password-reset delivery requires " + ", ".join(missing))
             if (self.smtp_username is None) != (self.smtp_password is None):
-                raise ValueError(
-                    "MEETINGMIND_SMTP_USERNAME and MEETINGMIND_SMTP_PASSWORD must be set together"
-                )
+                raise ValueError("MEETINGMIND_SMTP_USERNAME and MEETINGMIND_SMTP_PASSWORD must be set together")
         return self
 
 

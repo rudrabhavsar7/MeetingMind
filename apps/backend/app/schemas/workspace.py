@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -16,7 +17,8 @@ class WorkspaceSettingsUpdate(BaseModel):
 class WorkspaceUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     raw_audio_retention_days: int | None = Field(default=None, ge=1)
-    settings: dict | None = None
+    settings: dict[str, Any] | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class WorkspaceDetails(BaseModel):
@@ -24,7 +26,7 @@ class WorkspaceDetails(BaseModel):
     name: str
     slug: str
     role: str
-    settings: dict
+    settings: dict[str, Any]
     raw_audio_retention_days: int | None
     created_at: datetime
 

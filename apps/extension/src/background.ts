@@ -6,20 +6,23 @@ let currentWorkspaceId = ""; // Assume selected from UI
 async function setupOffscreenDocument(path: string) {
   const offscreenUrl = chrome.runtime.getURL(path);
   const existingContexts = await chrome.runtime.getContexts({
-    contextTypes: ['OFFSCREEN_DOCUMENT'],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    contextTypes: ['OFFSCREEN_DOCUMENT' as any],
     documentUrls: [offscreenUrl]
   });
 
-  if (existingContexts.length > 0) return;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if ((existingContexts as any)?.length > 0) return;
 
   await chrome.offscreen.createDocument({
     url: path,
-    reasons: ['USER_MEDIA'],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    reasons: ['USER_MEDIA' as any],
     justification: 'Recording meeting audio for MeetingMind'
   });
 }
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === 'START_CAPTURE') {
     (async () => {
       try {
@@ -78,12 +81,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             url: stream_url,
             id: currentMeetingId
           }
-        }, (res) => {
+        }, () => {
           sendResponse({ status: 'started', meetingId: currentMeetingId });
         });
-      } catch (err: any) {
+      } catch (err) {
         console.error("Capture error:", err);
-        sendResponse({ status: 'error', error: err.message });
+        sendResponse({ status: 'error', error: err instanceof Error ? err.message : String(err) });
       }
     })();
     return true; // async

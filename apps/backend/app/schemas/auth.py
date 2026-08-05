@@ -42,9 +42,7 @@ class RegisterRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_registration_mode(self) -> RegisterRequest:
-        if self.invitation_token is not None and (
-            self.workspace_name is not None or self.workspace_slug is not None
-        ):
+        if self.invitation_token is not None and (self.workspace_name is not None or self.workspace_slug is not None):
             raise ValueError("Workspace fields are not accepted with an invitation token.")
         return self
 

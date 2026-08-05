@@ -8,10 +8,7 @@ from scripts.configure_supabase_session_pooler import build_pooler_url
 
 def test_build_pooler_url_preserves_credentials_and_uses_tenant_username() -> None:
     settings = Settings(
-        database_url=(
-            "postgresql+asyncpg://meetingmind_dev:test-password@"
-            "db.abcdefghijklmnopqrst.supabase.co:5432/postgres?ssl=require"
-        )
+        database_url=("postgresql+asyncpg://meetingmind_dev:test-password@" "db.abcdefghijklmnopqrst.supabase.co:5432/postgres?ssl=require")
     )
 
     pooler_url = build_pooler_url(
@@ -28,10 +25,7 @@ def test_build_pooler_url_preserves_credentials_and_uses_tenant_username() -> No
 
 def test_build_pooler_url_rejects_untrusted_host() -> None:
     settings = Settings(
-        database_url=(
-            "postgresql+asyncpg://meetingmind_dev:test-password@"
-            "db.abcdefghijklmnopqrst.supabase.co:5432/postgres?ssl=require"
-        )
+        database_url=("postgresql+asyncpg://meetingmind_dev:test-password@" "db.abcdefghijklmnopqrst.supabase.co:5432/postgres?ssl=require")
     )
 
     with pytest.raises(SystemExit, match="official Supabase pooler"):

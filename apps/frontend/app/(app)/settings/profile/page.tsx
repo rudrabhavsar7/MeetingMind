@@ -35,7 +35,7 @@ export default function ProfileSettingsPage() {
       setTimeout(() => setProfileSuccess(false), 3000);
     } catch (err: unknown) {
       const msg = typeof err === 'object' && err !== null && 'response' in err
-        ? (err as any).response?.data?.detail || "Failed to update profile."
+        ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail || "Failed to update profile."
         : "Failed to update profile.";
       setProfileError(msg);
     }
@@ -65,7 +65,7 @@ export default function ProfileSettingsPage() {
       setTimeout(() => setPasswordSuccess(false), 3000);
     } catch (err: unknown) {
       const msg = typeof err === 'object' && err !== null && 'response' in err
-        ? (err as any).response?.data?.detail || "Failed to change password."
+        ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail || "Failed to change password."
         : "Failed to change password.";
       setPasswordError(msg);
     }

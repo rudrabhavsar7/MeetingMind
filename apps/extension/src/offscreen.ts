@@ -6,7 +6,7 @@ let workletNode: AudioWorkletNode | null = null;
 let ws: WebSocket | null = null;
 
 let meetingId = "";
-let clientInstanceId = crypto.randomUUID();
+const clientInstanceId = crypto.randomUUID();
 let streamToken = "";
 let streamUrl = "";
 let sequenceNumber = 0;
@@ -21,7 +21,7 @@ let isPaused = false;
 // We need to store the start time of the context to calculate precise offsets
 let captureStartTimeMs = 0;
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.target !== 'offscreen') return false;
 
   if (message.type === 'START_STREAM') {
@@ -47,7 +47,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-async function startCapture(payload: any) {
+async function startCapture(payload: {streamId: string, token: string, url: string, id: string}) {
   const { streamId, token, url, id } = payload;
   streamToken = token;
   streamUrl = url;
@@ -62,6 +62,7 @@ async function startCapture(payload: any) {
         chromeMediaSource: 'tab',
         chromeMediaSourceId: streamId
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any
   });
 

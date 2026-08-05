@@ -75,6 +75,4 @@ async def test_smtp_notifier_sends_reset_link_without_logging_token(
     assert smtp.login_credentials == ("meetingmind", "smtp-test-password")
     assert smtp.message is not None
     assert smtp.message["To"] == "rudra@example.com"
-    assert "https://meetingmind.example/reset-password#token=raw-reset-token" in (
-        smtp.message.get_content()
-    )
+    assert "https://meetingmind.example/reset-password#token=raw-reset-token" in (smtp.message.get_content())

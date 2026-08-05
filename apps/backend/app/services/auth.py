@@ -162,19 +162,11 @@ class AuthRepository(Protocol):
 
 
 def _invitation_is_active(invitation: WorkspaceInvitation, now: datetime) -> bool:
-    return (
-        invitation.accepted_at is None
-        and invitation.revoked_at is None
-        and invitation.expires_at > now
-    )
+    return invitation.accepted_at is None and invitation.revoked_at is None and invitation.expires_at > now
 
 
 def _password_reset_is_active(reset_token: PasswordResetToken, now: datetime) -> bool:
-    return (
-        reset_token.used_at is None
-        and reset_token.revoked_at is None
-        and reset_token.expires_at > now
-    )
+    return reset_token.used_at is None and reset_token.revoked_at is None and reset_token.expires_at > now
 
 
 class SqlAlchemyAuthRepository:
@@ -187,17 +179,13 @@ class SqlAlchemyAuthRepository:
 
     async def get_user_by_email(self, email: str) -> User | None:
         result = await self._session.execute(
-            select(User)
-            .options(selectinload(User.memberships).selectinload(WorkspaceMembership.workspace))
-            .where(User.email == email)
+            select(User).options(selectinload(User.memberships).selectinload(WorkspaceMembership.workspace)).where(User.email == email)
         )
         return result.scalar_one_or_none()
 
     async def get_user_by_id(self, user_id: uuid.UUID) -> User | None:
         result = await self._session.execute(
-            select(User)
-            .options(selectinload(User.memberships).selectinload(WorkspaceMembership.workspace))
-            .where(User.id == user_id)
+            select(User).options(selectinload(User.memberships).selectinload(WorkspaceMembership.workspace)).where(User.id == user_id)
         )
         return result.scalar_one_or_none()
 
@@ -211,9 +199,7 @@ class SqlAlchemyAuthRepository:
         workspace_slug: str,
     ) -> User:
         async with self._session.begin():
-            await self._session.execute(
-                text("SELECT pg_advisory_xact_lock(hashtext('meetingmind_bootstrap'))")
-            )
+            await self._session.execute(text("SELECT pg_advisory_xact_lock(hashtext('meetingmind_bootstrap'))"))
             if await self.has_users():
                 raise BootstrapClosedError("Bootstrap has already completed")
             user = User(email=email, full_name=full_name, password_hash=password_hash)
@@ -265,16 +251,10 @@ class SqlAlchemyAuthRepository:
                 )
                 invitation = result.scalar_one_or_none()
                 now = datetime.now(UTC)
-                if (
-                    invitation is None
-                    or not _invitation_is_active(invitation, now)
-                    or invitation.email != email
-                ):
+                if invitation is None or not _invitation_is_active(invitation, now) or invitation.email != email:
                     raise InvalidInvitationError("Invitation is invalid")
 
-                existing_user = await self._session.scalar(
-                    select(User.id).where(User.email == email).limit(1)
-                )
+                existing_user = await self._session.scalar(select(User.id).where(User.email == email).limit(1))
                 if existing_user is not None:
                     raise DuplicateEmailError("Email is already registered")
 
@@ -309,9 +289,7 @@ class SqlAlchemyAuthRepository:
         return refresh_token
 
     async def get_refresh_token(self, token_hash: str) -> RefreshToken | None:
-        result = await self._session.execute(
-            select(RefreshToken).where(RefreshToken.token_hash == token_hash)
-        )
+        result = await self._session.execute(select(RefreshToken).where(RefreshToken.token_hash == token_hash))
         return result.scalar_one_or_none()
 
     async def rotate_refresh_token(
@@ -323,17 +301,11 @@ class SqlAlchemyAuthRepository:
     ) -> tuple[User, RefreshToken]:
         async with self._session.begin():
             result = await self._session.execute(
-                select(RefreshToken)
-                .where(RefreshToken.token_hash == current_token_hash)
-                .with_for_update()
+                select(RefreshToken).where(RefreshToken.token_hash == current_token_hash).with_for_update()
             )
             current_token = result.scalar_one_or_none()
             now = datetime.now(UTC)
-            if (
-                current_token is None
-                or current_token.revoked_at is not None
-                or current_token.expires_at <= now
-            ):
+            if current_token is None or current_token.revoked_at is not None or current_token.expires_at <= now:
                 raise InvalidRefreshTokenError("Refresh token is invalid")
 
             user_result = await self._session.execute(
@@ -408,17 +380,13 @@ class SqlAlchemyAuthRepository:
     async def reset_password(self, *, token_hash: str, password_hash: str) -> None:
         async with self._session.begin():
             reset_token = await self._session.scalar(
-                select(PasswordResetToken)
-                .where(PasswordResetToken.token_hash == token_hash)
-                .with_for_update()
+                select(PasswordResetToken).where(PasswordResetToken.token_hash == token_hash).with_for_update()
             )
             now = datetime.now(UTC)
             if reset_token is None or not _password_reset_is_active(reset_token, now):
                 raise InvalidPasswordResetTokenError("Password reset token is invalid")
 
-            user = await self._session.scalar(
-                select(User).where(User.id == reset_token.user_id).with_for_update()
-            )
+            user = await self._session.scalar(select(User).where(User.id == reset_token.user_id).with_for_update())
             if user is None or not user.is_active or user.deleted_at is not None:
                 raise InvalidPasswordResetTokenError("Password reset token is invalid")
 
@@ -451,9 +419,7 @@ class SqlAlchemyAuthRepository:
         current_refresh_token_hash: str | None = None,
     ) -> None:
         async with self._session.begin():
-            user = await self._session.scalar(
-                select(User).where(User.id == user_id).with_for_update()
-            )
+            user = await self._session.scalar(select(User).where(User.id == user_id).with_for_update())
             if user is None or not user.is_active or user.deleted_at is not None:
                 raise InvalidCredentialsError("User is invalid")
 
@@ -487,9 +453,7 @@ class AuthService:
         return not await self._repository.has_users()
 
     async def get_invitation(self, invitation_token: str) -> InvitationSummary:
-        invitation = await self._repository.get_invitation_summary(
-            hash_opaque_token(invitation_token)
-        )
+        invitation = await self._repository.get_invitation_summary(hash_opaque_token(invitation_token))
         if invitation is None:
             raise InvalidInvitationError("Invitation is invalid")
         return invitation
@@ -554,9 +518,7 @@ class AuthService:
         if user.password_hash is None or not verify_password(current_password, user.password_hash):
             raise InvalidCredentialsError("Invalid current password")
 
-        current_refresh_token_hash = (
-            hash_refresh_token(current_refresh_token) if current_refresh_token else None
-        )
+        current_refresh_token_hash = hash_refresh_token(current_refresh_token) if current_refresh_token else None
 
         await self._repository.change_password(
             user_id=user.id,
@@ -578,9 +540,7 @@ class AuthService:
 
     async def refresh(self, refresh_token: str) -> AuthSession:
         replacement_token = generate_refresh_token()
-        replacement_expires_at = datetime.now(UTC) + timedelta(
-            days=self._settings.refresh_token_days
-        )
+        replacement_expires_at = datetime.now(UTC) + timedelta(days=self._settings.refresh_token_days)
         user, _ = await self._repository.rotate_refresh_token(
             current_token_hash=hash_refresh_token(refresh_token),
             replacement_token_hash=hash_refresh_token(replacement_token),

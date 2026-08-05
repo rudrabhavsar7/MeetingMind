@@ -95,9 +95,7 @@ async def generate_presigned_url(
     )
 
 
-@router.post(
-    "/import-complete", response_model=ImportCompleteEnvelope, status_code=status.HTTP_202_ACCEPTED
-)
+@router.post("/import-complete", response_model=ImportCompleteEnvelope, status_code=status.HTTP_202_ACCEPTED)
 async def import_complete(
     workspace_id: uuid.UUID,
     payload: ImportCompleteRequest,

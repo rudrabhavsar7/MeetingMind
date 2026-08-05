@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from aiobotocore.session import get_session
+from aiobotocore.session import get_session  # type: ignore
 
 from app.core.config import Settings
 
@@ -20,9 +20,7 @@ class StorageService:
         self.endpoint = settings.storage_endpoint
         self.region = settings.storage_region
         self.access_key = settings.storage_access_key
-        self.secret_key = (
-            settings.storage_secret_key.get_secret_value() if settings.storage_secret_key else None
-        )
+        self.secret_key = settings.storage_secret_key.get_secret_value() if settings.storage_secret_key else None
 
         self._session = get_session()
 
@@ -38,9 +36,7 @@ class StorageService:
             kwargs["aws_secret_access_key"] = self.secret_key
         return kwargs
 
-    async def generate_presigned_put_url(
-        self, object_key: str, mime_type: str, expires_in_seconds: int = 900
-    ) -> str:
+    async def generate_presigned_put_url(self, object_key: str, mime_type: str, expires_in_seconds: int = 900) -> str:
         """
         Generate a short-lived presigned PUT URL for uploading objects directly to S3/MinIO.
         """
@@ -56,7 +52,7 @@ class StorageService:
                     },
                     ExpiresIn=expires_in_seconds,
                 )
-                return url
+                return str(url)
         except Exception as exc:
             logger.error("Failed to generate presigned URL: %s", exc)
             raise StorageError("Could not generate presigned upload URL") from exc

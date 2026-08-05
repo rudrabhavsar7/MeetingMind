@@ -26,12 +26,7 @@ from app.models import (
 from app.services.auth import PasswordResetDispatch
 
 AuthModel = (
-    type[User]
-    | type[Workspace]
-    | type[WorkspaceMembership]
-    | type[WorkspaceInvitation]
-    | type[RefreshToken]
-    | type[PasswordResetToken]
+    type[User] | type[Workspace] | type[WorkspaceMembership] | type[WorkspaceInvitation] | type[RefreshToken] | type[PasswordResetToken]
 )
 
 
@@ -100,9 +95,7 @@ async def main() -> None:
     statuses: dict[str, int | bool] = {}
 
     try:
-        smoke_settings = get_settings().model_copy(
-            update={"jwt_secret": SecretStr(secrets.token_urlsafe(48))}
-        )
+        smoke_settings = get_settings().model_copy(update={"jwt_secret": SecretStr(secrets.token_urlsafe(48))})
         app = create_app(smoke_settings)
         app.dependency_overrides[get_settings] = lambda: smoke_settings
         notifier = RecordingPasswordResetNotifier()
@@ -141,11 +134,7 @@ async def main() -> None:
                     ),
                 )
             assert sorted(response.status_code for response in registration_responses) == [201, 409]
-            winner_index = next(
-                index
-                for index, response in enumerate(registration_responses)
-                if response.status_code == 201
-            )
+            winner_index = next(index for index, response in enumerate(registration_responses) if response.status_code == 201)
             register = registration_responses[winner_index]
             email = owner_emails[winner_index]
             register.raise_for_status()
@@ -225,9 +214,7 @@ async def main() -> None:
                 },
             )
             invited_registration.raise_for_status()
-            assert invited_registration.json()["data"]["user"]["workspaces"][0]["role"] == (
-                "member"
-            )
+            assert invited_registration.json()["data"]["user"]["workspaces"][0]["role"] == ("member")
             statuses["invitation_register"] = invited_registration.status_code
             invitation_reuse = await client.post(
                 "/api/v1/auth/register",

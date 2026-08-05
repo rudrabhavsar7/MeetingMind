@@ -112,9 +112,7 @@ async def get_workspace(
 async def update_workspace(
     workspace_id: uuid.UUID,
     payload: WorkspaceUpdate,
-    membership: Annotated[
-        WorkspaceMembership, Depends(require_workspace_role(WorkspaceRole.ADMIN))
-    ],
+    membership: Annotated[WorkspaceMembership, Depends(require_workspace_role(WorkspaceRole.ADMIN))],
     workspace_service: Annotated[WorkspaceService, Depends(get_workspace_service)],
 ) -> WorkspaceDetailsEnvelope:
     try:
@@ -168,9 +166,7 @@ async def list_members(
 async def create_invitation(
     workspace_id: uuid.UUID,
     payload: InvitationCreateRequest,
-    membership: Annotated[
-        WorkspaceMembership, Depends(require_workspace_role(WorkspaceRole.ADMIN))
-    ],
+    membership: Annotated[WorkspaceMembership, Depends(require_workspace_role(WorkspaceRole.ADMIN))],
     workspace_service: Annotated[WorkspaceService, Depends(get_workspace_service)],
     notifier: Annotated[WorkspaceInvitationNotifier, Depends(get_invitation_notifier)],
     background_tasks: BackgroundTasks,
@@ -213,9 +209,7 @@ async def create_invitation(
 async def revoke_invitation(
     workspace_id: uuid.UUID,
     invitation_id: uuid.UUID,
-    membership: Annotated[
-        WorkspaceMembership, Depends(require_workspace_role(WorkspaceRole.ADMIN))
-    ],
+    membership: Annotated[WorkspaceMembership, Depends(require_workspace_role(WorkspaceRole.ADMIN))],
     workspace_service: Annotated[WorkspaceService, Depends(get_workspace_service)],
 ) -> None:
     await workspace_service.revoke_invitation(workspace_id, invitation_id)
@@ -226,9 +220,7 @@ async def update_member_role(
     workspace_id: uuid.UUID,
     user_id: uuid.UUID,
     payload: WorkspaceMemberUpdate,
-    membership: Annotated[
-        WorkspaceMembership, Depends(require_workspace_role(WorkspaceRole.ADMIN))
-    ],
+    membership: Annotated[WorkspaceMembership, Depends(require_workspace_role(WorkspaceRole.ADMIN))],
     workspace_service: Annotated[WorkspaceService, Depends(get_workspace_service)],
 ) -> WorkspaceMemberUpdateEnvelope:
     try:
@@ -263,9 +255,7 @@ async def update_member_role(
 async def remove_member(
     workspace_id: uuid.UUID,
     user_id: uuid.UUID,
-    membership: Annotated[
-        WorkspaceMembership, Depends(require_workspace_role(WorkspaceRole.ADMIN))
-    ],
+    membership: Annotated[WorkspaceMembership, Depends(require_workspace_role(WorkspaceRole.ADMIN))],
     workspace_service: Annotated[WorkspaceService, Depends(get_workspace_service)],
 ) -> None:
     try:

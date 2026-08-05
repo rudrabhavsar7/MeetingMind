@@ -4,7 +4,7 @@ import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Protocol
+from typing import Any, Protocol
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -50,9 +50,7 @@ class WorkspaceRepository(Protocol):
 
     async def get_members(self, workspace_id: uuid.UUID) -> Sequence[WorkspaceMembership]: ...
 
-    async def get_membership(
-        self, workspace_id: uuid.UUID, user_id: uuid.UUID
-    ) -> WorkspaceMembership | None: ...
+    async def get_membership(self, workspace_id: uuid.UUID, user_id: uuid.UUID) -> WorkspaceMembership | None: ...
 
     async def update_membership(self, membership: WorkspaceMembership) -> WorkspaceMembership: ...
 
@@ -60,15 +58,11 @@ class WorkspaceRepository(Protocol):
 
     async def count_owners(self, workspace_id: uuid.UUID) -> int: ...
 
-    async def get_active_invitation_by_email(
-        self, workspace_id: uuid.UUID, email: str, now: datetime
-    ) -> WorkspaceInvitation | None: ...
+    async def get_active_invitation_by_email(self, workspace_id: uuid.UUID, email: str, now: datetime) -> WorkspaceInvitation | None: ...
 
     async def create_invitation(self, invitation: WorkspaceInvitation) -> WorkspaceInvitation: ...
 
-    async def get_invitation_by_id(
-        self, invitation_id: uuid.UUID
-    ) -> WorkspaceInvitation | None: ...
+    async def get_invitation_by_id(self, invitation_id: uuid.UUID) -> WorkspaceInvitation | None: ...
 
     async def update_invitation(self, invitation: WorkspaceInvitation) -> WorkspaceInvitation: ...
 
@@ -78,9 +72,7 @@ class SqlAlchemyWorkspaceRepository:
         self._session = session
 
     async def get_workspace_by_id(self, workspace_id: uuid.UUID) -> Workspace | None:
-        result = await self._session.execute(
-            select(Workspace).where(Workspace.id == workspace_id, Workspace.deleted_at.is_(None))
-        )
+        result = await self._session.execute(select(Workspace).where(Workspace.id == workspace_id, Workspace.deleted_at.is_(None)))
         return result.scalar_one_or_none()
 
     async def get_workspaces_for_user(self, user_id: uuid.UUID) -> Sequence[Workspace]:
@@ -105,9 +97,7 @@ class SqlAlchemyWorkspaceRepository:
         )
         return result.scalars().all()
 
-    async def get_membership(
-        self, workspace_id: uuid.UUID, user_id: uuid.UUID
-    ) -> WorkspaceMembership | None:
+    async def get_membership(self, workspace_id: uuid.UUID, user_id: uuid.UUID) -> WorkspaceMembership | None:
         result = await self._session.execute(
             select(WorkspaceMembership).where(
                 WorkspaceMembership.workspace_id == workspace_id,
@@ -135,9 +125,7 @@ class SqlAlchemyWorkspaceRepository:
         )
         return len(result.scalars().all())
 
-    async def get_active_invitation_by_email(
-        self, workspace_id: uuid.UUID, email: str, now: datetime
-    ) -> WorkspaceInvitation | None:
+    async def get_active_invitation_by_email(self, workspace_id: uuid.UUID, email: str, now: datetime) -> WorkspaceInvitation | None:
         result = await self._session.execute(
             select(WorkspaceInvitation).where(
                 WorkspaceInvitation.workspace_id == workspace_id,
@@ -160,9 +148,7 @@ class SqlAlchemyWorkspaceRepository:
             raise ConflictError("Invitation could not be created due to a conflict") from exc
 
     async def get_invitation_by_id(self, invitation_id: uuid.UUID) -> WorkspaceInvitation | None:
-        result = await self._session.execute(
-            select(WorkspaceInvitation).where(WorkspaceInvitation.id == invitation_id)
-        )
+        result = await self._session.execute(select(WorkspaceInvitation).where(WorkspaceInvitation.id == invitation_id))
         return result.scalar_one_or_none()
 
     async def update_invitation(self, invitation: WorkspaceInvitation) -> WorkspaceInvitation:
@@ -188,7 +174,7 @@ class WorkspaceService:
     async def update_workspace(
         self,
         workspace_id: uuid.UUID,
-        update_data: dict,
+        update_data: dict[str, Any],
     ) -> Workspace:
         workspace = await self.get_workspace(workspace_id)
         for key, value in update_data.items():
@@ -219,9 +205,7 @@ class WorkspaceService:
 
         now = datetime.now(UTC)
         # Check active invitation
-        active_invitation = await self._repository.get_active_invitation_by_email(
-            workspace_id, email, now
-        )
+        active_invitation = await self._repository.get_active_invitation_by_email(workspace_id, email, now)
         if active_invitation:
             raise ConflictError("An active invitation already exists for this email")
 
@@ -273,9 +257,7 @@ class WorkspaceService:
             return membership
 
         # Only owner can grant or remove owner role
-        if (
-            new_role == WorkspaceRole.OWNER or membership.role == WorkspaceRole.OWNER
-        ) and actor_membership.role != WorkspaceRole.OWNER:
+        if (new_role == WorkspaceRole.OWNER or membership.role == WorkspaceRole.OWNER) and actor_membership.role != WorkspaceRole.OWNER:
             raise ForbiddenError("Only an owner can grant or remove the owner role")
 
         # Cannot downgrade last owner

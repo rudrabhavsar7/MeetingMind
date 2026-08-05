@@ -28,9 +28,7 @@ class SqlAlchemyMeetingRepository:
         return meeting
 
     async def get_meeting_by_id(self, meeting_id: uuid.UUID) -> Meeting | None:
-        result = await self._session.execute(
-            select(Meeting).where(Meeting.id == meeting_id, Meeting.deleted_at.is_(None))
-        )
+        result = await self._session.execute(select(Meeting).where(Meeting.id == meeting_id, Meeting.deleted_at.is_(None)))
         return result.scalar_one_or_none()
 
     async def update_meeting(self, meeting: Meeting) -> Meeting:

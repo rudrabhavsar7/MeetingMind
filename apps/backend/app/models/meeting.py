@@ -58,9 +58,7 @@ class Meeting(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Index("ix_meetings_created_by_user_id", "created_by_user_id"),
     )
 
-    workspace_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
-    )
+    workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
     created_by_user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"),
         nullable=False,
@@ -85,9 +83,7 @@ class Meeting(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         ForeignKey("summary_versions.id", use_alter=True, ondelete="SET NULL"), nullable=True
     )
     duration_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    started_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=utc_now, nullable=False
-    )
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     raw_audio_retained: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     last_error_code: Mapped[str | None] = mapped_column(String(120), nullable=True)
@@ -96,25 +92,15 @@ class Meeting(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     workspace: Mapped[Workspace] = relationship(back_populates="meetings")
     created_by: Mapped[User] = relationship(back_populates="created_meetings")
-    current_summary_version: Mapped[SummaryVersion | None] = relationship(
-        foreign_keys=[current_summary_version_id], post_update=True
-    )
-    participants: Mapped[list[MeetingParticipant]] = relationship(
-        back_populates="meeting", cascade="all, delete-orphan"
-    )
-    media_objects: Mapped[list[MediaObject]] = relationship(
-        back_populates="meeting", cascade="all, delete-orphan"
-    )
+    current_summary_version: Mapped[SummaryVersion | None] = relationship(foreign_keys=[current_summary_version_id], post_update=True)
+    participants: Mapped[list[MeetingParticipant]] = relationship(back_populates="meeting", cascade="all, delete-orphan")
+    media_objects: Mapped[list[MediaObject]] = relationship(back_populates="meeting", cascade="all, delete-orphan")
     transcript_segments: Mapped[list[TranscriptSegment]] = relationship(
         back_populates="meeting",
         cascade="all, delete-orphan",
     )
-    transcript_chunks: Mapped[list[TranscriptChunk]] = relationship(
-        back_populates="meeting", cascade="all, delete-orphan"
-    )
-    processing_runs: Mapped[list[AIProcessingRun]] = relationship(
-        back_populates="meeting", cascade="all, delete-orphan"
-    )
+    transcript_chunks: Mapped[list[TranscriptChunk]] = relationship(back_populates="meeting", cascade="all, delete-orphan")
+    processing_runs: Mapped[list[AIProcessingRun]] = relationship(back_populates="meeting", cascade="all, delete-orphan")
     summary_versions: Mapped[list[SummaryVersion]] = relationship(
         back_populates="meeting",
         cascade="all, delete-orphan",
@@ -144,22 +130,14 @@ class MeetingParticipant(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         ),
     )
 
-    workspace_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
-    )
-    meeting_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("meetings.id", ondelete="CASCADE"), nullable=False
-    )
+    workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    meeting_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("meetings.id", ondelete="CASCADE"), nullable=False)
     source_participant_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     display_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    user_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
-    )
+    user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    participant_metadata: Mapped[dict[str, object]] = mapped_column(
-        "metadata", JSONB, default=dict, nullable=False
-    )
+    participant_metadata: Mapped[dict[str, object]] = mapped_column("metadata", JSONB, default=dict, nullable=False)
 
     workspace: Mapped[Workspace] = relationship()
     meeting: Mapped[Meeting] = relationship(back_populates="participants")
@@ -175,23 +153,15 @@ class MediaObject(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         UniqueConstraint("workspace_id", "object_key", name="uq_media_objects_object_key"),
     )
 
-    workspace_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
-    )
-    meeting_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("meetings.id", ondelete="CASCADE"), nullable=False
-    )
-    kind: Mapped[MediaKind] = mapped_column(
-        SAEnum(MediaKind, name="media_kind", values_callable=enum_values), nullable=False
-    )
+    workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    meeting_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("meetings.id", ondelete="CASCADE"), nullable=False)
+    kind: Mapped[MediaKind] = mapped_column(SAEnum(MediaKind, name="media_kind", values_callable=enum_values), nullable=False)
     object_key: Mapped[str] = mapped_column(String(2048), nullable=False)
     content_type: Mapped[str] = mapped_column(String(255), nullable=False)
     size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
     checksum_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     retention_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    status: Mapped[MediaStatus] = mapped_column(
-        SAEnum(MediaStatus, name="media_status", values_callable=enum_values), nullable=False
-    )
+    status: Mapped[MediaStatus] = mapped_column(SAEnum(MediaStatus, name="media_status", values_callable=enum_values), nullable=False)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     workspace: Mapped[Workspace] = relationship()
@@ -216,12 +186,8 @@ class TranscriptSegment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         ),
     )
 
-    workspace_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
-    )
-    meeting_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("meetings.id", ondelete="CASCADE"), nullable=False
-    )
+    workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    meeting_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("meetings.id", ondelete="CASCADE"), nullable=False)
     client_instance_id: Mapped[uuid.UUID] = mapped_column(Uuid, default=uuid.uuid4, nullable=False)
     speaker_label: Mapped[str] = mapped_column(String(120), nullable=False)
     speaker_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -238,12 +204,8 @@ class TranscriptSegment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     workspace: Mapped[Workspace] = relationship()
     meeting: Mapped[Meeting] = relationship(back_populates="transcript_segments")
-    citations: Mapped[list[AIOutputCitation]] = relationship(
-        back_populates="transcript_segment", cascade="all, delete-orphan"
-    )
-    supersedes: Mapped[TranscriptSegment | None] = relationship(
-        remote_side="TranscriptSegment.id", foreign_keys=[supersedes_segment_id]
-    )
+    citations: Mapped[list[AIOutputCitation]] = relationship(back_populates="transcript_segment", cascade="all, delete-orphan")
+    supersedes: Mapped[TranscriptSegment | None] = relationship(remote_side="TranscriptSegment.id", foreign_keys=[supersedes_segment_id])
 
 
 class TranscriptChunk(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -274,18 +236,10 @@ class TranscriptChunk(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         ),
     )
 
-    workspace_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
-    )
-    meeting_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("meetings.id", ondelete="CASCADE"), nullable=False
-    )
-    first_segment_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("transcript_segments.id", ondelete="RESTRICT"), nullable=False
-    )
-    last_segment_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("transcript_segments.id", ondelete="RESTRICT"), nullable=False
-    )
+    workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    meeting_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("meetings.id", ondelete="CASCADE"), nullable=False)
+    first_segment_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("transcript_segments.id", ondelete="RESTRICT"), nullable=False)
+    last_segment_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("transcript_segments.id", ondelete="RESTRICT"), nullable=False)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     start_time: Mapped[float] = mapped_column(Float, nullable=False)
     end_time: Mapped[float] = mapped_column(Float, nullable=False)
@@ -315,19 +269,11 @@ class ActionItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         ),
     )
 
-    workspace_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
-    )
-    meeting_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("meetings.id", ondelete="CASCADE"), nullable=False
-    )
-    ai_processing_run_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("ai_processing_runs.id", ondelete="SET NULL"), nullable=True
-    )
+    workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    meeting_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("meetings.id", ondelete="CASCADE"), nullable=False)
+    ai_processing_run_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("ai_processing_runs.id", ondelete="SET NULL"), nullable=True)
     text: Mapped[str] = mapped_column(Text, nullable=False)
-    assignee_user_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
-    )
+    assignee_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     assignee_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[ActionItemStatus] = mapped_column(
@@ -342,9 +288,7 @@ class ActionItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     confidence_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    updated_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
-    )
+    updated_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     workspace: Mapped[Workspace] = relationship()
@@ -352,12 +296,8 @@ class ActionItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     processing_run: Mapped[AIProcessingRun | None] = relationship(back_populates="action_items")
     assignee: Mapped[User | None] = relationship(foreign_keys=[assignee_user_id])
     updated_by: Mapped[User | None] = relationship(foreign_keys=[updated_by_user_id])
-    citations: Mapped[list[AIOutputCitation]] = relationship(
-        back_populates="action_item", cascade="all, delete-orphan"
-    )
-    feedback: Mapped[list[AIOutputFeedback]] = relationship(
-        back_populates="action_item", cascade="all, delete-orphan"
-    )
+    citations: Mapped[list[AIOutputCitation]] = relationship(back_populates="action_item", cascade="all, delete-orphan")
+    feedback: Mapped[list[AIOutputFeedback]] = relationship(back_populates="action_item", cascade="all, delete-orphan")
 
 
 class Decision(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -373,15 +313,9 @@ class Decision(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         ),
     )
 
-    workspace_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
-    )
-    meeting_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("meetings.id", ondelete="CASCADE"), nullable=False
-    )
-    ai_processing_run_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("ai_processing_runs.id", ondelete="SET NULL"), nullable=True
-    )
+    workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    meeting_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("meetings.id", ondelete="CASCADE"), nullable=False)
+    ai_processing_run_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("ai_processing_runs.id", ondelete="SET NULL"), nullable=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     rationale: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -391,18 +325,12 @@ class Decision(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=False,
     )
     confidence_score: Mapped[float | None] = mapped_column(Float, nullable=True)
-    updated_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
-    )
+    updated_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     workspace: Mapped[Workspace] = relationship()
     meeting: Mapped[Meeting] = relationship(back_populates="decisions")
     processing_run: Mapped[AIProcessingRun | None] = relationship(back_populates="decisions")
     updated_by: Mapped[User | None] = relationship(foreign_keys=[updated_by_user_id])
-    citations: Mapped[list[AIOutputCitation]] = relationship(
-        back_populates="decision", cascade="all, delete-orphan"
-    )
-    feedback: Mapped[list[AIOutputFeedback]] = relationship(
-        back_populates="decision", cascade="all, delete-orphan"
-    )
+    citations: Mapped[list[AIOutputCitation]] = relationship(back_populates="decision", cascade="all, delete-orphan")
+    feedback: Mapped[list[AIOutputFeedback]] = relationship(back_populates="decision", cascade="all, delete-orphan")

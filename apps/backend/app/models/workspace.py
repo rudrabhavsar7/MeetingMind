@@ -74,12 +74,8 @@ class WorkspaceMembership(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Index("ix_workspace_memberships_user_id", "user_id"),
     )
 
-    workspace_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
-    )
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
-    )
+    workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     role: Mapped[WorkspaceRole] = mapped_column(
         SAEnum(WorkspaceRole, name="workspace_role", values_callable=enum_values),
         nullable=False,
@@ -106,9 +102,7 @@ class WorkspaceInvitation(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         CheckConstraint("role <> 'owner'", name="ck_workspace_invitations_non_owner_role"),
     )
 
-    workspace_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
-    )
+    workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
     email: Mapped[str] = mapped_column(String(320), nullable=False)
     role: Mapped[WorkspaceRole] = mapped_column(
         SAEnum(WorkspaceRole, name="workspace_role", values_callable=enum_values),
@@ -116,9 +110,7 @@ class WorkspaceInvitation(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         default=WorkspaceRole.MEMBER,
     )
     token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
-    invited_by_user_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
-    )
+    invited_by_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

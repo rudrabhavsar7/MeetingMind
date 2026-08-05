@@ -75,8 +75,17 @@ export default function ImportRecordingPage() {
       );
 
       router.push(`/meetings/${meeting_id}`);
-    } catch (err: any) {
-      setError(err?.response?.data?.detail || err.message || "An error occurred during upload.");
+    } catch (error) {
+      const err = error as Error | { response?: { data?: { detail?: string } } };
+      let message = "An error occurred during upload.";
+      if (err && typeof err === 'object') {
+        if ('response' in err && err.response?.data?.detail) {
+          message = err.response.data.detail;
+        } else if (error instanceof Error) {
+          message = error.message;
+        }
+      }
+      setError(message);
       setIsUploading(false);
     }
   };

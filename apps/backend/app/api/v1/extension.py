@@ -34,9 +34,7 @@ async def connect_extension(
     # Verify user is a member of the workspace
     membership = await session.get(WorkspaceMembership, (current_user.id, payload.workspace_id))
     if not membership:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="User is not a member of the workspace"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User is not a member of the workspace")
 
     workspace = await session.get(Workspace, payload.workspace_id)
     if not workspace:
@@ -72,9 +70,7 @@ async def get_capabilities(
     # Verify user is a member of the workspace
     membership = await session.get(WorkspaceMembership, (current_user.id, workspace_id))
     if not membership:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="User is not a member of the workspace"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User is not a member of the workspace")
 
     workspace = await session.get(Workspace, workspace_id)
 
@@ -97,6 +93,4 @@ async def extension_heartbeat(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> ExtensionHeartbeatEnvelope:
     # Requires valid extension token in reality, checking bearer token for now
-    return ExtensionHeartbeatEnvelope(
-        data=ExtensionHeartbeatResponse(status="ok", server_time=datetime.now(UTC))
-    )
+    return ExtensionHeartbeatEnvelope(data=ExtensionHeartbeatResponse(status="ok", server_time=datetime.now(UTC)))

@@ -110,10 +110,7 @@ def test_tenant_scoped_models_include_workspace_foreign_key() -> None:
         workspace_id = Base.metadata.tables[table_name].c.workspace_id
 
         assert workspace_id.foreign_keys
-        assert any(
-            foreign_key.target_fullname == "workspaces.id"
-            for foreign_key in workspace_id.foreign_keys
-        )
+        assert any(foreign_key.target_fullname == "workspaces.id" for foreign_key in workspace_id.foreign_keys)
 
 
 def test_token_models_store_hashes_and_lifecycle_timestamps_only() -> None:
@@ -168,21 +165,11 @@ def test_core_indexes_exist_for_common_queries() -> None:
 
 
 def test_database_constraints_guard_evidence_and_ai_output_shape() -> None:
-    segment_checks = {
-        constraint.name
-        for constraint in _table(TranscriptSegment).constraints
-        if isinstance(constraint, CheckConstraint)
-    }
+    segment_checks = {constraint.name for constraint in _table(TranscriptSegment).constraints if isinstance(constraint, CheckConstraint)}
     chunk_checks = {
-        constraint.name
-        for constraint in Base.metadata.tables["transcript_chunks"].constraints
-        if isinstance(constraint, CheckConstraint)
+        constraint.name for constraint in Base.metadata.tables["transcript_chunks"].constraints if isinstance(constraint, CheckConstraint)
     }
-    citation_checks = {
-        constraint.name
-        for constraint in _table(AIOutputCitation).constraints
-        if isinstance(constraint, CheckConstraint)
-    }
+    citation_checks = {constraint.name for constraint in _table(AIOutputCitation).constraints if isinstance(constraint, CheckConstraint)}
 
     assert "ck_transcript_segments_valid_timing" in segment_checks
     assert "ck_transcript_chunks_embedding_dimensions" in chunk_checks

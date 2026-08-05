@@ -17,9 +17,7 @@ down_revision: str | None = "20260707_0001"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-workspace_role = postgresql.ENUM(
-    "owner", "admin", "member", "viewer", name="workspace_role", create_type=False
-)
+workspace_role = postgresql.ENUM("owner", "admin", "member", "viewer", name="workspace_role", create_type=False)
 media_kind = postgresql.ENUM(
     "import",
     "live_audio",
@@ -64,12 +62,8 @@ processing_status = postgresql.ENUM(
     name="processing_status",
     create_type=False,
 )
-summary_kind = postgresql.ENUM(
-    "rolling", "final", "user_edited", name="summary_kind", create_type=False
-)
-summary_status = postgresql.ENUM(
-    "draft", "current", "superseded", name="summary_status", create_type=False
-)
+summary_kind = postgresql.ENUM("rolling", "final", "user_edited", name="summary_kind", create_type=False)
+summary_status = postgresql.ENUM("draft", "current", "superseded", name="summary_status", create_type=False)
 feedback_rating = postgresql.ENUM("up", "down", name="feedback_rating", create_type=False)
 output_origin = postgresql.ENUM("ai", "user", name="output_origin", create_type=False)
 
@@ -106,9 +100,7 @@ def _ensure_pgvector() -> None:
         END $$
         """
     )
-    op.execute(
-        "SELECT set_config(" "'search_path', current_setting('search_path') || ',extensions', true)"
-    )
+    op.execute("SELECT set_config(" "'search_path', current_setting('search_path') || ',extensions', true)")
 
 
 def _drop_new_enum_types() -> None:
@@ -125,19 +117,12 @@ def _replace_v1_enums() -> None:
         "('scheduled', 'recording', 'paused', 'transcribing', 'analyzing', "
         "'completed', 'failed')"
     )
-    op.execute(
-        "ALTER TABLE meetings ALTER COLUMN status TYPE meeting_status_v2 "
-        "USING status::text::meeting_status_v2"
-    )
+    op.execute("ALTER TABLE meetings ALTER COLUMN status TYPE meeting_status_v2 " "USING status::text::meeting_status_v2")
     op.execute("DROP TYPE meeting_status")
     op.execute("ALTER TYPE meeting_status_v2 RENAME TO meeting_status")
+    op.execute("CREATE TYPE meeting_source_type_v2 AS ENUM " "('extension_capture', 'standalone_web_capture', 'recording_import')")
     op.execute(
-        "CREATE TYPE meeting_source_type_v2 AS ENUM "
-        "('extension_capture', 'standalone_web_capture', 'recording_import')"
-    )
-    op.execute(
-        "ALTER TABLE meetings ALTER COLUMN source_type TYPE meeting_source_type_v2 "
-        "USING source_type::text::meeting_source_type_v2"
+        "ALTER TABLE meetings ALTER COLUMN source_type TYPE meeting_source_type_v2 " "USING source_type::text::meeting_source_type_v2"
     )
     op.execute("DROP TYPE meeting_source_type")
     op.execute("ALTER TYPE meeting_source_type_v2 RENAME TO meeting_source_type")
@@ -146,23 +131,15 @@ def _replace_v1_enums() -> None:
 def _restore_legacy_enums() -> None:
     op.execute("ALTER TABLE meetings ALTER COLUMN status DROP DEFAULT")
     op.execute("ALTER TABLE meetings ALTER COLUMN source_type DROP DEFAULT")
-    op.execute(
-        "CREATE TYPE meeting_status_v1 AS ENUM "
-        "('scheduled', 'recording', 'transcribing', 'analyzing', 'completed', 'failed')"
-    )
-    op.execute(
-        "ALTER TABLE meetings ALTER COLUMN status TYPE meeting_status_v1 "
-        "USING status::text::meeting_status_v1"
-    )
+    op.execute("CREATE TYPE meeting_status_v1 AS ENUM " "('scheduled', 'recording', 'transcribing', 'analyzing', 'completed', 'failed')")
+    op.execute("ALTER TABLE meetings ALTER COLUMN status TYPE meeting_status_v1 " "USING status::text::meeting_status_v1")
     op.execute("DROP TYPE meeting_status")
     op.execute("ALTER TYPE meeting_status_v1 RENAME TO meeting_status")
     op.execute(
-        "CREATE TYPE meeting_source_type_v1 AS ENUM "
-        "('extension_capture', 'standalone_web_capture', 'recording_import', 'bot_join')"
+        "CREATE TYPE meeting_source_type_v1 AS ENUM " "('extension_capture', 'standalone_web_capture', 'recording_import', 'bot_join')"
     )
     op.execute(
-        "ALTER TABLE meetings ALTER COLUMN source_type TYPE meeting_source_type_v1 "
-        "USING source_type::text::meeting_source_type_v1"
+        "ALTER TABLE meetings ALTER COLUMN source_type TYPE meeting_source_type_v1 " "USING source_type::text::meeting_source_type_v1"
     )
     op.execute("DROP TYPE meeting_source_type")
     op.execute("ALTER TYPE meeting_source_type_v1 RENAME TO meeting_source_type")
@@ -211,18 +188,10 @@ def upgrade() -> None:
         sa.UniqueConstraint("token_hash"),
         sa.UniqueConstraint("user_id", "device_id", name="uq_extension_sessions_user_device"),
     )
-    op.create_index(
-        "ix_extension_sessions_expires_at", "extension_sessions", ["expires_at"], unique=False
-    )
-    op.create_index(
-        "ix_extension_sessions_token_hash", "extension_sessions", ["token_hash"], unique=True
-    )
-    op.create_index(
-        "ix_extension_sessions_user_id", "extension_sessions", ["user_id"], unique=False
-    )
-    op.create_index(
-        "ix_extension_sessions_workspace_id", "extension_sessions", ["workspace_id"], unique=False
-    )
+    op.create_index("ix_extension_sessions_expires_at", "extension_sessions", ["expires_at"], unique=False)
+    op.create_index("ix_extension_sessions_token_hash", "extension_sessions", ["token_hash"], unique=True)
+    op.create_index("ix_extension_sessions_user_id", "extension_sessions", ["user_id"], unique=False)
+    op.create_index("ix_extension_sessions_workspace_id", "extension_sessions", ["workspace_id"], unique=False)
     op.create_table(
         "password_reset_tokens",
         sa.Column("user_id", sa.Uuid(), nullable=False),
@@ -237,15 +206,9 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("token_hash"),
     )
-    op.create_index(
-        "ix_password_reset_tokens_expires_at", "password_reset_tokens", ["expires_at"], unique=False
-    )
-    op.create_index(
-        "ix_password_reset_tokens_token_hash", "password_reset_tokens", ["token_hash"], unique=True
-    )
-    op.create_index(
-        "ix_password_reset_tokens_user_id", "password_reset_tokens", ["user_id"], unique=False
-    )
+    op.create_index("ix_password_reset_tokens_expires_at", "password_reset_tokens", ["expires_at"], unique=False)
+    op.create_index("ix_password_reset_tokens_token_hash", "password_reset_tokens", ["token_hash"], unique=True)
+    op.create_index("ix_password_reset_tokens_user_id", "password_reset_tokens", ["user_id"], unique=False)
     op.create_table(
         "workspace_invitations",
         sa.Column("workspace_id", sa.Uuid(), nullable=False),
@@ -265,12 +228,8 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("token_hash"),
     )
-    op.create_index(
-        "ix_workspace_invitations_expires_at", "workspace_invitations", ["expires_at"], unique=False
-    )
-    op.create_index(
-        "ix_workspace_invitations_token_hash", "workspace_invitations", ["token_hash"], unique=True
-    )
+    op.create_index("ix_workspace_invitations_expires_at", "workspace_invitations", ["expires_at"], unique=False)
+    op.create_index("ix_workspace_invitations_token_hash", "workspace_invitations", ["token_hash"], unique=True)
     op.create_index(
         "ix_workspace_invitations_workspace_id",
         "workspace_invitations",
@@ -305,12 +264,8 @@ def upgrade() -> None:
         sa.UniqueConstraint("workspace_id", "object_key", name="uq_media_objects_object_key"),
     )
     op.create_index("ix_media_objects_meeting_id", "media_objects", ["meeting_id"], unique=False)
-    op.create_index(
-        "ix_media_objects_retention_until", "media_objects", ["retention_until"], unique=False
-    )
-    op.create_index(
-        "ix_media_objects_workspace_id", "media_objects", ["workspace_id"], unique=False
-    )
+    op.create_index("ix_media_objects_retention_until", "media_objects", ["retention_until"], unique=False)
+    op.create_index("ix_media_objects_workspace_id", "media_objects", ["workspace_id"], unique=False)
     op.create_table(
         "meeting_participants",
         sa.Column("workspace_id", sa.Uuid(), nullable=False),
@@ -329,9 +284,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["workspace_id"], ["workspaces.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        "ix_meeting_participants_meeting_id", "meeting_participants", ["meeting_id"], unique=False
-    )
+    op.create_index("ix_meeting_participants_meeting_id", "meeting_participants", ["meeting_id"], unique=False)
     op.create_index(
         "ix_meeting_participants_workspace_id",
         "meeting_participants",
@@ -364,22 +317,14 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["input_first_segment_id"], ["transcript_segments.id"], ondelete="RESTRICT"
-        ),
-        sa.ForeignKeyConstraint(
-            ["input_last_segment_id"], ["transcript_segments.id"], ondelete="RESTRICT"
-        ),
+        sa.ForeignKeyConstraint(["input_first_segment_id"], ["transcript_segments.id"], ondelete="RESTRICT"),
+        sa.ForeignKeyConstraint(["input_last_segment_id"], ["transcript_segments.id"], ondelete="RESTRICT"),
         sa.ForeignKeyConstraint(["meeting_id"], ["meetings.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["workspace_id"], ["workspaces.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        "ix_ai_processing_runs_meeting_id", "ai_processing_runs", ["meeting_id"], unique=False
-    )
-    op.create_index(
-        "ix_ai_processing_runs_workspace_id", "ai_processing_runs", ["workspace_id"], unique=False
-    )
+    op.create_index("ix_ai_processing_runs_meeting_id", "ai_processing_runs", ["meeting_id"], unique=False)
+    op.create_index("ix_ai_processing_runs_workspace_id", "ai_processing_runs", ["workspace_id"], unique=False)
     op.create_index(
         "ix_ai_processing_runs_workspace_meeting",
         "ai_processing_runs",
@@ -403,18 +348,10 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.CheckConstraint(
-            "embedding_dimensions = 768", name="ck_transcript_chunks_embedding_dimensions"
-        ),
-        sa.CheckConstraint(
-            "start_time >= 0 AND end_time > start_time", name="ck_transcript_chunks_valid_timing"
-        ),
-        sa.ForeignKeyConstraint(
-            ["first_segment_id"], ["transcript_segments.id"], ondelete="RESTRICT"
-        ),
-        sa.ForeignKeyConstraint(
-            ["last_segment_id"], ["transcript_segments.id"], ondelete="RESTRICT"
-        ),
+        sa.CheckConstraint("embedding_dimensions = 768", name="ck_transcript_chunks_embedding_dimensions"),
+        sa.CheckConstraint("start_time >= 0 AND end_time > start_time", name="ck_transcript_chunks_valid_timing"),
+        sa.ForeignKeyConstraint(["first_segment_id"], ["transcript_segments.id"], ondelete="RESTRICT"),
+        sa.ForeignKeyConstraint(["last_segment_id"], ["transcript_segments.id"], ondelete="RESTRICT"),
         sa.ForeignKeyConstraint(["meeting_id"], ["meetings.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["workspace_id"], ["workspaces.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
@@ -460,21 +397,15 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["ai_processing_run_id"], ["ai_processing_runs.id"], ondelete="SET NULL"
-        ),
+        sa.ForeignKeyConstraint(["ai_processing_run_id"], ["ai_processing_runs.id"], ondelete="SET NULL"),
         sa.ForeignKeyConstraint(["edited_by_user_id"], ["users.id"], ondelete="SET NULL"),
         sa.ForeignKeyConstraint(["meeting_id"], ["meetings.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["workspace_id"], ["workspaces.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("meeting_id", "version", name="uq_summary_versions_meeting_version"),
     )
-    op.create_index(
-        "ix_summary_versions_meeting_id", "summary_versions", ["meeting_id"], unique=False
-    )
-    op.create_index(
-        "ix_summary_versions_workspace_id", "summary_versions", ["workspace_id"], unique=False
-    )
+    op.create_index("ix_summary_versions_meeting_id", "summary_versions", ["meeting_id"], unique=False)
+    op.create_index("ix_summary_versions_workspace_id", "summary_versions", ["workspace_id"], unique=False)
     op.create_index(
         "ix_summary_versions_workspace_meeting_created",
         "summary_versions",
@@ -509,24 +440,14 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["action_item_id"], ["action_items.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["decision_id"], ["decisions.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["meeting_id"], ["meetings.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(
-            ["summary_version_id"], ["summary_versions.id"], ondelete="CASCADE"
-        ),
-        sa.ForeignKeyConstraint(
-            ["transcript_segment_id"], ["transcript_segments.id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["summary_version_id"], ["summary_versions.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["transcript_segment_id"], ["transcript_segments.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["workspace_id"], ["workspaces.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        "ix_ai_output_citations_action_id", "ai_output_citations", ["action_item_id"], unique=False
-    )
-    op.create_index(
-        "ix_ai_output_citations_decision_id", "ai_output_citations", ["decision_id"], unique=False
-    )
-    op.create_index(
-        "ix_ai_output_citations_meeting_id", "ai_output_citations", ["meeting_id"], unique=False
-    )
+    op.create_index("ix_ai_output_citations_action_id", "ai_output_citations", ["action_item_id"], unique=False)
+    op.create_index("ix_ai_output_citations_decision_id", "ai_output_citations", ["decision_id"], unique=False)
+    op.create_index("ix_ai_output_citations_meeting_id", "ai_output_citations", ["meeting_id"], unique=False)
     op.create_index(
         "ix_ai_output_citations_segment_id",
         "ai_output_citations",
@@ -539,9 +460,7 @@ def upgrade() -> None:
         ["summary_version_id"],
         unique=False,
     )
-    op.create_index(
-        "ix_ai_output_citations_workspace_id", "ai_output_citations", ["workspace_id"], unique=False
-    )
+    op.create_index("ix_ai_output_citations_workspace_id", "ai_output_citations", ["workspace_id"], unique=False)
     op.create_table(
         "ai_output_feedback",
         sa.Column("workspace_id", sa.Uuid(), nullable=False),
@@ -561,19 +480,13 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["action_item_id"], ["action_items.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["decision_id"], ["decisions.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["meeting_id"], ["meetings.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(
-            ["summary_version_id"], ["summary_versions.id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["summary_version_id"], ["summary_versions.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["workspace_id"], ["workspaces.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        "ix_ai_output_feedback_meeting_id", "ai_output_feedback", ["meeting_id"], unique=False
-    )
-    op.create_index(
-        "ix_ai_output_feedback_workspace_id", "ai_output_feedback", ["workspace_id"], unique=False
-    )
+    op.create_index("ix_ai_output_feedback_meeting_id", "ai_output_feedback", ["meeting_id"], unique=False)
+    op.create_index("ix_ai_output_feedback_workspace_id", "ai_output_feedback", ["workspace_id"], unique=False)
     op.create_index(
         "uq_ai_output_feedback_action_user",
         "ai_output_feedback",
@@ -602,13 +515,9 @@ def upgrade() -> None:
         sa.Column("origin", output_origin, server_default="ai", nullable=False),
     )
     op.add_column("action_items", sa.Column("confidence_score", sa.Float(), nullable=True))
-    op.add_column(
-        "action_items", sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True)
-    )
+    op.add_column("action_items", sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True))
     op.add_column("action_items", sa.Column("updated_by_user_id", sa.Uuid(), nullable=True))
-    op.add_column(
-        "action_items", sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True)
-    )
+    op.add_column("action_items", sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True))
     op.create_index(
         "ix_action_items_workspace_meeting_created",
         "action_items",
@@ -630,9 +539,7 @@ def upgrade() -> None:
     )
     op.drop_constraint(op.f("action_items_workspace_id_fkey"), "action_items", type_="foreignkey")
     op.drop_constraint(op.f("action_items_meeting_id_fkey"), "action_items", type_="foreignkey")
-    op.drop_constraint(
-        op.f("action_items_source_segment_id_fkey"), "action_items", type_="foreignkey"
-    )
+    op.drop_constraint(op.f("action_items_source_segment_id_fkey"), "action_items", type_="foreignkey")
     op.create_foreign_key(
         "fk_action_items_updated_by_user_id_users",
         "action_items",
@@ -743,9 +650,7 @@ def upgrade() -> None:
         sa.Column("raw_audio_retained", sa.Boolean(), server_default=sa.false(), nullable=False),
     )
     op.add_column("meetings", sa.Column("last_error_code", sa.String(length=120), nullable=True))
-    op.add_column(
-        "meetings", sa.Column("last_error_message", sa.String(length=1000), nullable=True)
-    )
+    op.add_column("meetings", sa.Column("last_error_message", sa.String(length=1000), nullable=True))
     op.execute(
         """
         UPDATE meetings AS m
@@ -772,9 +677,7 @@ def upgrade() -> None:
     )
     op.execute("UPDATE meetings SET started_at = created_at WHERE started_at IS NULL")
     op.alter_column("meetings", "created_by_user_id", existing_type=sa.UUID(), nullable=False)
-    op.alter_column(
-        "meetings", "started_at", existing_type=postgresql.TIMESTAMP(timezone=True), nullable=False
-    )
+    op.alter_column("meetings", "started_at", existing_type=postgresql.TIMESTAMP(timezone=True), nullable=False)
     op.drop_constraint(op.f("meetings_workspace_id_fkey"), "meetings", type_="foreignkey")
     op.drop_constraint(op.f("meetings_created_by_user_id_fkey"), "meetings", type_="foreignkey")
     op.create_foreign_key(
@@ -869,9 +772,7 @@ def upgrade() -> None:
     op.drop_column("meetings", "summary")
     op.drop_column("meetings", "visible_participants")
     op.drop_constraint(op.f("refresh_tokens_user_id_fkey"), "refresh_tokens", type_="foreignkey")
-    op.drop_constraint(
-        op.f("refresh_tokens_replaced_by_token_id_fkey"), "refresh_tokens", type_="foreignkey"
-    )
+    op.drop_constraint(op.f("refresh_tokens_replaced_by_token_id_fkey"), "refresh_tokens", type_="foreignkey")
     op.create_foreign_key(
         "fk_refresh_tokens_user_id_users",
         "refresh_tokens",
@@ -899,9 +800,7 @@ def upgrade() -> None:
     )
     op.add_column("transcript_segments", sa.Column("stt_confidence", sa.Float(), nullable=True))
     op.add_column("transcript_segments", sa.Column("language", sa.String(length=32), nullable=True))
-    op.add_column(
-        "transcript_segments", sa.Column("supersedes_segment_id", sa.Uuid(), nullable=True)
-    )
+    op.add_column("transcript_segments", sa.Column("supersedes_segment_id", sa.Uuid(), nullable=True))
     op.add_column(
         "transcript_segments",
         sa.Column(
@@ -930,12 +829,8 @@ def upgrade() -> None:
         "transcript_segments",
         ["meeting_id", "client_instance_id", "sequence_number"],
     )
-    op.drop_constraint(
-        op.f("transcript_segments_workspace_id_fkey"), "transcript_segments", type_="foreignkey"
-    )
-    op.drop_constraint(
-        op.f("transcript_segments_meeting_id_fkey"), "transcript_segments", type_="foreignkey"
-    )
+    op.drop_constraint(op.f("transcript_segments_workspace_id_fkey"), "transcript_segments", type_="foreignkey")
+    op.drop_constraint(op.f("transcript_segments_meeting_id_fkey"), "transcript_segments", type_="foreignkey")
     op.create_foreign_key(
         "fk_transcript_segments_supersedes_segment_id",
         "transcript_segments",
@@ -961,9 +856,7 @@ def upgrade() -> None:
         ondelete="CASCADE",
     )
     op.add_column("users", sa.Column("avatar_object_key", sa.String(length=2048), nullable=True))
-    op.add_column(
-        "users", sa.Column("is_active", sa.Boolean(), server_default=sa.true(), nullable=False)
-    )
+    op.add_column("users", sa.Column("is_active", sa.Boolean(), server_default=sa.true(), nullable=False))
     op.add_column("users", sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True))
     op.execute(
         """
@@ -977,12 +870,8 @@ def upgrade() -> None:
         """
     )
     op.drop_column("users", "avatar_url")
-    op.drop_constraint(
-        op.f("workspace_memberships_workspace_id_fkey"), "workspace_memberships", type_="foreignkey"
-    )
-    op.drop_constraint(
-        op.f("workspace_memberships_user_id_fkey"), "workspace_memberships", type_="foreignkey"
-    )
+    op.drop_constraint(op.f("workspace_memberships_workspace_id_fkey"), "workspace_memberships", type_="foreignkey")
+    op.drop_constraint(op.f("workspace_memberships_user_id_fkey"), "workspace_memberships", type_="foreignkey")
     op.create_foreign_key(
         "fk_workspace_memberships_workspace_id",
         "workspace_memberships",
@@ -1048,12 +937,8 @@ def downgrade() -> None:
         type_=postgresql.JSON(),
         postgresql_using="settings::json",
     )
-    op.drop_constraint(
-        "fk_workspace_memberships_user_id", "workspace_memberships", type_="foreignkey"
-    )
-    op.drop_constraint(
-        "fk_workspace_memberships_workspace_id", "workspace_memberships", type_="foreignkey"
-    )
+    op.drop_constraint("fk_workspace_memberships_user_id", "workspace_memberships", type_="foreignkey")
+    op.drop_constraint("fk_workspace_memberships_workspace_id", "workspace_memberships", type_="foreignkey")
     op.create_foreign_key(
         op.f("workspace_memberships_user_id_fkey"),
         "workspace_memberships",
@@ -1076,15 +961,9 @@ def downgrade() -> None:
     op.drop_column("users", "is_active")
     op.drop_column("users", "avatar_object_key")
     op.drop_constraint("ck_transcript_segments_valid_timing", "transcript_segments", type_="check")
-    op.drop_constraint(
-        "fk_transcript_segments_supersedes_segment_id", "transcript_segments", type_="foreignkey"
-    )
-    op.drop_constraint(
-        "fk_transcript_segments_meeting_id_meetings", "transcript_segments", type_="foreignkey"
-    )
-    op.drop_constraint(
-        "fk_transcript_segments_workspace_id_workspaces", "transcript_segments", type_="foreignkey"
-    )
+    op.drop_constraint("fk_transcript_segments_supersedes_segment_id", "transcript_segments", type_="foreignkey")
+    op.drop_constraint("fk_transcript_segments_meeting_id_meetings", "transcript_segments", type_="foreignkey")
+    op.drop_constraint("fk_transcript_segments_workspace_id_workspaces", "transcript_segments", type_="foreignkey")
     op.create_foreign_key(
         op.f("transcript_segments_meeting_id_fkey"),
         "transcript_segments",
@@ -1099,18 +978,14 @@ def downgrade() -> None:
         ["workspace_id"],
         ["id"],
     )
-    op.drop_constraint(
-        "uq_transcript_segments_stream_sequence", "transcript_segments", type_="unique"
-    )
+    op.drop_constraint("uq_transcript_segments_stream_sequence", "transcript_segments", type_="unique")
     op.drop_column("transcript_segments", "updated_at")
     op.drop_column("transcript_segments", "created_at")
     op.drop_column("transcript_segments", "supersedes_segment_id")
     op.drop_column("transcript_segments", "language")
     op.drop_column("transcript_segments", "stt_confidence")
     op.drop_column("transcript_segments", "client_instance_id")
-    op.drop_constraint(
-        "fk_refresh_tokens_replaced_by_token_id", "refresh_tokens", type_="foreignkey"
-    )
+    op.drop_constraint("fk_refresh_tokens_replaced_by_token_id", "refresh_tokens", type_="foreignkey")
     op.drop_constraint("fk_refresh_tokens_user_id_users", "refresh_tokens", type_="foreignkey")
     op.create_foreign_key(
         op.f("refresh_tokens_replaced_by_token_id_fkey"),
@@ -1119,9 +994,7 @@ def downgrade() -> None:
         ["replaced_by_token_id"],
         ["id"],
     )
-    op.create_foreign_key(
-        op.f("refresh_tokens_user_id_fkey"), "refresh_tokens", "users", ["user_id"], ["id"]
-    )
+    op.create_foreign_key(op.f("refresh_tokens_user_id_fkey"), "refresh_tokens", "users", ["user_id"], ["id"])
     op.add_column(
         "meetings",
         sa.Column(
@@ -1187,20 +1060,14 @@ def downgrade() -> None:
         ["created_by_user_id"],
         ["id"],
     )
-    op.create_foreign_key(
-        op.f("meetings_workspace_id_fkey"), "meetings", "workspaces", ["workspace_id"], ["id"]
-    )
-    op.alter_column(
-        "meetings", "started_at", existing_type=postgresql.TIMESTAMP(timezone=True), nullable=True
-    )
+    op.create_foreign_key(op.f("meetings_workspace_id_fkey"), "meetings", "workspaces", ["workspace_id"], ["id"])
+    op.alter_column("meetings", "started_at", existing_type=postgresql.TIMESTAMP(timezone=True), nullable=True)
     op.alter_column("meetings", "created_by_user_id", existing_type=sa.UUID(), nullable=True)
     op.drop_column("meetings", "last_error_message")
     op.drop_column("meetings", "last_error_code")
     op.drop_column("meetings", "raw_audio_retained")
     op.drop_column("meetings", "current_summary_version_id")
-    op.add_column(
-        "decisions", sa.Column("source_segment_id", sa.UUID(), autoincrement=False, nullable=True)
-    )
+    op.add_column("decisions", sa.Column("source_segment_id", sa.UUID(), autoincrement=False, nullable=True))
     op.execute(
         """
         UPDATE decisions AS decision
@@ -1217,12 +1084,8 @@ def downgrade() -> None:
     op.drop_constraint("fk_decisions_updated_by_user_id_users", "decisions", type_="foreignkey")
     op.drop_constraint("fk_decisions_workspace_id_workspaces", "decisions", type_="foreignkey")
     op.drop_constraint("fk_decisions_meeting_id_meetings", "decisions", type_="foreignkey")
-    op.create_foreign_key(
-        op.f("decisions_workspace_id_fkey"), "decisions", "workspaces", ["workspace_id"], ["id"]
-    )
-    op.create_foreign_key(
-        op.f("decisions_meeting_id_fkey"), "decisions", "meetings", ["meeting_id"], ["id"]
-    )
+    op.create_foreign_key(op.f("decisions_workspace_id_fkey"), "decisions", "workspaces", ["workspace_id"], ["id"])
+    op.create_foreign_key(op.f("decisions_meeting_id_fkey"), "decisions", "meetings", ["meeting_id"], ["id"])
     op.create_foreign_key(
         op.f("decisions_source_segment_id_fkey"),
         "decisions",
@@ -1252,16 +1115,10 @@ def downgrade() -> None:
         )
         """
     )
-    op.drop_constraint(
-        "fk_action_items_ai_processing_run_id_runs", "action_items", type_="foreignkey"
-    )
+    op.drop_constraint("fk_action_items_ai_processing_run_id_runs", "action_items", type_="foreignkey")
     op.drop_constraint("fk_action_items_assignee_user_id_users", "action_items", type_="foreignkey")
-    op.drop_constraint(
-        "fk_action_items_updated_by_user_id_users", "action_items", type_="foreignkey"
-    )
-    op.drop_constraint(
-        "fk_action_items_workspace_id_workspaces", "action_items", type_="foreignkey"
-    )
+    op.drop_constraint("fk_action_items_updated_by_user_id_users", "action_items", type_="foreignkey")
+    op.drop_constraint("fk_action_items_workspace_id_workspaces", "action_items", type_="foreignkey")
     op.drop_constraint("fk_action_items_meeting_id_meetings", "action_items", type_="foreignkey")
     op.create_foreign_key(
         op.f("action_items_source_segment_id_fkey"),
@@ -1270,9 +1127,7 @@ def downgrade() -> None:
         ["source_segment_id"],
         ["id"],
     )
-    op.create_foreign_key(
-        op.f("action_items_meeting_id_fkey"), "action_items", "meetings", ["meeting_id"], ["id"]
-    )
+    op.create_foreign_key(op.f("action_items_meeting_id_fkey"), "action_items", "meetings", ["meeting_id"], ["id"])
     op.create_foreign_key(
         op.f("action_items_workspace_id_fkey"),
         "action_items",

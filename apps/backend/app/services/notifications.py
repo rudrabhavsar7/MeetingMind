@@ -44,10 +44,7 @@ class SMTPPasswordResetNotifier:
         await asyncio.to_thread(self._send_sync, dispatch)
 
     def _send_sync(self, dispatch: PasswordResetDispatch) -> None:
-        reset_url = (
-            f"{self._settings.frontend_url.rstrip('/')}/reset-password#"
-            f"{urlencode({'token': dispatch.token})}"
-        )
+        reset_url = f"{self._settings.frontend_url.rstrip('/')}/reset-password#" f"{urlencode({'token': dispatch.token})}"
         message = EmailMessage()
         message["Subject"] = "Reset your MeetingMind password"
         message["From"] = self._smtp_from_email
@@ -88,10 +85,7 @@ class SMTPWorkspaceInvitationNotifier:
         await asyncio.to_thread(self._send_sync, dispatch)
 
     def _send_sync(self, dispatch: WorkspaceInvitationDispatch) -> None:
-        register_url = (
-            f"{self._settings.frontend_url.rstrip('/')}/register#"
-            f"{urlencode({'token': dispatch.token})}"
-        )
+        register_url = f"{self._settings.frontend_url.rstrip('/')}/register#" f"{urlencode({'token': dispatch.token})}"
         message = EmailMessage()
         message["Subject"] = f"You've been invited to join {dispatch.workspace_name} on MeetingMind"
         message["From"] = self._smtp_from_email

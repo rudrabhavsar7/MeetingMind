@@ -81,9 +81,7 @@ class InMemoryAuthRepository:
             password_hash=password_hash,
             is_active=True,
         )
-        workspace = Workspace(
-            id=uuid.uuid4(), name=workspace_name, slug=workspace_slug, is_default=True
-        )
+        workspace = Workspace(id=uuid.uuid4(), name=workspace_name, slug=workspace_slug, is_default=True)
         WorkspaceMembership(user=user, workspace=workspace, role=WorkspaceRole.OWNER)
         self.users_by_email[email] = user
         self.users_by_id[user.id] = user
@@ -92,12 +90,7 @@ class InMemoryAuthRepository:
     async def get_invitation_summary(self, token_hash: str) -> InvitationSummary | None:
         invitation = self.invitations_by_hash.get(token_hash)
         now = datetime.now(UTC)
-        if (
-            invitation is None
-            or invitation.accepted_at is not None
-            or invitation.revoked_at is not None
-            or invitation.expires_at <= now
-        ):
+        if invitation is None or invitation.accepted_at is not None or invitation.revoked_at is not None or invitation.expires_at <= now:
             return None
         return InvitationSummary(
             workspace_name=invitation.workspace.name,
@@ -203,11 +196,7 @@ class InMemoryAuthRepository:
             return False
         now = datetime.now(UTC)
         for reset_token in self.password_reset_tokens_by_hash.values():
-            if (
-                reset_token.user_id == user.id
-                and reset_token.used_at is None
-                and reset_token.revoked_at is None
-            ):
+            if reset_token.user_id == user.id and reset_token.used_at is None and reset_token.revoked_at is None:
                 reset_token.revoked_at = now
         reset_token = PasswordResetToken(
             id=uuid.uuid4(),
@@ -221,12 +210,7 @@ class InMemoryAuthRepository:
     async def reset_password(self, *, token_hash: str, password_hash: str) -> None:
         reset_token = self.password_reset_tokens_by_hash.get(token_hash)
         now = datetime.now(UTC)
-        if (
-            reset_token is None
-            or reset_token.used_at is not None
-            or reset_token.revoked_at is not None
-            or reset_token.expires_at <= now
-        ):
+        if reset_token is None or reset_token.used_at is not None or reset_token.revoked_at is not None or reset_token.expires_at <= now:
             raise InvalidPasswordResetTokenError("Password reset token is invalid")
         user = self.users_by_id[reset_token.user_id]
         user.password_hash = password_hash
@@ -334,9 +318,7 @@ def test_bootstrap_status_changes_after_first_registration(
     after = auth_context.client.get("/api/v1/auth/bootstrap-status")
 
     assert after.status_code == 200
-    assert after.json() == {
-        "data": {"setup_required": False, "registration_mode": "invitation_only"}
-    }
+    assert after.json() == {"data": {"setup_required": False, "registration_mode": "invitation_only"}}
 
 
 def test_bootstrap_registration_creates_default_owner_workspace(
@@ -588,12 +570,8 @@ def test_forgot_password_is_enumeration_safe_and_replaces_active_token(
         "first-reset-token",
         "second-reset-token",
     ]
-    first = auth_context.repository.password_reset_tokens_by_hash[
-        hash_opaque_token("first-reset-token")
-    ]
-    second = auth_context.repository.password_reset_tokens_by_hash[
-        hash_opaque_token("second-reset-token")
-    ]
+    first = auth_context.repository.password_reset_tokens_by_hash[hash_opaque_token("first-reset-token")]
+    second = auth_context.repository.password_reset_tokens_by_hash[hash_opaque_token("second-reset-token")]
     assert first.revoked_at is not None
     assert second.revoked_at is None
     assert second.expires_at - datetime.now(UTC) <= timedelta(minutes=30)
@@ -637,12 +615,8 @@ def test_password_reset_is_single_use_and_revokes_refresh_sessions(
         json={"email": "rudra@example.com", "password": "NewSecurePass456"},
     )
 
-    stored_reset = auth_context.repository.password_reset_tokens_by_hash[
-        hash_opaque_token("password-reset-token")
-    ]
-    stored_refresh = auth_context.repository.refresh_tokens_by_hash[
-        hash_opaque_token(old_refresh_token)
-    ]
+    stored_reset = auth_context.repository.password_reset_tokens_by_hash[hash_opaque_token("password-reset-token")]
+    stored_refresh = auth_context.repository.refresh_tokens_by_hash[hash_opaque_token(old_refresh_token)]
     user = auth_context.repository.users_by_email["rudra@example.com"]
     assert reset.status_code == 200
     assert reset.json() == {"data": {"status": "password_reset"}}
@@ -661,13 +635,11 @@ def test_expired_password_reset_token_returns_generic_forbidden(
     auth_context.client.post("/api/v1/auth/register", json=bootstrap_payload())
     user = auth_context.repository.users_by_email["rudra@example.com"]
     raw_token = "expired-password-reset-token"
-    auth_context.repository.password_reset_tokens_by_hash[hash_opaque_token(raw_token)] = (
-        PasswordResetToken(
-            id=uuid.uuid4(),
-            user_id=user.id,
-            token_hash=hash_opaque_token(raw_token),
-            expires_at=datetime.now(UTC) - timedelta(minutes=1),
-        )
+    auth_context.repository.password_reset_tokens_by_hash[hash_opaque_token(raw_token)] = PasswordResetToken(
+        id=uuid.uuid4(),
+        user_id=user.id,
+        token_hash=hash_opaque_token(raw_token),
+        expires_at=datetime.now(UTC) - timedelta(minutes=1),
     )
 
     response = auth_context.client.post(

@@ -13,6 +13,4 @@ api_router.include_router(extension_router, prefix="/extension", tags=["extensio
 api_router.include_router(health_router, prefix="/health", tags=["health"])
 api_router.include_router(users_router, prefix="/users", tags=["users"])
 api_router.include_router(workspaces_router, prefix="/workspaces", tags=["workspaces"])
-api_router.include_router(
-    meetings_router, prefix="/workspaces/{workspace_id}/meetings", tags=["meetings"]
-)
+api_router.include_router(meetings_router, prefix="/workspaces/{workspace_id}/meetings", tags=["meetings"])
