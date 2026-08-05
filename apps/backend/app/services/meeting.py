@@ -7,7 +7,7 @@ from typing import Protocol
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.enums import MeetingStatus, MeetingSourceType
+from app.models.enums import MeetingSourceType, MeetingStatus
 from app.models.meeting import Meeting
 
 

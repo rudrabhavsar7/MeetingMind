@@ -4,7 +4,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import require_workspace_member
@@ -23,6 +23,9 @@ from app.schemas.meeting import (
     PresignedUrlEnvelope,
     PresignedUrlRequest,
     PresignedUrlResponse,
+    StreamTokenRefreshEnvelope,
+    StreamTokenRefreshRequest,
+    StreamTokenRefreshResponse,
 )
 from app.services.meeting import MeetingService, SqlAlchemyMeetingRepository
 from app.services.storage import StorageService
@@ -150,3 +153,93 @@ async def create_live_meeting(
             stream_token_expires_at=expires_at,
         )
     )
+
+
+@router.post("/{meeting_id}/stream-token", response_model=StreamTokenRefreshEnvelope)
+async def refresh_stream_token(
+    workspace_id: uuid.UUID,
+    meeting_id: uuid.UUID,
+    payload: StreamTokenRefreshRequest,
+    membership: Annotated[WorkspaceMembership, Depends(require_workspace_member)],
+    meeting_service: Annotated[MeetingService, Depends(get_meeting_service)],
+) -> StreamTokenRefreshEnvelope:
+    meeting = await meeting_service.get_meeting(meeting_id)
+    if not meeting or meeting.workspace_id != workspace_id:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+
+    if meeting.status not in (MeetingStatus.RECORDING, MeetingStatus.PAUSED):
+         raise HTTPException(status_code=400, detail="Meeting is not in an active recording state")
+
+    # In reality, this token should be stored in Redis/DB with expiry
+    stream_token = f"mock-stream-token-{meeting_id}-refreshed"
+    expires_at = datetime.now(UTC) + timedelta(minutes=15)
+
+    return StreamTokenRefreshEnvelope(
+        data=StreamTokenRefreshResponse(
+            stream_url=f"wss://host/api/v1/workspaces/{workspace_id}/meetings/{meeting_id}/stream",
+            stream_token=stream_token,
+            expires_at=expires_at,
+        )
+    )
+
+
+@router.websocket("/{meeting_id}/stream")
+async def meeting_stream(
+    websocket: WebSocket,
+    workspace_id: uuid.UUID,
+    meeting_id: uuid.UUID,
+) -> None:
+    await websocket.accept()
+    highest_sequence = -1
+    seen_sequences = set()
+    
+    try:
+        # Handshake
+        data = await websocket.receive_json()
+        if data.get("type") == "stream_hello":
+            await websocket.send_json({
+                "type": "stream_ready",
+                "protocol_version": "1.0",
+                "meeting_id": str(meeting_id),
+                "highest_contiguous_sequence": highest_sequence,
+                "heartbeat_interval_ms": 15000,
+                "max_chunk_bytes": 16020,
+                "max_session_duration_ms": 28800000
+            })
+        
+        while True:
+            message = await websocket.receive()
+            if "bytes" in message:
+                payload = message["bytes"]
+                if len(payload) >= 20 and payload[0:4] == b"MM01":
+                    import struct
+                    sequence = struct.unpack(">I", payload[4:8])[0]
+                    # Start offset ms: unpack(">Q", payload[8:16])[0]
+                    # Duration ms: unpack(">H", payload[16:18])[0]
+                    # Flags: unpack(">H", payload[18:20])[0]
+                    
+                    if sequence not in seen_sequences:
+                        seen_sequences.add(sequence)
+                        # Normalize logic or pass to Celery/streaming STT queue would go here
+                        
+                        if sequence == highest_sequence + 1:
+                            highest_sequence = sequence
+                            # Optionally advance highest_sequence if next ones are already in seen_sequences
+                            while highest_sequence + 1 in seen_sequences:
+                                highest_sequence += 1
+                                
+                    await websocket.send_json({
+                        "type": "audio_ack",
+                        "highest_contiguous_sequence": highest_sequence,
+                        "received_at": datetime.now(UTC).isoformat()
+                    })
+            elif "text" in message:
+                import json
+                try:
+                    data = json.loads(message["text"])
+                    if data.get("type") == "ping":
+                        await websocket.send_json({"type": "pong"})
+                except Exception:
+                    pass
+    except WebSocketDisconnect:
+        pass

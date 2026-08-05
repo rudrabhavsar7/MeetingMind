@@ -1,5 +1,15 @@
 import Link from "next/link";
-import { Calendar, Clock, Users, Mic, CheckCircle2, Loader2, AlertCircle, Video } from "lucide-react";
+import {
+  AlertCircle,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  Loader2,
+  Mic,
+  PauseCircle,
+  Users,
+  Video,
+} from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { Meeting, MeetingStatus } from "@/types/api.types";
@@ -39,7 +49,7 @@ const statusConfig: Record<
   },
   paused: {
     label: "Paused",
-    icon: Clock,
+    icon: PauseCircle,
     className: "text-amber-500 bg-amber-500/10",
   },
   transcribing: {

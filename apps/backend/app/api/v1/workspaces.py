@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import require_workspace_member, require_workspace_role
@@ -203,6 +203,8 @@ async def create_invitation(
 @router.delete(
     "/{workspace_id}/invitations/{invitation_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    response_model=None,
 )
 async def revoke_invitation(
     workspace_id: uuid.UUID,
@@ -247,6 +249,8 @@ async def update_member_role(
 @router.delete(
     "/{workspace_id}/members/{user_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    response_model=None,
 )
 async def remove_member(
     workspace_id: uuid.UUID,

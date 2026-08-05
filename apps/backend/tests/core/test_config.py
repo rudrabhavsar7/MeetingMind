@@ -57,6 +57,6 @@ def test_smtp_credentials_must_be_configured_as_a_pair() -> None:
     settings = Settings()
 
     assert settings.cors_origins == ["http://localhost:3000", "chrome-extension://*"]
-    assert str(settings.storage_endpoint) == "http://localhost:9000/"
+    assert str(settings.storage_endpoint) == "http://localhost:9000"
 
     get_settings.cache_clear()

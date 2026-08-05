@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Annotated, Literal, Self
 
-from pydantic import AnyUrl, Field, SecretStr, field_validator, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
