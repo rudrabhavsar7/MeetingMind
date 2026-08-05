@@ -24,6 +24,13 @@ def test_settings_parse_comma_separated_cors_origins(
     monkeypatch.chdir(tmp_path)
     get_settings.cache_clear()
 
+    settings = Settings()
+
+    assert settings.cors_origins == ["http://localhost:3000", "chrome-extension://*"]
+    assert str(settings.storage_endpoint) == "http://localhost:9000"
+
+    get_settings.cache_clear()
+
 
 @pytest.mark.parametrize("env", ["staging", "production"])
 def test_shared_environments_reject_weak_jwt_secrets(env: str) -> None:
@@ -53,10 +60,3 @@ def test_smtp_credentials_must_be_configured_as_a_pair() -> None:
             smtp_from_email="meetingmind@localhost",
             smtp_username="meetingmind",
         )
-
-    settings = Settings()
-
-    assert settings.cors_origins == ["http://localhost:3000", "chrome-extension://*"]
-    assert str(settings.storage_endpoint) == "http://localhost:9000"
-
-    get_settings.cache_clear()
