@@ -79,9 +79,7 @@ class Settings(BaseSettings):
                 if not value
             ]
             if missing:
-                raise ValueError(
-                    "SMTP password-reset delivery requires " + ", ".join(missing)
-                )
+                raise ValueError("SMTP password-reset delivery requires " + ", ".join(missing))
             if (self.smtp_username is None) != (self.smtp_password is None):
                 raise ValueError(
                     "MEETINGMIND_SMTP_USERNAME and MEETINGMIND_SMTP_PASSWORD must be set together"

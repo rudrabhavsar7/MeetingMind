@@ -11,7 +11,7 @@ def test_sensitive_token_filter_redacts_invitation_paths_and_token_queries() -> 
         level=logging.INFO,
         pathname=__file__,
         lineno=1,
-        msg='HTTP Request: %s %s',
+        msg="HTTP Request: %s %s",
         args=(
             "GET",
             f"http://testserver/api/v1/auth/invitations/{invitation_token}"

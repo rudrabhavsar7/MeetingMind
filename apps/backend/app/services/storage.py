@@ -20,7 +20,9 @@ class StorageService:
         self.endpoint = settings.storage_endpoint
         self.region = settings.storage_region
         self.access_key = settings.storage_access_key
-        self.secret_key = settings.storage_secret_key.get_secret_value() if settings.storage_secret_key else None
+        self.secret_key = (
+            settings.storage_secret_key.get_secret_value() if settings.storage_secret_key else None
+        )
 
         self._session = get_session()
 

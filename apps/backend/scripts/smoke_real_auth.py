@@ -210,9 +210,7 @@ async def main() -> None:
                 email=invited_email,
                 raw_token=invitation_token,
             )
-            invitation_details = await client.get(
-                f"/api/v1/auth/invitations/{invitation_token}"
-            )
+            invitation_details = await client.get(f"/api/v1/auth/invitations/{invitation_token}")
             invitation_details.raise_for_status()
             assert invitation_details.json()["data"]["email"] == invited_email
             statuses["invitation_details"] = invitation_details.status_code
@@ -297,9 +295,7 @@ async def main() -> None:
         print(statuses)
     finally:
         await _cleanup((*owner_emails, invited_email), workspace_slugs)
-        cleanup_counts = {
-            model.__tablename__: await _row_count(model) for model in auth_models
-        }
+        cleanup_counts = {model.__tablename__: await _row_count(model) for model in auth_models}
         print({"cleanup": cleanup_counts})
         if any(cleanup_counts.values()):
             raise RuntimeError("Real auth smoke test cleanup was incomplete")

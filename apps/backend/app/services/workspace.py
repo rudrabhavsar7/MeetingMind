@@ -43,31 +43,33 @@ class WorkspaceInvitationDispatch:
 
 class WorkspaceRepository(Protocol):
     async def get_workspace_by_id(self, workspace_id: uuid.UUID) -> Workspace | None: ...
-    
+
     async def get_workspaces_for_user(self, user_id: uuid.UUID) -> Sequence[Workspace]: ...
-    
+
     async def update_workspace(self, workspace: Workspace) -> Workspace: ...
-    
+
     async def get_members(self, workspace_id: uuid.UUID) -> Sequence[WorkspaceMembership]: ...
-    
+
     async def get_membership(
         self, workspace_id: uuid.UUID, user_id: uuid.UUID
     ) -> WorkspaceMembership | None: ...
-    
+
     async def update_membership(self, membership: WorkspaceMembership) -> WorkspaceMembership: ...
-    
+
     async def delete_membership(self, membership: WorkspaceMembership) -> None: ...
-    
+
     async def count_owners(self, workspace_id: uuid.UUID) -> int: ...
-    
+
     async def get_active_invitation_by_email(
         self, workspace_id: uuid.UUID, email: str, now: datetime
     ) -> WorkspaceInvitation | None: ...
-    
+
     async def create_invitation(self, invitation: WorkspaceInvitation) -> WorkspaceInvitation: ...
-    
-    async def get_invitation_by_id(self, invitation_id: uuid.UUID) -> WorkspaceInvitation | None: ...
-    
+
+    async def get_invitation_by_id(
+        self, invitation_id: uuid.UUID
+    ) -> WorkspaceInvitation | None: ...
+
     async def update_invitation(self, invitation: WorkspaceInvitation) -> WorkspaceInvitation: ...
 
 
@@ -207,23 +209,25 @@ class WorkspaceService:
     ) -> tuple[WorkspaceInvitation, WorkspaceInvitationDispatch | None]:
         if role == WorkspaceRole.OWNER:
             raise ForbiddenError("Cannot invite a user as an owner")
-        
+
         workspace = await self.get_workspace(workspace_id)
-        
+
         # Check if user is already a member
         members = await self._repository.get_members(workspace_id)
         if any(m.user.email == email for m in members if m.user):
             raise ConflictError("User is already a member of this workspace")
-        
+
         now = datetime.now(UTC)
         # Check active invitation
-        active_invitation = await self._repository.get_active_invitation_by_email(workspace_id, email, now)
+        active_invitation = await self._repository.get_active_invitation_by_email(
+            workspace_id, email, now
+        )
         if active_invitation:
             raise ConflictError("An active invitation already exists for this email")
-            
+
         token = generate_opaque_token()
         expires_at = now + timedelta(days=7)
-        
+
         invitation = WorkspaceInvitation(
             workspace_id=workspace_id,
             email=email,
@@ -233,7 +237,7 @@ class WorkspaceService:
             expires_at=expires_at,
         )
         invitation = await self._repository.create_invitation(invitation)
-        
+
         dispatch = WorkspaceInvitationDispatch(
             workspace_name=workspace.name,
             email=email,
@@ -247,10 +251,10 @@ class WorkspaceService:
         if invitation is None or invitation.workspace_id != workspace_id:
             # We don't expose existence of other workspace's invitations
             return
-            
+
         if invitation.accepted_at or invitation.revoked_at:
             return
-            
+
         invitation.revoked_at = datetime.now(UTC)
         await self._repository.update_invitation(invitation)
 
@@ -264,20 +268,22 @@ class WorkspaceService:
         membership = await self._repository.get_membership(workspace_id, user_id)
         if membership is None:
             raise NotFoundError("Membership not found")
-            
+
         if membership.role == new_role:
             return membership
-            
+
         # Only owner can grant or remove owner role
-        if (new_role == WorkspaceRole.OWNER or membership.role == WorkspaceRole.OWNER) and actor_membership.role != WorkspaceRole.OWNER:
+        if (
+            new_role == WorkspaceRole.OWNER or membership.role == WorkspaceRole.OWNER
+        ) and actor_membership.role != WorkspaceRole.OWNER:
             raise ForbiddenError("Only an owner can grant or remove the owner role")
-            
+
         # Cannot downgrade last owner
         if membership.role == WorkspaceRole.OWNER and new_role != WorkspaceRole.OWNER:
             owners_count = await self._repository.count_owners(workspace_id)
             if owners_count <= 1:
                 raise ForbiddenError("Cannot downgrade the last owner of the workspace")
-                
+
         membership.role = new_role
         return await self._repository.update_membership(membership)
 
@@ -290,14 +296,13 @@ class WorkspaceService:
         membership = await self._repository.get_membership(workspace_id, user_id)
         if membership is None:
             return
-            
+
         if membership.role == WorkspaceRole.OWNER and actor_membership.role != WorkspaceRole.OWNER:
             raise ForbiddenError("Only an owner can remove an owner")
-            
+
         if membership.role == WorkspaceRole.OWNER:
             owners_count = await self._repository.count_owners(workspace_id)
             if owners_count <= 1:
                 raise ForbiddenError("Cannot remove the last owner of the workspace")
-                
-        await self._repository.delete_membership(membership)
 
+        await self._repository.delete_membership(membership)

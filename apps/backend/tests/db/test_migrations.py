@@ -37,10 +37,7 @@ def test_initial_revision_includes_core_tables() -> None:
 
 def test_canonical_model_revision_includes_required_storage() -> None:
     migration = (
-        BACKEND_ROOT
-        / "migrations"
-        / "versions"
-        / "f7f4ecb2373b_align_canonical_data_model.py"
+        BACKEND_ROOT / "migrations" / "versions" / "f7f4ecb2373b_align_canonical_data_model.py"
     )
     migration_text = migration.read_text(encoding="utf-8")
 

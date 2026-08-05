@@ -319,9 +319,7 @@ def test_bootstrap_status_changes_after_first_registration(
     before = auth_context.client.get("/api/v1/auth/bootstrap-status")
 
     assert before.status_code == 200
-    assert before.json() == {
-        "data": {"setup_required": True, "registration_mode": "bootstrap"}
-    }
+    assert before.json() == {"data": {"setup_required": True, "registration_mode": "bootstrap"}}
 
     auth_context.client.post(
         "/api/v1/auth/register",
@@ -529,9 +527,7 @@ def test_invitation_errors_do_not_reveal_invalid_state(
         accepted_at=now if state == "accepted" else None,
     )
 
-    response = auth_context.client.get(
-        f"/api/v1/auth/invitations/{state}-invitation-token"
-    )
+    response = auth_context.client.get(f"/api/v1/auth/invitations/{state}-invitation-token")
 
     assert response.status_code == 403
     assert response.json() == {"detail": "Invalid invitation"}

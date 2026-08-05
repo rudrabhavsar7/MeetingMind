@@ -467,16 +467,15 @@ class SqlAlchemyAuthRepository:
             )
             if current_refresh_token_hash:
                 stmt = stmt.where(RefreshToken.token_hash != current_refresh_token_hash)
-            
+
             await self._session.execute(stmt.values(revoked_at=now))
-            
+
             # Extension sessions (MM-302) are not yet fully defined in auth flow but we revoke them if they exist
             # from app.models.auth import ExtensionSession
-            # If there's an ExtensionSession model, we'd revoke here. 
+            # If there's an ExtensionSession model, we'd revoke here.
             # We see it in app/models/__init__.py, let's assume it has revoked_at or we just delete them.
             # Actually, we don't have ExtensionSession schema structure handy, we can skip or do our best
             # For now, we'll just handle refresh tokens.
-
 
 
 class AuthService:
@@ -554,9 +553,11 @@ class AuthService:
     ) -> None:
         if user.password_hash is None or not verify_password(current_password, user.password_hash):
             raise InvalidCredentialsError("Invalid current password")
-            
-        current_refresh_token_hash = hash_refresh_token(current_refresh_token) if current_refresh_token else None
-        
+
+        current_refresh_token_hash = (
+            hash_refresh_token(current_refresh_token) if current_refresh_token else None
+        )
+
         await self._repository.change_password(
             user_id=user.id,
             password_hash=hash_password(new_password),

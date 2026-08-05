@@ -87,9 +87,7 @@ class AIProcessingRun(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     input_last_segment: Mapped[TranscriptSegment | None] = relationship(
         foreign_keys=[input_last_segment_id]
     )
-    summary_versions: Mapped[list[SummaryVersion]] = relationship(
-        back_populates="processing_run"
-    )
+    summary_versions: Mapped[list[SummaryVersion]] = relationship(back_populates="processing_run")
     action_items: Mapped[list[ActionItem]] = relationship(back_populates="processing_run")
     decisions: Mapped[list[Decision]] = relationship(back_populates="processing_run")
 
@@ -142,9 +140,7 @@ class SummaryVersion(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     meeting: Mapped[Meeting] = relationship(
         back_populates="summary_versions", foreign_keys=[meeting_id]
     )
-    processing_run: Mapped[AIProcessingRun | None] = relationship(
-        back_populates="summary_versions"
-    )
+    processing_run: Mapped[AIProcessingRun | None] = relationship(back_populates="summary_versions")
     edited_by: Mapped[User | None] = relationship()
     citations: Mapped[list[AIOutputCitation]] = relationship(
         back_populates="summary_version", cascade="all, delete-orphan"

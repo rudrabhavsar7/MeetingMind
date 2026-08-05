@@ -16,4 +16,3 @@ api_router.include_router(workspaces_router, prefix="/workspaces", tags=["worksp
 api_router.include_router(
     meetings_router, prefix="/workspaces/{workspace_id}/meetings", tags=["meetings"]
 )
-

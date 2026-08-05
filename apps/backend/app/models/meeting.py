@@ -222,9 +222,7 @@ class TranscriptSegment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     meeting_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("meetings.id", ondelete="CASCADE"), nullable=False
     )
-    client_instance_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, default=uuid.uuid4, nullable=False
-    )
+    client_instance_id: Mapped[uuid.UUID] = mapped_column(Uuid, default=uuid.uuid4, nullable=False)
     speaker_label: Mapped[str] = mapped_column(String(120), nullable=False)
     speaker_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     start_time: Mapped[float] = mapped_column(Float, nullable=False)
@@ -299,9 +297,7 @@ class TranscriptChunk(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     workspace: Mapped[Workspace] = relationship()
     meeting: Mapped[Meeting] = relationship(back_populates="transcript_chunks")
-    first_segment: Mapped[TranscriptSegment] = relationship(
-        foreign_keys=[first_segment_id]
-    )
+    first_segment: Mapped[TranscriptSegment] = relationship(foreign_keys=[first_segment_id])
     last_segment: Mapped[TranscriptSegment] = relationship(foreign_keys=[last_segment_id])
 
 
@@ -353,9 +349,7 @@ class ActionItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     workspace: Mapped[Workspace] = relationship()
     meeting: Mapped[Meeting] = relationship(back_populates="action_items")
-    processing_run: Mapped[AIProcessingRun | None] = relationship(
-        back_populates="action_items"
-    )
+    processing_run: Mapped[AIProcessingRun | None] = relationship(back_populates="action_items")
     assignee: Mapped[User | None] = relationship(foreign_keys=[assignee_user_id])
     updated_by: Mapped[User | None] = relationship(foreign_keys=[updated_by_user_id])
     citations: Mapped[list[AIOutputCitation]] = relationship(
@@ -404,9 +398,7 @@ class Decision(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     workspace: Mapped[Workspace] = relationship()
     meeting: Mapped[Meeting] = relationship(back_populates="decisions")
-    processing_run: Mapped[AIProcessingRun | None] = relationship(
-        back_populates="decisions"
-    )
+    processing_run: Mapped[AIProcessingRun | None] = relationship(back_populates="decisions")
     updated_by: Mapped[User | None] = relationship(foreign_keys=[updated_by_user_id])
     citations: Mapped[list[AIOutputCitation]] = relationship(
         back_populates="decision", cascade="all, delete-orphan"
