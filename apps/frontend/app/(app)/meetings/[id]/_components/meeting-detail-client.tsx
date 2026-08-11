@@ -3,6 +3,8 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import ReactMarkdown from "react-markdown";
 import {
   ArrowLeft,
   Clock,
@@ -71,7 +73,6 @@ function formatDuration(seconds: number): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-// Speaker colour palette — consistent colours per label
 const SPEAKER_COLORS: Record<string, string> = {
   "Speaker 1": "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
   "Speaker 2": "bg-blue-500/15 text-blue-700 dark:text-blue-400",
@@ -85,37 +86,6 @@ function speakerColor(label: string): string {
 
 type InsightsTab = "summary" | "decisions" | "actions";
 
-// ─── Skeleton helpers ─────────────────────────────────────────────────────────
-
-function TranscriptSkeleton() {
-  return (
-    <div className="space-y-4 animate-pulse">
-      {[1, 2, 3, 4].map((i) => (
-        <div key={i} className="rounded-lg p-3">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="h-5 w-20 rounded-full bg-muted" />
-            <div className="h-3 w-10 rounded bg-muted" />
-          </div>
-          <div className="space-y-1.5">
-            <div className="h-3 w-full rounded bg-muted" />
-            <div className="h-3 w-5/6 rounded bg-muted" />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function InsightsSkeleton() {
-  return (
-    <div className="space-y-3 animate-pulse p-4">
-      <div className="h-3 w-full rounded bg-muted" />
-      <div className="h-3 w-5/6 rounded bg-muted" />
-      <div className="h-3 w-4/6 rounded bg-muted" />
-    </div>
-  );
-}
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function MeetingDetailClient() {
@@ -126,21 +96,18 @@ export default function MeetingDetailClient() {
   const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null);
   const [transcriptSearch, setTranscriptSearch] = useState("");
   const videoRef = useRef<HTMLVideoElement>(null);
-  const segmentRefs = useRef<Record<string, HTMLElement | null>>({});
 
   // ── Queries ────────────────────────────────────────────────────────────────
-
   const { data: meeting, isLoading: meetingLoading } = useMeeting(meetingId);
   const { data: segments, isLoading: segmentsLoading } = useTranscriptSegments(meetingId);
   const { data: actionItems, isLoading: actionsLoading } = useActionItems(meetingId);
   const { data: decisions, isLoading: decisionsLoading } = useDecisions(meetingId);
 
-  // Fall back to mock data
   const displaySegments = segments ?? MOCK_SEGMENTS;
   const displayActions = actionItems ?? MOCK_ACTIONS;
   const displayDecisions = decisions ?? MOCK_DECISIONS;
+  const displaySummary = meeting?.summary_preview ?? MOCK_SUMMARY;
 
-  // Local state for optimistic action item toggling
   const [localActionStatus, setLocalActionStatus] = useState<Record<string, "open" | "completed">>({});
   const { mutate: patchItem } = usePatchActionItem();
 
@@ -152,7 +119,6 @@ export default function MeetingDetailClient() {
     }
   }
 
-  // ── Transcript search filter ───────────────────────────────────────────────
   const filteredSegments = transcriptSearch.trim()
     ? displaySegments.filter(
         (s) =>
@@ -163,18 +129,27 @@ export default function MeetingDetailClient() {
       )
     : displaySegments;
 
-  // ── Seek video on segment click (MM-504) ──────────────────────────────────
+  // ── Virtualization ─────────────────────────────────────────────────────────
+  const parentRef = useRef<HTMLDivElement>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: filteredSegments.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 80, // rough estimate of a segment's height
+    overscan: 10,
+  });
+
   const seekToSegment = useCallback((seg: TranscriptSegment) => {
     setActiveSegmentId(seg.id);
     if (videoRef.current) {
       videoRef.current.currentTime = seg.start_time;
       void videoRef.current.play();
     }
-    // Scroll the segment into view
-    segmentRefs.current[seg.id]?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, []);
+    const idx = filteredSegments.findIndex((s) => s.id === seg.id);
+    if (idx !== -1) {
+      rowVirtualizer.scrollToIndex(idx, { align: 'center', behavior: 'smooth' });
+    }
+  }, [filteredSegments, rowVirtualizer]);
 
-  // ── Sync active segment with video playback ────────────────────────────────
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -183,11 +158,16 @@ export default function MeetingDetailClient() {
       const active = displaySegments.find(
         (s) => t >= s.start_time && t <= s.end_time
       );
-      if (active) setActiveSegmentId(active.id);
+      if (active && active.id !== activeSegmentId) {
+        setActiveSegmentId(active.id);
+      }
     }
     video.addEventListener("timeupdate", onTimeUpdate);
     return () => video.removeEventListener("timeupdate", onTimeUpdate);
-  }, [displaySegments]);
+  }, [displaySegments, activeSegmentId]);
+
+  // If the active segment changes via time update, we don't automatically scroll unless requested,
+  // but for now we won't auto-scroll to avoid fighting user scroll.
 
   const tabs: { key: InsightsTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { key: "summary", label: "Summary", icon: Lightbulb },
@@ -197,7 +177,6 @@ export default function MeetingDetailClient() {
 
   return (
     <div className="flex flex-col min-h-full">
-      {/* Page header */}
       <header className="border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="px-6 py-3 flex items-center gap-4">
           <Link href="/meetings">
@@ -235,13 +214,12 @@ export default function MeetingDetailClient() {
         </div>
       </header>
 
-      {/* Body: split-pane */}
       <div className="flex flex-1 overflow-hidden">
-        {/* ── Left pane: Transcript (60%) ──────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto border-r border-border">
-          <div className="px-6 py-4 max-w-[80ch]">
-            {/* Transcript header + search */}
-            <div className="flex items-center justify-between mb-4 gap-3">
+        {/* Left pane */}
+        <div className="flex-1 flex flex-col border-r border-border min-w-0 bg-background">
+          {/* Transcript header + search */}
+          <div className="px-6 py-4 max-w-[80ch] flex-shrink-0">
+            <div className="flex items-center justify-between gap-3">
               <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Transcript
               </h2>
@@ -257,72 +235,99 @@ export default function MeetingDetailClient() {
                 />
               </div>
             </div>
+          </div>
 
-            {segmentsLoading ? (
-              <TranscriptSkeleton />
-            ) : filteredSegments.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">
-                {transcriptSearch ? `No results for "${transcriptSearch}"` : "No transcript segments yet."}
-              </p>
-            ) : (
-              <div className="space-y-4" role="log" aria-label="Meeting transcript">
-                {filteredSegments.map((seg) => {
-                  const isActive = seg.id === activeSegmentId;
-                  return (
-                    <article
-                      key={seg.id}
-                      ref={(el) => { segmentRefs.current[seg.id] = el; }}
-                      className={cn(
-                        "group rounded-lg p-3 transition-colors scroll-mt-4",
-                        isActive ? "bg-primary/10 ring-1 ring-primary/30" : "hover:bg-muted/50"
-                      )}
-                      aria-label={`${seg.speaker_name ?? seg.speaker_label} at ${formatTime(seg.start_time)}`}
-                    >
-                      <div className="flex items-center gap-2 mb-1.5">
-                        {/* Speaker chip */}
-                        <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold", speakerColor(seg.speaker_label))}>
-                          {seg.speaker_name ?? seg.speaker_label}
-                        </span>
-                        {/* Timestamp button — seeks video (MM-504) */}
-                        <button
-                          onClick={() => seekToSegment(seg)}
-                          className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
-                          aria-label={`Seek to ${formatTime(seg.start_time)}`}
-                        >
-                          <Play className="h-2.5 w-2.5" />
-                          {formatTime(seg.start_time)}
-                        </button>
+          {/* Virtualized list container */}
+          <div 
+            ref={parentRef}
+            className="flex-1 overflow-y-auto px-6 pb-4"
+          >
+            <div className="max-w-[80ch]">
+              {segmentsLoading ? (
+                <div className="space-y-4 animate-pulse">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="h-5 w-20 rounded-full bg-muted" />
+                        <div className="h-3 w-10 rounded bg-muted" />
                       </div>
-                      <p className="text-sm text-foreground leading-relaxed">{seg.text}</p>
-                    </article>
-                  );
-                })}
-              </div>
-            )}
+                      <div className="space-y-1.5">
+                        <div className="h-3 w-full rounded bg-muted" />
+                        <div className="h-3 w-5/6 rounded bg-muted" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : filteredSegments.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-8 text-center">
+                  {transcriptSearch ? `No results for "${transcriptSearch}"` : "No transcript segments yet."}
+                </p>
+              ) : (
+                <div
+                  className="relative w-full"
+                  style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
+                  role="log" 
+                  aria-label="Meeting transcript"
+                >
+                  {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                    const seg = filteredSegments[virtualRow.index];
+                    const isActive = seg.id === activeSegmentId;
+                    return (
+                      <article
+                        key={seg.id}
+                        data-index={virtualRow.index}
+                        ref={rowVirtualizer.measureElement}
+                        className={cn(
+                          "absolute top-0 left-0 w-full group rounded-lg p-3 transition-colors",
+                          isActive ? "bg-primary/10 ring-1 ring-primary/30" : "hover:bg-muted/50"
+                        )}
+                        style={{ transform: `translateY(${virtualRow.start}px)` }}
+                        aria-label={`${seg.speaker_name ?? seg.speaker_label} at ${formatTime(seg.start_time)}`}
+                      >
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold", speakerColor(seg.speaker_label))}>
+                            {seg.speaker_name ?? seg.speaker_label}
+                          </span>
+                          <button
+                            onClick={() => seekToSegment(seg)}
+                            className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
+                            aria-label={`Seek to ${formatTime(seg.start_time)}`}
+                          >
+                            <Play className="h-2.5 w-2.5" />
+                            {formatTime(seg.start_time)}
+                          </button>
+                        </div>
+                        <p className="text-sm text-foreground leading-relaxed">{seg.text}</p>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
 
-            {/* ── Video Player (MM-504) — shown if media URL available ───── */}
-            {meeting?.source_url && (
-              <div className="mt-8 rounded-lg overflow-hidden border border-border bg-muted">
-                <div className="flex items-center gap-2 px-4 py-2 border-b border-border text-xs text-muted-foreground">
+          {/* Video Player */}
+          {meeting?.source_url && (
+            <div className="flex-shrink-0 border-t border-border bg-muted p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Volume2 className="h-3.5 w-3.5" />
                   Recording Playback
                 </div>
-                {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-                <video
-                  ref={videoRef}
-                  src={meeting.source_url}
-                  controls
-                  className="w-full"
-                  aria-label="Meeting recording"
-                />
               </div>
-            )}
-          </div>
+              <video
+                ref={videoRef}
+                src={meeting.source_url}
+                controls
+                className="w-full rounded-md border border-border"
+                aria-label="Meeting recording"
+              />
+            </div>
+          )}
         </div>
 
-        {/* ── Right pane: Insights (40%) ───────────────────────────────────── */}
-        <aside className="w-[380px] flex-shrink-0 flex flex-col overflow-hidden">
-          {/* Tab bar */}
+        {/* Right pane */}
+        <aside className="w-[380px] flex-shrink-0 flex flex-col overflow-hidden bg-background">
           <div className="flex border-b border-border bg-background" role="tablist" aria-label="Meeting insights">
             {tabs.map(({ key, label, icon: Icon }) => (
               <button
@@ -344,33 +349,40 @@ export default function MeetingDetailClient() {
             ))}
           </div>
 
-          {/* Tab panels */}
           <div className="flex-1 overflow-y-auto p-4">
-            {/* ── Summary ────────────────────────────────────────────────── */}
             {activeTab === "summary" && (
               <div id="panel-summary" role="tabpanel" aria-label="AI Summary">
-                <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1">
-                  <Lightbulb className="h-3 w-3 text-primary" />
-                  AI-generated ·{" "}
-                  <span className="text-primary">verify with transcript</span>
-                </p>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Lightbulb className="h-3 w-3 text-primary" />
+                    AI-generated ·{" "}
+                    <span className="text-primary">verify with transcript</span>
+                  </p>
+                  <Button variant="outline" size="sm" className="h-7 text-xs">
+                    Regenerate
+                  </Button>
+                </div>
                 {meetingLoading ? (
-                  <InsightsSkeleton />
+                  <div className="space-y-3 animate-pulse">
+                    <div className="h-3 w-full rounded bg-muted" />
+                    <div className="h-3 w-5/6 rounded bg-muted" />
+                    <div className="h-3 w-4/6 rounded bg-muted" />
+                  </div>
                 ) : (
-                  MOCK_SUMMARY.split("\n\n").map((para, i) => (
-                    <p key={i} className="text-sm text-foreground leading-relaxed mb-3 whitespace-pre-wrap">
-                      {para}
-                    </p>
-                  ))
+                  <div className="prose prose-sm dark:prose-invert text-sm text-foreground leading-relaxed max-w-none">
+                    <ReactMarkdown>{displaySummary}</ReactMarkdown>
+                  </div>
                 )}
               </div>
             )}
 
-            {/* ── Decisions ──────────────────────────────────────────────── */}
             {activeTab === "decisions" && (
               <div id="panel-decisions" role="tabpanel" aria-label="Decisions" className="space-y-3">
                 {decisionsLoading ? (
-                  <InsightsSkeleton />
+                  <div className="space-y-3 animate-pulse">
+                    <div className="h-16 w-full rounded-lg bg-muted" />
+                    <div className="h-16 w-full rounded-lg bg-muted" />
+                  </div>
                 ) : displayDecisions.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-8">No decisions logged.</p>
                 ) : (
@@ -401,11 +413,13 @@ export default function MeetingDetailClient() {
               </div>
             )}
 
-            {/* ── Action Items ────────────────────────────────────────────── */}
             {activeTab === "actions" && (
               <div id="panel-actions" role="tabpanel" aria-label="Action Items" className="space-y-2">
                 {actionsLoading ? (
-                  <InsightsSkeleton />
+                  <div className="space-y-3 animate-pulse">
+                    <div className="h-16 w-full rounded-lg bg-muted" />
+                    <div className="h-16 w-full rounded-lg bg-muted" />
+                  </div>
                 ) : displayActions.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-8">No action items logged.</p>
                 ) : (

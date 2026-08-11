@@ -32,6 +32,20 @@ export interface BootstrapStatus {
   registration_mode: "bootstrap" | "invitation_only";
 }
 
+export interface InvitationValidation {
+  valid: boolean;
+  email: string;
+  workspace_name: string;
+  workspace_slug: string;
+  expires_at: string;
+}
+
+export interface InvitationRegisterPayload {
+  token: string;
+  password: string;
+  full_name: string;
+}
+
 export interface StatusResponse {
   status: string;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import {
   CheckCircle2,
@@ -60,7 +60,6 @@ function ActionItemRow({
 
   return (
     <div className="flex items-start gap-3 px-4 py-3 border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
-      {/* Checkbox */}
       <button
         onClick={onToggle}
         disabled={viewerOnly}
@@ -77,7 +76,6 @@ function ActionItemRow({
         )}
       </button>
 
-      {/* Content */}
       <div className="min-w-0 flex-1">
         <p className={cn("text-sm leading-snug text-foreground", done && "line-through text-muted-foreground")}>
           {item.text}
@@ -104,7 +102,6 @@ function ActionItemRow({
         </div>
       </div>
 
-      {/* Status badge */}
       <span className={cn(
         "flex-shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium",
         done
@@ -132,18 +129,23 @@ export default function ActionsClient() {
   const viewerOnly = userRole === "viewer";
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
   const [localStatus, setLocalStatus] = useState<Record<string, "open" | "completed">>({});
+  
+  // Basic limit for load more pagination
+  const [limit, setLimit] = useState(20);
 
   const {
     data,
     isLoading,
     isError,
     refetch,
+    isFetching,
   } = useWorkspaceActionItems(
     {
       workspaceId,
       status: statusFilter === "all" ? undefined : statusFilter,
-      limit: 100,
+      limit,
     },
     { enabled: !!workspaceId }
   );
@@ -152,11 +154,19 @@ export default function ActionsClient() {
 
   const items: ActionItem[] = data?.data ?? MOCK_ITEMS;
 
-  // Apply local status overrides + client-side filter
+  const assignees = useMemo(() => {
+    const unique = new Set<string>();
+    items.forEach(i => {
+      if (i.assignee) unique.add(i.assignee);
+    });
+    return Array.from(unique).sort();
+  }, [items]);
+
   const filtered = items.filter((item) => {
     const effective = localStatus[item.id] ?? item.status;
-    if (statusFilter === "all") return true;
-    return effective === statusFilter;
+    if (statusFilter !== "all" && effective !== statusFilter) return false;
+    if (assigneeFilter !== "all" && item.assignee !== assigneeFilter) return false;
+    return true;
   });
 
   function handleToggle(item: ActionItem) {
@@ -174,7 +184,6 @@ export default function ActionsClient() {
 
   return (
     <div className="space-y-6">
-      {/* Stats row */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         {[
           { label: "Open", value: isLoading ? "—" : openCount, color: "text-foreground" },
@@ -190,29 +199,46 @@ export default function ActionsClient() {
         ))}
       </div>
 
-      {/* Filter pills */}
-      <div className="flex items-center gap-2" role="group" aria-label="Filter action items">
-        <Filter className="h-3.5 w-3.5 text-muted-foreground" />
-        {(["all", "open", "completed"] as StatusFilter[]).map((f) => (
-          <button
-            key={f}
-            onClick={() => setStatusFilter(f)}
-            aria-pressed={statusFilter === f}
-            className={cn(
-              "px-3 py-1 rounded-full text-xs font-medium capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              statusFilter === f
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground hover:bg-muted/80"
-            )}
-          >
-            {f}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center gap-4" role="group" aria-label="Filter action items">
+        <div className="flex items-center gap-2">
+          <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+          {(["all", "open", "completed"] as StatusFilter[]).map((f) => (
+            <button
+              key={f}
+              onClick={() => setStatusFilter(f)}
+              aria-pressed={statusFilter === f}
+              className={cn(
+                "px-3 py-1 rounded-full text-xs font-medium capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                statusFilter === f
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              )}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+        
+        {assignees.length > 0 && (
+          <div className="flex items-center gap-2 border-l border-border pl-4">
+            <User className="h-3.5 w-3.5 text-muted-foreground" />
+            <select
+              value={assigneeFilter}
+              onChange={(e) => setAssigneeFilter(e.target.value)}
+              className="px-2 py-1 bg-muted rounded-md text-xs border-transparent focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+              aria-label="Filter by assignee"
+            >
+              <option value="all">All Assignees</option>
+              {assignees.map(a => (
+                <option key={a} value={a}>{a}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
-      {/* List */}
       <Card>
-        {isLoading ? (
+        {isLoading && items.length === 0 ? (
           <CardContent className="py-8 flex items-center justify-center gap-2 text-muted-foreground text-sm">
             <Loader2 className="h-4 w-4 animate-spin" />
             Loading action items…
@@ -230,7 +256,7 @@ export default function ActionsClient() {
               {statusFilter === "completed" ? "No completed items yet." : "All caught up!"}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {statusFilter === "open" ? "No open action items in this workspace." : ""}
+              {statusFilter === "open" ? "No open action items matching this filter." : ""}
             </p>
           </CardContent>
         ) : (
@@ -249,6 +275,24 @@ export default function ActionsClient() {
                 viewerOnly={viewerOnly}
               />
             ))}
+            
+            {/* Load More Button */}
+            {items.length >= limit && (
+              <div className="p-4 flex justify-center border-t border-border">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setLimit(l => l + 20)}
+                  disabled={isFetching}
+                >
+                  {isFetching ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Loading...</>
+                  ) : (
+                    "Load More"
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </Card>

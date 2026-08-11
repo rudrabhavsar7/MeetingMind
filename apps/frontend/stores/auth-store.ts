@@ -4,6 +4,8 @@ import type {
   ApiResponse,
   AuthSession,
   BootstrapStatus,
+  InvitationRegisterPayload,
+  InvitationValidation,
   User,
 } from "@/types/api.types";
 
@@ -31,6 +33,8 @@ interface AuthState {
   error: string | null;
   login: (payload: LoginPayload) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<void>;
+  acceptInvitation: (payload: InvitationRegisterPayload) => Promise<void>;
+  validateInvitation: (token: string) => Promise<InvitationValidation>;
   updateProfile: (fullName: string) => Promise<void>;
   changePassword: (payload: ChangePasswordPayload) => Promise<void>;
   getBootstrapStatus: () => Promise<BootstrapStatus>;
@@ -92,6 +96,35 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ isLoading: false });
     } catch (error: unknown) {
       set({ error: errorMessage(error, "Failed to change password."), isLoading: false });
+      throw error;
+    }
+  },
+
+  acceptInvitation: async (payload: InvitationRegisterPayload) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data } = await apiClient.post<ApiResponse<AuthSession>>(
+        "/auth/register",
+        payload
+      );
+      setAccessToken(data.data.access_token);
+      set({ user: data.data.user, isLoading: false });
+    } catch (error: unknown) {
+      set({ error: errorMessage(error, "Invitation registration failed. Please try again."), isLoading: false });
+      throw error;
+    }
+  },
+
+  validateInvitation: async (token: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data } = await apiClient.get<ApiResponse<InvitationValidation>>(
+        `/auth/invitations/${token}`
+      );
+      set({ isLoading: false });
+      return data.data;
+    } catch (error: unknown) {
+      set({ error: errorMessage(error, "Invalid or expired invitation."), isLoading: false });
       throw error;
     }
   },

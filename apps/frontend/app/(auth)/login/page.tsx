@@ -1,5 +1,10 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import LoginClient from "./_components/login-client";
+
+export const metadata: Metadata = {
+  title: "Sign In",
+};
 
 function LoginFallback() {
   return (
