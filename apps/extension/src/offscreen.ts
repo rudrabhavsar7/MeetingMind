@@ -160,6 +160,9 @@ function connectWebSocket() {
           replayBuffer = replayBuffer.filter(item => item.seq > ackedSeq);
         } else if (msg.type === 'slow_down') {
           console.warn("Server requested to slow down.");
+        } else {
+          // Forward transcript and other events to the extension UI
+          chrome.runtime.sendMessage({ target: 'ui', type: msg.type, payload: msg });
         }
       } catch (e) {
         console.error("Failed to parse WS message", e);

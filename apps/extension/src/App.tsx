@@ -10,57 +10,66 @@ export default function App() {
 
   const timerRef = useRef<number | null>(null);
 
-  // Initial detection simulation
+  // Initial detection and status sync
   useEffect(() => {
-    // In a real extension, we would query chrome.tabs here
     const checkTab = async () => {
-      // Simulate checking connection
-      setTimeout(() => {
-        // Assume connected for demo purposes
-        // Simulate checking if on Google Meet
-        chrome.tabs?.query({ active: true, currentWindow: true }, (tabs) => {
-          const tab = tabs[0];
-          if (tab && tab.url && tab.url.includes('meet.google.com')) {
-            setMeetingTitle(tab.title?.replace(' - Google Meet', '') || 'Team Sync');
-            setState('detected');
-          } else {
-            // For local dev without chrome extension API context, just mock it
-            if (!chrome.tabs) {
-              setMeetingTitle('Product Sync (Mock)');
-              setState('detected');
-            } else {
-              setState('no_meeting');
-            }
-          }
-        });
-      }, 500);
+      if (!chrome.tabs) {
+        // Local dev mock
+        setMeetingTitle('Product Sync (Mock)');
+        setState('detected');
+        return;
+      }
+
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const tab = tabs[0];
+        if (tab && tab.url && tab.url.includes('meet.google.com')) {
+          setMeetingTitle(tab.title?.replace(' - Google Meet', '') || 'Team Sync');
+          setState('detected');
+        } else {
+          setState('no_meeting');
+        }
+      });
     };
     checkTab();
   }, [setState, setMeetingTitle]);
 
-  // Recording timer and mock transcript simulation
+  // Recording timer and event listener
   useEffect(() => {
     if (state === 'recording') {
       timerRef.current = window.setInterval(() => {
         tickElapsed();
-        
-        // Mock streaming transcript every ~3 seconds
-        if (Math.random() > 0.6) {
-          addTranscriptSnippet({
-            id: Math.random().toString(),
-            speaker: Math.random() > 0.5 ? 'Prashant' : 'Rudra',
-            text: 'This is a simulated transcript segment for the UI demo...',
-            isFinal: Math.random() > 0.2
-          });
-        }
       }, 1000);
     } else {
       if (timerRef.current) clearInterval(timerRef.current);
     }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const messageListener = (message: any) => {
+      if (message.target === 'ui') {
+        if (message.type === 'transcript_interim' || message.type === 'transcript_final') {
+          addTranscriptSnippet({
+            id: message.payload.segment_id || Math.random().toString(),
+            speaker: message.payload.speaker || 'Unknown',
+            text: message.payload.text,
+            isFinal: message.type === 'transcript_final'
+          });
+        } else if (message.type === 'meeting_completed') {
+          setState('detected');
+        }
+      }
+    };
+
+    if (chrome.runtime && chrome.runtime.onMessage) {
+      chrome.runtime.onMessage.addListener(messageListener);
+    }
+
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      if (chrome.runtime && chrome.runtime.onMessage) {
+        chrome.runtime.onMessage.removeListener(messageListener);
+      }
     };
-  }, [state, tickElapsed, addTranscriptSnippet]);
+  }, [state, tickElapsed, addTranscriptSnippet, setState]);
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -68,15 +77,46 @@ export default function App() {
     return `${m}:${s}`;
   };
 
-  const handleStartCapture = () => {
-    resetElapsed();
-    clearTranscript();
-    setState('recording');
+  const handleStartCapture = async () => {
+    if (!chrome.tabs) {
+      resetElapsed();
+      clearTranscript();
+      setState('recording');
+      return;
+    }
+
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const tab = tabs[0];
+      if (!tab || !tab.id) return;
+      
+      chrome.runtime.sendMessage({
+        type: 'START_CAPTURE',
+        payload: {
+          tabId: tab.id,
+          workspaceId: 'default',
+          title: meetingTitle,
+          url: tab.url
+        }
+      }, (response) => {
+        if (response && response.status === 'started') {
+          resetElapsed();
+          clearTranscript();
+          setState('recording');
+        } else {
+          console.error('Failed to start capture', response?.error);
+        }
+      });
+    });
   };
 
   const handleStopCapture = () => {
-    // In real app, confirm if > 60s
-    setState('detected');
+    if (!chrome.tabs) {
+      setState('detected');
+      return;
+    }
+    chrome.runtime.sendMessage({ type: 'STOP_CAPTURE' }, () => {
+      setState('detected');
+    });
   };
 
   return (
