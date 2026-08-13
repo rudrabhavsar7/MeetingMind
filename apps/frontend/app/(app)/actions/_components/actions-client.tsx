@@ -22,30 +22,27 @@ import type { ActionItem } from "@/types/api.types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+
 function formatDueDate(iso: string | null): { label: string; overdue: boolean } {
   if (!iso) return { label: "No due date", overdue: false };
-  const date = new Date(iso);
-  const diff = Math.ceil((date.getTime() - Date.now()) / 86400000);
+  const diff = Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000);
   if (diff < 0) return { label: `${Math.abs(diff)}d overdue`, overdue: true };
-  if (diff === 0) return { label: "Due today", overdue: false };
-  if (diff === 1) return { label: "Due tomorrow", overdue: false };
-  return { label: `Due in ${diff}d`, overdue: false };
+  return { label: diff === 0 ? "Due today" : `Due ${rtf.format(diff, "day")}`, overdue: false };
 }
 
 // ─── Action Item Row ──────────────────────────────────────────────────────────
 
 function ActionItemRow({
   item,
-  localStatus,
   onToggle,
   viewerOnly,
 }: {
   item: ActionItem;
-  localStatus: "open" | "completed";
   onToggle: () => void;
   viewerOnly: boolean;
 }) {
-  const done = localStatus === "completed";
+  const done = item.status === "completed";
   const due = formatDueDate(item.due_date);
 
   return (
@@ -120,7 +117,6 @@ export default function ActionsClient() {
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
-  const [localStatus, setLocalStatus] = useState<Record<string, "open" | "completed">>({});
   
   // Basic limit for load more pagination
   const [limit, setLimit] = useState(20);
@@ -145,31 +141,24 @@ export default function ActionsClient() {
   const items: ActionItem[] = data?.data ?? [];
 
   const assignees = useMemo(() => {
-    const unique = new Set<string>();
-    items.forEach(i => {
-      if (i.assignee) unique.add(i.assignee);
-    });
-    return Array.from(unique).sort();
+    return [...new Set(items.map((i) => i.assignee).filter(Boolean))].sort() as string[];
   }, [items]);
 
   const filtered = items.filter((item) => {
-    const effective = localStatus[item.id] ?? item.status;
-    if (statusFilter !== "all" && effective !== statusFilter) return false;
+    if (statusFilter !== "all" && item.status !== statusFilter) return false;
     if (assigneeFilter !== "all" && item.assignee !== assigneeFilter) return false;
     return true;
   });
 
   function handleToggle(item: ActionItem) {
     if (viewerOnly) return;
-    const newStatus = (localStatus[item.id] ?? item.status) === "open" ? "completed" : "open";
-    setLocalStatus((prev) => ({ ...prev, [item.id]: newStatus }));
+    const newStatus = item.status === "open" ? "completed" : "open";
     patchItem({ workspaceId, meetingId: item.meeting_id, itemId: item.id, status: newStatus });
   }
 
-  const openCount = items.filter((i) => (localStatus[i.id] ?? i.status) === "open").length;
+  const openCount = items.filter((i) => i.status === "open").length;
   const overdueCount = items.filter((i) => {
-    const effective = localStatus[i.id] ?? i.status;
-    return effective === "open" && i.due_date && new Date(i.due_date) < new Date();
+    return i.status === "open" && i.due_date && new Date(i.due_date) < new Date();
   }).length;
 
   return (
@@ -260,7 +249,6 @@ export default function ActionsClient() {
               <ActionItemRow
                 key={item.id}
                 item={item}
-                localStatus={localStatus[item.id] ?? item.status}
                 onToggle={() => handleToggle(item)}
                 viewerOnly={viewerOnly}
               />

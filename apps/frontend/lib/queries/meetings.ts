@@ -191,13 +191,17 @@ export function usePatchActionItem() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: patchActionItem,
-    onSuccess: (updated) => {
-      // Optimistically update cached list
+    onMutate: async (payload) => {
+      await qc.cancelQueries({ queryKey: meetingKeys.actionItems(payload.meetingId) });
       qc.setQueryData<ActionItem[]>(
-        meetingKeys.actionItems(updated.meeting_id),
-        (prev) =>
-          prev?.map((item) => (item.id === updated.id ? updated : item)) ?? []
+        meetingKeys.actionItems(payload.meetingId),
+        (prev) => prev?.map((item) => (item.id === payload.itemId ? { ...item, ...payload } : item)) ?? []
       );
+    },
+    onSettled: (_data, _error, variables) => {
+      void qc.invalidateQueries({
+        queryKey: meetingKeys.actionItems(variables.meetingId),
+      });
     },
   });
 }

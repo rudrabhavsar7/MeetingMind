@@ -85,12 +85,10 @@ export default function MeetingDetailClient() {
   const displaySummary = currentSummary?.executive_summary ?? meeting?.summary_preview ?? "";
   const displayKeyPoints = currentSummary?.key_points ?? [];
 
-  const [localActionStatus, setLocalActionStatus] = useState<Record<string, "open" | "completed">>({});
   const { mutate: patchItem } = usePatchActionItem();
 
   function toggleActionItem(item: ActionItem) {
-    const newStatus = (localActionStatus[item.id] ?? item.status) === "open" ? "completed" : "open";
-    setLocalActionStatus((prev) => ({ ...prev, [item.id]: newStatus }));
+    const newStatus = item.status === "open" ? "completed" : "open";
     if (meetingId) {
       patchItem({ meetingId, itemId: item.id, status: newStatus });
     }
@@ -129,19 +127,33 @@ export default function MeetingDetailClient() {
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || displaySegments.length === 0) return;
+    
+    let lastIndex = 0;
     function onTimeUpdate() {
       const t = video!.currentTime;
-      const active = displaySegments.find(
-        (s) => t >= s.start_time && t <= s.end_time
-      );
-      if (active && active.id !== activeSegmentId) {
-        setActiveSegmentId(active.id);
+      // Fast path: still in same segment
+      if (displaySegments[lastIndex] && t >= displaySegments[lastIndex].start_time && t <= displaySegments[lastIndex].end_time) {
+        setActiveSegmentId(prev => prev !== displaySegments[lastIndex].id ? displaySegments[lastIndex].id : prev);
+        return;
+      }
+      // Fast path: next segment (normal playback progression)
+      if (displaySegments[lastIndex + 1] && t >= displaySegments[lastIndex + 1].start_time && t <= displaySegments[lastIndex + 1].end_time) {
+        lastIndex++;
+        setActiveSegmentId(prev => prev !== displaySegments[lastIndex].id ? displaySegments[lastIndex].id : prev);
+        return;
+      }
+      // Fallback: user seeked video
+      const idx = displaySegments.findIndex(s => t >= s.start_time && t <= s.end_time);
+      if (idx !== -1) {
+        lastIndex = idx;
+        setActiveSegmentId(prev => prev !== displaySegments[idx].id ? displaySegments[idx].id : prev);
       }
     }
+    
     video.addEventListener("timeupdate", onTimeUpdate);
     return () => video.removeEventListener("timeupdate", onTimeUpdate);
-  }, [displaySegments, activeSegmentId]);
+  }, [displaySegments]);
 
   // If the active segment changes via time update, we don't automatically scroll unless requested,
   // but for now we won't auto-scroll to avoid fighting user scroll.
@@ -431,7 +443,7 @@ export default function MeetingDetailClient() {
                   <p className="text-sm text-muted-foreground text-center py-8">No action items logged.</p>
                 ) : (
                   displayActions.map((item) => {
-                    const done = (localActionStatus[item.id] ?? item.status) === "completed";
+                    const done = item.status === "completed";
                     return (
                       <Card key={item.id}>
                         <CardContent className="p-3">

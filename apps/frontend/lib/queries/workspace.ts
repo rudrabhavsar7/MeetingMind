@@ -81,9 +81,24 @@ export function usePatchWorkspaceActionItem() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: patchActionItem,
-    onSuccess: (_updated, { workspaceId }) => {
+    onMutate: async (payload) => {
+      await qc.cancelQueries({ queryKey: workspaceKeys.actionItems(payload.workspaceId) });
+      qc.setQueriesData<PaginatedResponse<ActionItem>>(
+        { queryKey: workspaceKeys.actionItems(payload.workspaceId) },
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            data: old.data.map((item) =>
+              item.id === payload.itemId ? { ...item, status: payload.status ?? item.status } : item
+            ),
+          };
+        }
+      );
+    },
+    onSettled: (_data, _error, variables) => {
       void qc.invalidateQueries({
-        queryKey: workspaceKeys.actionItems(workspaceId),
+        queryKey: workspaceKeys.actionItems(variables.workspaceId),
       });
     },
   });
