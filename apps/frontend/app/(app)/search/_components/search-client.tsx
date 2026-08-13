@@ -19,50 +19,6 @@ const suggestedQueries = [
   "Which meetings mentioned the AI pipeline timeline?",
 ];
 
-const mockResponse: ChatMessage = {
-  id: "r1",
-  role: "assistant",
-  content: `Based on your recent meetings, here's what I found regarding the Q3 planning discussions:
-
-The team decided to use **WebSocket** for the extension-to-backend audio streaming [1], rejecting HTTP polling due to real-time transcription latency requirements.
-
-For the AI pipeline, **faster-whisper** was selected as the default local STT provider, with an abstraction layer planned to allow operator-level provider swaps [2].
-
-The key blocker identified was GPU routing for the Ollama container in Docker Compose, owned by Arnish [3].
-
-**Action items logged:**
-- Jenil: Document the WebSocket event specification by Thursday
-- Arnish: Resolve GPU routing for Ollama
-- Rudra: Define the STT provider abstraction interface`,
-  citations: [
-    {
-      index: 1,
-      meeting_id: "m1",
-      meeting_title: "Q3 Product Planning — All Hands",
-      meeting_date: new Date(Date.now() - 86400000).toISOString(),
-      segment_text: "I've been thinking about this. We should definitely go with WebSocket for the extension-to-backend stream.",
-      start_time: 19,
-    },
-    {
-      index: 2,
-      meeting_id: "m2",
-      meeting_title: "Backend Architecture Review",
-      meeting_date: new Date(Date.now() - 172800000).toISOString(),
-      segment_text: "The plan is to use faster-whisper locally as the default. The abstraction layer is important.",
-      start_time: 57,
-    },
-    {
-      index: 3,
-      meeting_id: "m2",
-      meeting_title: "Backend Architecture Review",
-      meeting_date: new Date(Date.now() - 172800000).toISOString(),
-      segment_text: "The only thing missing is the Ollama service — I need to figure out GPU routing for the GPU worker container.",
-      start_time: 139,
-    },
-  ],
-  created_at: new Date().toISOString(),
-};
-
 // ─── Citation Modal ──────────────────────────────────────────────────────────
 
 function CitationCard({ citation }: { citation: Citation }) {
@@ -179,9 +135,14 @@ export default function SearchClient() {
       };
       setMessages((prev) => [...prev, assistantMsg]);
     } catch {
-      // Backend offline — use mock response for demo
-      await new Promise((r) => setTimeout(r, 1000));
-      setMessages((prev) => [...prev, { ...mockResponse, id: `r-${crypto.randomUUID()}` }]);
+      const errorMsg: ChatMessage = {
+        id: `e-${crypto.randomUUID()}`,
+        role: "assistant",
+        content: "Sorry, I couldn\u2019t process your question right now. Please ensure the backend is running and try again.",
+        citations: [],
+        created_at: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, errorMsg]);
     }
   }
 

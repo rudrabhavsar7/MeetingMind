@@ -10,67 +10,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
 import type { Meeting, MeetingStatus } from "@/types/api.types";
 
-// ─── Mock fallback ───────────────────────────────────────────────────────────
-
-const MOCK_MEETINGS: Meeting[] = [
-  {
-    id: "m1",
-    workspace_id: "ws1",
-    title: "Q3 Product Planning — All Hands",
-    status: "completed",
-    source_app: "Google Meet",
-    source_url: null,
-    duration_seconds: 5400,
-    participant_count: 12,
-    started_at: new Date(Date.now() - 86400000).toISOString(),
-    ended_at: new Date(Date.now() - 80600000).toISOString(),
-    created_at: new Date(Date.now() - 86400000).toISOString(),
-    summary_preview: "Discussed Q3 roadmap priorities, budget allocation for the AI pipeline, and team OKRs.",
-  },
-  {
-    id: "m2",
-    workspace_id: "ws1",
-    title: "Backend Architecture Review",
-    status: "completed",
-    source_app: "Google Meet",
-    source_url: null,
-    duration_seconds: 3600,
-    participant_count: 5,
-    started_at: new Date(Date.now() - 172800000).toISOString(),
-    ended_at: new Date(Date.now() - 169200000).toISOString(),
-    created_at: new Date(Date.now() - 172800000).toISOString(),
-    summary_preview: "Reviewed the FastAPI + Celery architecture. Agreed to use pgvector and Redis pub-sub.",
-  },
-  {
-    id: "m3",
-    workspace_id: "ws1",
-    title: "Design System Sprint Review",
-    status: "analyzing",
-    source_app: "Google Meet",
-    source_url: null,
-    duration_seconds: 2700,
-    participant_count: 4,
-    started_at: new Date(Date.now() - 3600000).toISOString(),
-    ended_at: null,
-    created_at: new Date(Date.now() - 3600000).toISOString(),
-    summary_preview: null,
-  },
-  {
-    id: "m4",
-    workspace_id: "ws1",
-    title: "1:1 Weekly — Engineering Sync",
-    status: "completed",
-    source_app: "Google Meet",
-    source_url: null,
-    duration_seconds: 1800,
-    participant_count: 2,
-    started_at: new Date(Date.now() - 259200000).toISOString(),
-    ended_at: new Date(Date.now() - 257400000).toISOString(),
-    created_at: new Date(Date.now() - 259200000).toISOString(),
-    summary_preview: "Discussed sprint progress, blockers on the auth flow, and upcoming PTO.",
-  },
-];
-
 // ─── Filter options ──────────────────────────────────────────────────────────
 
 const STATUS_FILTERS: { label: string; value: MeetingStatus | "all" }[] = [
@@ -103,7 +42,7 @@ export default function MeetingsPage() {
     { enabled: !!workspaceId }
   );
 
-  const meetings: Meeting[] = meetingsData?.data ?? MOCK_MEETINGS;
+  const meetings: Meeting[] = meetingsData?.data ?? [];
 
   // Client-side title search (backend keyword search is MM-606 / Rudra's ticket)
   const filtered = search.trim()

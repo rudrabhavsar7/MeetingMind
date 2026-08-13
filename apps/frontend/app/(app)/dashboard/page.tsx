@@ -20,88 +20,6 @@ import { useWorkspaceActionItems } from "@/lib/queries/workspace";
 import { useAuthStore } from "@/stores/auth-store";
 import type { Meeting, ActionItem } from "@/types/api.types";
 
-// ─── Mock fallback (used while backend is not running) ────────────────────────
-
-const MOCK_MEETINGS: Meeting[] = [
-  {
-    id: "m1",
-    workspace_id: "ws1",
-    title: "Q3 Product Planning — All Hands",
-    status: "completed",
-    source_app: "Google Meet",
-    source_url: null,
-    duration_seconds: 5400,
-    participant_count: 12,
-    started_at: new Date(Date.now() - 86400000).toISOString(),
-    ended_at: new Date(Date.now() - 80600000).toISOString(),
-    created_at: new Date(Date.now() - 86400000).toISOString(),
-    summary_preview:
-      "Discussed Q3 roadmap priorities, budget allocation for the AI pipeline, and team OKRs. Three major decisions logged.",
-  },
-  {
-    id: "m2",
-    workspace_id: "ws1",
-    title: "Backend Architecture Review",
-    status: "completed",
-    source_app: "Google Meet",
-    source_url: null,
-    duration_seconds: 3600,
-    participant_count: 5,
-    started_at: new Date(Date.now() - 172800000).toISOString(),
-    ended_at: new Date(Date.now() - 169200000).toISOString(),
-    created_at: new Date(Date.now() - 172800000).toISOString(),
-    summary_preview:
-      "Reviewed the FastAPI + Celery architecture proposal. Agreed to use pgvector for embeddings and Redis for pub-sub.",
-  },
-  {
-    id: "m3",
-    workspace_id: "ws1",
-    title: "Design System Sprint Review",
-    status: "analyzing",
-    source_app: "Google Meet",
-    source_url: null,
-    duration_seconds: 2700,
-    participant_count: 4,
-    started_at: new Date(Date.now() - 3600000).toISOString(),
-    ended_at: null,
-    created_at: new Date(Date.now() - 3600000).toISOString(),
-    summary_preview: null,
-  },
-];
-
-const MOCK_ACTION_ITEMS: ActionItem[] = [
-  {
-    id: "a1",
-    meeting_id: "m1",
-    text: "Finalize Q3 OKR document and share with team by Friday",
-    assignee: "Prashant",
-    due_date: new Date(Date.now() + 172800000).toISOString(),
-    status: "open",
-    source_segment_id: null,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "a2",
-    meeting_id: "m2",
-    text: "Set up pgvector extension in staging PostgreSQL",
-    assignee: "Prashant",
-    due_date: new Date(Date.now() + 86400000).toISOString(),
-    status: "open",
-    source_segment_id: null,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "a3",
-    meeting_id: "m1",
-    text: "Review and approve the updated design tokens in globals.css",
-    assignee: "Prashant",
-    due_date: null,
-    status: "open",
-    source_segment_id: null,
-    created_at: new Date().toISOString(),
-  },
-];
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatDueDate(iso: string | null): string {
@@ -139,9 +57,8 @@ export default function DashboardPage() {
     { enabled: !!workspaceId }
   );
 
-  // Fall back to mock data while backend is not running
-  const meetings: Meeting[] = meetingsData?.data ?? MOCK_MEETINGS;
-  const actionItems: ActionItem[] = actionsData?.data ?? MOCK_ACTION_ITEMS;
+  const meetings: Meeting[] = meetingsData?.data ?? [];
+  const actionItems: ActionItem[] = actionsData?.data ?? [];
 
   const completedThisWeek = meetings.filter((m) => m.status === "completed").length;
   const openActions = actionItems.filter((a) => a.status === "open");

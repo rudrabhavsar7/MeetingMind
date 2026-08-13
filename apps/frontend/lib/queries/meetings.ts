@@ -16,6 +16,7 @@ import type {
   TranscriptSegment,
   ActionItem,
   Decision,
+  SummaryVersion,
   PaginatedResponse,
   ApiResponse,
 } from "@/types/api.types";
@@ -35,6 +36,8 @@ export const meetingKeys = {
     [...meetingKeys.all, "action-items", meetingId] as const,
   decisions: (meetingId: string) =>
     [...meetingKeys.all, "decisions", meetingId] as const,
+  summaries: (meetingId: string) =>
+    [...meetingKeys.all, "summaries", meetingId] as const,
 };
 
 // ─── Meetings List ──────────────────────────────────────────────────────────
@@ -71,20 +74,22 @@ export function useMeetings(
 
 // ─── Meeting Detail ─────────────────────────────────────────────────────────
 
-async function fetchMeeting(meetingId: string): Promise<Meeting> {
+async function fetchMeeting(workspaceId: string, meetingId: string): Promise<Meeting> {
   const { data } = await apiClient.get<ApiResponse<Meeting>>(
-    `/workspaces/default/meetings/${meetingId}`
+    `/workspaces/${workspaceId}/meetings/${meetingId}`
   );
   return data.data;
 }
 
 export function useMeeting(
   meetingId: string | undefined,
+  workspaceId?: string,
   options?: Partial<UseQueryOptions<Meeting>>
 ) {
+  const wsId = workspaceId ?? "default";
   return useQuery({
     queryKey: meetingKeys.detail(meetingId ?? ""),
-    queryFn: () => fetchMeeting(meetingId!),
+    queryFn: () => fetchMeeting(wsId, meetingId!),
     enabled: !!meetingId,
     staleTime: 30_000,
     ...options,
@@ -193,6 +198,47 @@ export function usePatchActionItem() {
         (prev) =>
           prev?.map((item) => (item.id === updated.id ? updated : item)) ?? []
       );
+    },
+  });
+}
+
+// ─── Summary Versions ───────────────────────────────────────────────────────
+
+async function fetchSummaryVersions(
+  meetingId: string
+): Promise<SummaryVersion[]> {
+  const { data } = await apiClient.get<ApiResponse<SummaryVersion[]>>(
+    `/meetings/${meetingId}/summaries`
+  );
+  return data.data;
+}
+
+export function useSummaryVersions(
+  meetingId: string | undefined,
+  options?: Partial<UseQueryOptions<SummaryVersion[]>>
+) {
+  return useQuery({
+    queryKey: meetingKeys.summaries(meetingId ?? ""),
+    queryFn: () => fetchSummaryVersions(meetingId!),
+    enabled: !!meetingId,
+    staleTime: 60_000,
+    ...options,
+  });
+}
+
+export function useRegenerateSummary() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (meetingId: string) => {
+      await apiClient.post(`/meetings/${meetingId}/summaries/regenerate`);
+    },
+    onSuccess: (_data, meetingId) => {
+      void qc.invalidateQueries({
+        queryKey: meetingKeys.summaries(meetingId),
+      });
+      void qc.invalidateQueries({
+        queryKey: meetingKeys.detail(meetingId),
+      });
     },
   });
 }

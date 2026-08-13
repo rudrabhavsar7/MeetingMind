@@ -20,16 +20,6 @@ import { useWorkspaceActionItems, usePatchWorkspaceActionItem } from "@/lib/quer
 import { useAuthStore } from "@/stores/auth-store";
 import type { ActionItem } from "@/types/api.types";
 
-// ─── Mock fallback ───────────────────────────────────────────────────────────
-
-const MOCK_ITEMS: ActionItem[] = [
-  { id: "a1", meeting_id: "m1", text: "Finalize Q3 OKR document and share with team by Friday", assignee: "Prashant", due_date: new Date(Date.now() + 172800000).toISOString(), status: "open", source_segment_id: null, created_at: new Date().toISOString() },
-  { id: "a2", meeting_id: "m2", text: "Set up pgvector extension in staging PostgreSQL", assignee: "Arnish", due_date: new Date(Date.now() + 86400000).toISOString(), status: "open", source_segment_id: null, created_at: new Date().toISOString() },
-  { id: "a3", meeting_id: "m1", text: "Jenil to document WebSocket event spec by Thursday", assignee: "Jenil", due_date: new Date(Date.now() - 86400000).toISOString(), status: "open", source_segment_id: "s6", created_at: new Date().toISOString() },
-  { id: "a4", meeting_id: "m2", text: "Rudra to define STT provider abstraction interface", assignee: "Rudra", due_date: null, status: "completed", source_segment_id: "s4", created_at: new Date().toISOString() },
-  { id: "a5", meeting_id: "m3", text: "Review and approve the updated design tokens in globals.css", assignee: "Prashant", due_date: null, status: "open", source_segment_id: null, created_at: new Date().toISOString() },
-];
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatDueDate(iso: string | null): { label: string; overdue: boolean } {
@@ -152,7 +142,7 @@ export default function ActionsClient() {
 
   const { mutate: patchItem } = usePatchWorkspaceActionItem();
 
-  const items: ActionItem[] = data?.data ?? MOCK_ITEMS;
+  const items: ActionItem[] = data?.data ?? [];
 
   const assignees = useMemo(() => {
     const unique = new Set<string>();

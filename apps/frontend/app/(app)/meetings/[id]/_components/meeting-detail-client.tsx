@@ -24,40 +24,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { useMeeting, useTranscriptSegments, useActionItems, useDecisions, usePatchActionItem } from "@/lib/queries/meetings";
-import type { TranscriptSegment, ActionItem, Decision } from "@/types/api.types";
-
-// ─── Mock fallback data ───────────────────────────────────────────────────────
-
-const MOCK_SEGMENTS: TranscriptSegment[] = [
-  { id: "s1", meeting_id: "m1", speaker_label: "Speaker 1", speaker_name: "Rudra", text: "Alright, let's kick off the Q3 planning session. I want to start with the AI pipeline — we need to finalize the streaming architecture before we can commit to a timeline.", start_time: 0, end_time: 18, created_at: "" },
-  { id: "s2", meeting_id: "m1", speaker_label: "Speaker 2", speaker_name: "Prashant", text: "I've been thinking about this. We should definitely go with WebSocket for the extension-to-backend stream. The latency requirements for live transcription make polling completely infeasible.", start_time: 19, end_time: 38, created_at: "" },
-  { id: "s3", meeting_id: "m1", speaker_label: "Speaker 3", speaker_name: "Jenil", text: "Agreed on WebSocket. What about the STT provider? Are we locked into Whisper or should we keep the interface abstract enough to swap providers later?", start_time: 39, end_time: 56, created_at: "" },
-  { id: "s4", meeting_id: "m1", speaker_label: "Speaker 1", speaker_name: "Rudra", text: "The plan is to use faster-whisper locally as the default. The abstraction layer is important — we should define a clean interface so operators can swap in their own STT if needed.", start_time: 57, end_time: 78, created_at: "" },
-  { id: "s5", meeting_id: "m1", speaker_label: "Speaker 2", speaker_name: "Prashant", text: "On the frontend side, I'll need the WebSocket events spec finalized before I can build the live transcript UI in the extension side panel. Can we document that this week?", start_time: 79, end_time: 97, created_at: "" },
-  { id: "s6", meeting_id: "m1", speaker_label: "Speaker 3", speaker_name: "Jenil", text: "I'll own that. I'll write up the event spec — transcript_interim, transcript_final, action_item_detected, summary_updated, meeting_completed — and share it in Notion by Thursday.", start_time: 98, end_time: 118, created_at: "" },
-  { id: "s7", meeting_id: "m1", speaker_label: "Speaker 1", speaker_name: "Rudra", text: "Perfect. Let's also talk about the RAG pipeline. We need pgvector indexes set up before we can run any embedding queries. Arnish, is the Docker Compose ready?", start_time: 119, end_time: 138, created_at: "" },
-  { id: "s8", meeting_id: "m1", speaker_label: "Speaker 4", speaker_name: "Arnish", text: "The Docker Compose is up. PostgreSQL with pgvector extension is running, Redis is up. The only thing missing is the Ollama service — I need to figure out GPU routing for the GPU worker container.", start_time: 139, end_time: 161, created_at: "" },
-];
-
-const MOCK_ACTIONS: ActionItem[] = [
-  { id: "a1", meeting_id: "m1", text: "Jenil to document WebSocket event spec by Thursday", assignee: "Jenil", due_date: null, status: "open", source_segment_id: "s6", created_at: "" },
-  { id: "a2", meeting_id: "m1", text: "Arnish to figure out GPU routing for Ollama container", assignee: "Arnish", due_date: null, status: "open", source_segment_id: "s8", created_at: "" },
-  { id: "a3", meeting_id: "m1", text: "Rudra to define STT provider abstraction interface", assignee: "Rudra", due_date: null, status: "completed", source_segment_id: "s4", created_at: "" },
-];
-
-const MOCK_DECISIONS: Decision[] = [
-  { id: "d1", meeting_id: "m1", text: "Use WebSocket for extension-to-backend audio streaming (rejected HTTP polling due to latency)", source_segment_id: "s2", created_at: "" },
-  { id: "d2", meeting_id: "m1", text: "faster-whisper is the default STT provider; abstraction layer required for operator swap-out", source_segment_id: "s4", created_at: "" },
-];
-
-const MOCK_SUMMARY = `The team finalized the real-time streaming architecture for the MeetingMind AI pipeline. **WebSocket** was chosen over HTTP polling for extension-to-backend audio streaming due to live transcription latency requirements.
-
-**faster-whisper** was selected as the default local STT provider, with a clean abstraction layer to allow operators to swap providers.
-
-The infrastructure is largely ready — PostgreSQL with pgvector and Redis are running in Docker Compose. GPU routing for the Ollama container remains the only outstanding infrastructure blocker.
-
-The WebSocket event specification will be documented by Jenil by Thursday, unblocking the extension side panel UI.`;
+import { useMeeting, useTranscriptSegments, useActionItems, useDecisions, usePatchActionItem, useSummaryVersions, useRegenerateSummary } from "@/lib/queries/meetings";
+import { useAuthStore } from "@/stores/auth-store";
+import type { TranscriptSegment, ActionItem, Decision, SummaryVersion } from "@/types/api.types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -91,6 +60,8 @@ type InsightsTab = "summary" | "decisions" | "actions";
 export default function MeetingDetailClient() {
   const params = useParams<{ id: string }>();
   const meetingId = params?.id;
+  const { user } = useAuthStore();
+  const workspaceId = user?.workspaces?.[0]?.id ?? "default";
 
   const [activeTab, setActiveTab] = useState<InsightsTab>("summary");
   const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null);
@@ -98,15 +69,21 @@ export default function MeetingDetailClient() {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // ── Queries ────────────────────────────────────────────────────────────────
-  const { data: meeting, isLoading: meetingLoading } = useMeeting(meetingId);
+  const { data: meeting, isLoading: meetingLoading } = useMeeting(meetingId, workspaceId);
   const { data: segments, isLoading: segmentsLoading } = useTranscriptSegments(meetingId);
   const { data: actionItems, isLoading: actionsLoading } = useActionItems(meetingId);
   const { data: decisions, isLoading: decisionsLoading } = useDecisions(meetingId);
+  const { data: summaryVersions, isLoading: summariesLoading } = useSummaryVersions(meetingId);
+  const { mutate: regenerate, isPending: isRegenerating } = useRegenerateSummary();
 
-  const displaySegments = segments ?? MOCK_SEGMENTS;
-  const displayActions = actionItems ?? MOCK_ACTIONS;
-  const displayDecisions = decisions ?? MOCK_DECISIONS;
-  const displaySummary = meeting?.summary_preview ?? MOCK_SUMMARY;
+  const displaySegments = segments ?? [];
+  const displayActions = actionItems ?? [];
+  const displayDecisions = decisions ?? [];
+
+  // Find the current (latest) summary version
+  const currentSummary: SummaryVersion | undefined = summaryVersions?.find((v) => v.status === "current") ?? summaryVersions?.[0];
+  const displaySummary = currentSummary?.executive_summary ?? meeting?.summary_preview ?? "";
+  const displayKeyPoints = currentSummary?.key_points ?? [];
 
   const [localActionStatus, setLocalActionStatus] = useState<Record<string, "open" | "completed">>({});
   const { mutate: patchItem } = usePatchActionItem();
@@ -357,21 +334,51 @@ export default function MeetingDetailClient() {
                     <Lightbulb className="h-3 w-3 text-primary" />
                     AI-generated ·{" "}
                     <span className="text-primary">verify with transcript</span>
+                    {currentSummary && (
+                      <span className="ml-2 text-muted-foreground/60">v{currentSummary.version}</span>
+                    )}
                   </p>
-                  <Button variant="outline" size="sm" className="h-7 text-xs">
-                    Regenerate
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    disabled={isRegenerating || !meetingId}
+                    onClick={() => meetingId && regenerate(meetingId)}
+                  >
+                    {isRegenerating ? (
+                      <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Regenerating…</>
+                    ) : (
+                      "Regenerate"
+                    )}
                   </Button>
                 </div>
-                {meetingLoading ? (
+                {meetingLoading || summariesLoading ? (
                   <div className="space-y-3 animate-pulse">
                     <div className="h-3 w-full rounded bg-muted" />
                     <div className="h-3 w-5/6 rounded bg-muted" />
                     <div className="h-3 w-4/6 rounded bg-muted" />
                   </div>
+                ) : displaySummary ? (
+                  <>
+                    <div className="prose prose-sm dark:prose-invert text-sm text-foreground leading-relaxed max-w-none">
+                      <ReactMarkdown>{displaySummary}</ReactMarkdown>
+                    </div>
+                    {displayKeyPoints.length > 0 && (
+                      <div className="mt-4">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Key Points</p>
+                        <ul className="space-y-1">
+                          {displayKeyPoints.map((point, i) => (
+                            <li key={i} className="text-sm text-foreground flex items-start gap-2">
+                              <span className="text-primary mt-1">•</span>
+                              {point}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </>
                 ) : (
-                  <div className="prose prose-sm dark:prose-invert text-sm text-foreground leading-relaxed max-w-none">
-                    <ReactMarkdown>{displaySummary}</ReactMarkdown>
-                  </div>
+                  <p className="text-sm text-muted-foreground text-center py-8">No summary available yet.</p>
                 )}
               </div>
             )}

@@ -130,6 +130,30 @@ export interface Decision {
   created_at: string;
 }
 
+// ─── Summary Versions ─────────────────────────────────────────────────────
+
+export type SummaryKind = "interim" | "final" | "user_edit";
+
+export interface SummaryCitation {
+  segment_id: string;
+  start_time: number;
+  end_time: number;
+}
+
+export interface SummaryVersion {
+  id: string;
+  workspace_id: string;
+  meeting_id: string;
+  ai_processing_run_id: string | null;
+  version: number;
+  kind: SummaryKind;
+  executive_summary: string;
+  key_points: string[];
+  status: "current" | "superseded";
+  citations: SummaryCitation[];
+  created_at: string;
+}
+
 // ─── RAG / Chat ───────────────────────────────────────────────────────────
 
 export interface ChatMessage {
