@@ -17,7 +17,6 @@ import {
   Gavel,
   Play,
   Loader2,
-  AlertTriangle,
   Search,
   Volume2,
 } from "lucide-react";
@@ -26,7 +25,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useMeeting, useTranscriptSegments, useActionItems, useDecisions, usePatchActionItem, useSummaryVersions, useRegenerateSummary } from "@/lib/queries/meetings";
 import { useAuthStore } from "@/stores/auth-store";
-import type { TranscriptSegment, ActionItem, Decision, SummaryVersion } from "@/types/api.types";
+import type { TranscriptSegment, ActionItem, SummaryVersion } from "@/types/api.types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

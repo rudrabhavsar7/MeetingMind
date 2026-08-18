@@ -80,6 +80,8 @@ Repository evidence as of 2026-07-15 supports the following planning snapshot:
 | MM-203 | Done | Database-backed bootstrap, invitation registration, password reset, login, refresh, logout, and current-user flows pass automated and development smoke tests. |
 | MM-204 | Done | Login, bootstrap, invitation registration, recovery pages, session hydration, and route guards are complete and integrated. |
 | MM-601 | Done | `TranscriptChunk.embedding Vector(768)` and the HNSW cosine index exist in the reviewed migration. |
+| MM-303 | Done | Extension popup detects Google Meet tabs, uses Manifest V3 service worker + offscreen `USER_MEDIA` capture, start/stop controls, all status states, and live transcript display. Lint and build pass. |
+| MM-501 | Done | Dashboard fetches meetings and action items via TanStack Query from real backend API, displays MeetingCard grid, empty/loading/error states, and metrics row. Lint, typecheck, and build pass. |
 | All other v1 tickets | Planned | Do not infer completion from mock UI or documentation coverage. |
 
 The team is operating across the end of Sprint S1 and the preparation of Sprint S2, but Phase 0 has

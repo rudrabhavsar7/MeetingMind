@@ -12,7 +12,6 @@ import {
 import { apiClient } from "@/lib/api";
 import type {
   Meeting,
-  MeetingDetail,
   TranscriptSegment,
   ActionItem,
   Decision,

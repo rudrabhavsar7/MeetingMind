@@ -51,7 +51,6 @@ export default function DashboardPage() {
   const {
     data: actionsData,
     isLoading: actionsLoading,
-    isError: actionsError,
   } = useWorkspaceActionItems(
     { workspaceId, status: "open", limit: 10 },
     { enabled: !!workspaceId }
