@@ -78,7 +78,7 @@ Repository evidence as of 2026-07-15 supports the following planning snapshot:
 | MM-201 | Done | Canonical SQLAlchemy models and relationship tests are implemented. |
 | MM-202 | Done | Alembic is configured and the development schema is at the current migration head. |
 | MM-203 | Done | Database-backed bootstrap, invitation registration, password reset, login, refresh, logout, and current-user flows pass automated and development smoke tests. |
-| MM-204 | In progress | Login, bootstrap registration, recovery pages, session hydration, and guards exist; invitation registration UI and remaining edge states are incomplete. |
+| MM-204 | Done | Login, bootstrap, invitation registration, recovery pages, session hydration, and route guards are complete and integrated. |
 | MM-601 | Done | `TranscriptChunk.embedding Vector(768)` and the HNSW cosine index exist in the reviewed migration. |
 | All other v1 tickets | Planned | Do not infer completion from mock UI or documentation coverage. |
 
