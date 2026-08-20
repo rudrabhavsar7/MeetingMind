@@ -82,6 +82,12 @@ Repository evidence as of 2026-07-15 supports the following planning snapshot:
 | MM-601 | Done | `TranscriptChunk.embedding Vector(768)` and the HNSW cosine index exist in the reviewed migration. |
 | MM-303 | Done | Extension popup detects Google Meet tabs, uses Manifest V3 service worker + offscreen `USER_MEDIA` capture, start/stop controls, all status states, and live transcript display. Lint and build pass. |
 | MM-501 | Done | Dashboard fetches meetings and action items via TanStack Query from real backend API, displays MeetingCard grid, empty/loading/error states, and metrics row. Lint, typecheck, and build pass. |
+| MM-306 | Done | Extension settings page shows connection status, fixed default workspace (ADR 010), raw audio retention policy from workspace, install/open guidance, and supported apps list. Uses real `useAuthStore` for workspace context. |
+| MM-307 | Done | Standalone web capture at `/meetings/new` uses `getUserMedia` for mic capture, creates `standalone_web_capture` session via API, sends `MM01` PCM frames over WebSocket, handles Pause/Resume, and shows unsupported/denied/device-lost error states. Never claims tab audio. |
+| MM-502 | Done | Meeting detail view renders executive summary via `ReactMarkdown`, shows current summary version with citations, supports idempotent regeneration via `useRegenerateSummary`, displays version number, key points, and action items as a toggleable checklist with `usePatchActionItem`. |
+| MM-503 | Done | Transcript viewer renders chat-bubble style `TranscriptSegment`s with `SpeakerChip`s (color-coded), uses TanStack Virtual `useVirtualizer` for DOM-efficient rendering, includes search filtering, and supports click-to-seek with video sync via `timeupdate` events. |
+| MM-505 | Done | Actions page lists workspace-scoped action items via `useWorkspaceActionItems` with status/assignee filters, links each item to its meeting citation, supports status toggle via `usePatchWorkspaceActionItem`, Viewer role is read-only, and includes load-more pagination. |
+| MM-604 | Done | Chat interface has sticky bottom input, user bubbles on right / AI bubbles on left, renders Markdown via `ReactMarkdown`, displays citation cards with meeting links and timestamps, and integrates with `useAskAI` mutation for real backend calls. |
 | All other v1 tickets | Planned | Do not infer completion from mock UI or documentation coverage. |
 
 The team is operating across the end of Sprint S1 and the preparation of Sprint S2, but Phase 0 has

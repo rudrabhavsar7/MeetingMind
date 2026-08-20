@@ -89,7 +89,7 @@ export default function StandaloneCapturePage() {
   }, []);
 
   // ── Start capture — only fires after explicit user click ──────────────────
-  function connectWebSocket(streamUrl: string, streamToken: string, meetingId: string) {
+  function connectWebSocket(streamUrl: string, streamToken: string, _meetingId: string) {
     const ws = new WebSocket(streamUrl, [streamToken]);
     wsRef.current = ws;
     ws.binaryType = "arraybuffer";
@@ -258,24 +258,7 @@ export default function StandaloneCapturePage() {
     }, 1500);
   }
 
-  // Simulated transcript — replaced by real WebSocket events in MM-304 integration
-  function simulateTranscript() {
-    const samples = [
-      "Starting the standalone capture session for today's sync.",
-      "Audio is being captured through your microphone.",
-      "Transcription will appear here as speech is detected.",
-      "This is a fallback capture mode — the Chrome extension provides richer metadata.",
-    ];
-    let i = 0;
-    const iv = setInterval(() => {
-      if (i >= samples.length) { clearInterval(iv); return; }
-      setTranscript((prev) => [
-        ...prev,
-        { speaker: "Speaker 1", text: samples[i], final: true },
-      ]);
-      i++;
-    }, 3000);
-  }
+
 
   return (
     <div className="flex flex-col min-h-full">
