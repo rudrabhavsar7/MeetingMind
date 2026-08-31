@@ -19,6 +19,11 @@ from app.schemas.meeting import (
     LiveMeetingCreate,
     LiveMeetingEnvelope,
     LiveMeetingResponse,
+    MeetingDetailEnvelope,
+    MeetingDetailResponse,
+    MeetingListEnvelope,
+    MeetingListItem,
+    MeetingListMeta,
     MeetingResponse,
     PresignedUrlEnvelope,
     PresignedUrlRequest,
@@ -43,6 +48,101 @@ async def get_storage_service(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> StorageService:
     return StorageService(settings)
+
+
+@router.get("", response_model=MeetingListEnvelope)
+async def list_meetings(
+    workspace_id: uuid.UUID,
+    membership: Annotated[WorkspaceMembership, Depends(require_workspace_member)],
+    meeting_service: Annotated[MeetingService, Depends(get_meeting_service)],
+    status_filter: str | None = None,
+    source_type_filter: str | None = None,
+    cursor: str | None = None,
+    limit: int = 50,
+) -> MeetingListEnvelope:
+    if limit < 1 or limit > 100:
+        limit = 50
+
+    parsed_status = MeetingStatus(status_filter) if status_filter else None
+    parsed_source = MeetingSourceType(source_type_filter) if source_type_filter else None
+
+    from datetime import datetime as dt
+
+    parsed_cursor = dt.fromisoformat(cursor) if cursor else None
+
+    meetings, next_cursor = await meeting_service.list_meetings(
+        workspace_id, status=parsed_status, source_type=parsed_source, cursor=parsed_cursor, limit=limit
+    )
+
+    items = []
+    for m in meetings:
+        participant_count = await meeting_service.get_participant_count(m.id)
+        summary_preview = await meeting_service.get_summary_preview(m.id)
+        items.append(
+            MeetingListItem(
+                id=m.id,
+                workspace_id=m.workspace_id,
+                title=m.title,
+                status=m.status.value if m.status else "scheduled",
+                source_type=m.source_type.value if m.source_type else "unknown",
+                source_app=m.source_app.value if m.source_app else None,
+                started_at=m.started_at,
+                ended_at=m.ended_at,
+                duration_seconds=m.duration_seconds,
+                participant_count=participant_count,
+                summary_preview=summary_preview,
+            )
+        )
+
+    return MeetingListEnvelope(
+        data=items,
+        meta=MeetingListMeta(next_cursor=next_cursor, has_more=next_cursor is not None, limit=limit),
+    )
+
+
+@router.get("/{meeting_id}", response_model=MeetingDetailEnvelope)
+async def get_meeting_detail(
+    workspace_id: uuid.UUID,
+    meeting_id: uuid.UUID,
+    membership: Annotated[WorkspaceMembership, Depends(require_workspace_member)],
+    meeting_service: Annotated[MeetingService, Depends(get_meeting_service)],
+) -> MeetingDetailEnvelope:
+    meeting = await meeting_service.get_meeting_detail(meeting_id, workspace_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+
+    participant_count = await meeting_service.get_participant_count(meeting.id)
+
+    return MeetingDetailEnvelope(
+        data=MeetingDetailResponse(
+            id=meeting.id,
+            workspace_id=meeting.workspace_id,
+            title=meeting.title,
+            status=meeting.status.value if meeting.status else "scheduled",
+            source_type=meeting.source_type.value if meeting.source_type else "unknown",
+            source_app=meeting.source_app.value if meeting.source_app else None,
+            source_url=meeting.source_url,
+            source_title=meeting.source_title,
+            started_at=meeting.started_at,
+            ended_at=meeting.ended_at,
+            duration_seconds=meeting.duration_seconds,
+            raw_audio_retained=meeting.raw_audio_retained,
+            created_by_user_id=meeting.created_by_user_id,
+            participant_count=participant_count,
+        )
+    )
+
+
+@router.delete("/{meeting_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
+async def delete_meeting(
+    workspace_id: uuid.UUID,
+    meeting_id: uuid.UUID,
+    membership: Annotated[WorkspaceMembership, Depends(require_workspace_member)],
+    meeting_service: Annotated[MeetingService, Depends(get_meeting_service)],
+) -> None:
+    deleted = await meeting_service.soft_delete_meeting(meeting_id, workspace_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Meeting not found")
 
 
 @router.post(
