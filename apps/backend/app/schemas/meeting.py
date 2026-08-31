@@ -91,3 +91,49 @@ class StreamTokenRefreshResponse(BaseModel):
 
 class StreamTokenRefreshEnvelope(BaseModel):
     data: StreamTokenRefreshResponse
+
+
+class MeetingListItem(BaseModel):
+    id: uuid.UUID
+    workspace_id: uuid.UUID
+    title: str | None
+    status: str
+    source_type: str
+    source_app: str | None
+    started_at: datetime
+    ended_at: datetime | None = None
+    duration_seconds: int | None = None
+    participant_count: int = 0
+    summary_preview: str | None = None
+
+
+class MeetingListMeta(BaseModel):
+    next_cursor: datetime | None = None
+    has_more: bool = False
+    limit: int = 50
+
+
+class MeetingListEnvelope(BaseModel):
+    data: list[MeetingListItem]
+    meta: MeetingListMeta
+
+
+class MeetingDetailResponse(BaseModel):
+    id: uuid.UUID
+    workspace_id: uuid.UUID
+    title: str | None
+    status: str
+    source_type: str
+    source_app: str | None = None
+    source_url: str | None = None
+    source_title: str | None = None
+    started_at: datetime
+    ended_at: datetime | None = None
+    duration_seconds: int | None = None
+    raw_audio_retained: bool = False
+    created_by_user_id: uuid.UUID | None = None
+    participant_count: int = 0
+
+
+class MeetingDetailEnvelope(BaseModel):
+    data: MeetingDetailResponse
