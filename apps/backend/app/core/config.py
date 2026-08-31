@@ -36,6 +36,20 @@ class Settings(BaseSettings):
     smtp_from_email: str | None = None
     smtp_timeout_seconds: int = 10
 
+    use_mock_ai: bool = True
+    stt_model_size: str = "base"
+    stt_device: str = "cpu"
+    stt_language: str | None = None
+    diarization_model: str = "pyannote/speaker-diarization-3.1"
+    diarization_huggingface_token: SecretStr | None = None
+    llm_provider: Literal["ollama", "openai", "mock"] = "mock"
+    llm_model: str = "llama3.2"
+    llm_base_url: str | None = None
+    llm_api_key: SecretStr | None = None
+    embedding_provider: Literal["ollama", "openai", "mock"] = "mock"
+    embedding_model: str = "nomic-embed-text"
+    embedding_dimensions: int = 768
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_prefix="MEETINGMIND_",
