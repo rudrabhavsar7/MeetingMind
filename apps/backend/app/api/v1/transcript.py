@@ -16,6 +16,10 @@ from app.models.workspace import WorkspaceMembership
 router = APIRouter()
 
 
+class SpeakerRenameRequest(BaseModel):
+    speaker_name: str
+
+
 class TranscriptSegmentResponse(BaseModel):
     id: str
     speaker_label: str
@@ -69,6 +73,31 @@ async def get_transcript(
             for s in segments
         ]
     )
+
+
+@router.patch("/{meeting_id}/transcript/speakers/{speaker_label}")
+async def rename_speaker(
+    workspace_id: uuid.UUID,
+    meeting_id: uuid.UUID,
+    speaker_label: str,
+    membership: Annotated[WorkspaceMembership, Depends(require_workspace_member)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+    body: SpeakerRenameRequest,
+) -> dict[str, str]:
+    from sqlalchemy import update as sa_update
+
+    stmt = (
+        sa_update(TranscriptSegment)
+        .where(
+            TranscriptSegment.meeting_id == meeting_id,
+            TranscriptSegment.workspace_id == workspace_id,
+            TranscriptSegment.speaker_label == speaker_label,
+        )
+        .values(speaker_name=body.speaker_name)
+    )
+    await db.execute(stmt)
+    await db.commit()
+    return {"speaker_label": speaker_label, "speaker_name": body.speaker_name}
 
 
 @router.get("/{meeting_id}/transcript/search", response_model=SearchEnvelope)
