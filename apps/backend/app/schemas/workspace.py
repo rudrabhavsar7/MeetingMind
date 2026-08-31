@@ -89,3 +89,27 @@ class WorkspaceInvitationResponse(BaseModel):
 
 class WorkspaceInvitationEnvelope(BaseModel):
     data: WorkspaceInvitationResponse
+
+
+class WorkspaceActionItemResponse(BaseModel):
+    id: uuid.UUID
+    workspace_id: uuid.UUID
+    meeting_id: uuid.UUID
+    text: str
+    assignee_name: str | None = None
+    due_date: datetime | None = None
+    status: str
+    origin: str
+    meeting_title: str | None = None
+    citations: list[dict[str, object]] = Field(default_factory=list)
+
+
+class WorkspaceActionItemListMeta(BaseModel):
+    next_cursor: str | None = None
+    has_more: bool = False
+    limit: int = 50
+
+
+class WorkspaceActionItemListEnvelope(BaseModel):
+    data: list[WorkspaceActionItemResponse]
+    meta: WorkspaceActionItemListMeta
