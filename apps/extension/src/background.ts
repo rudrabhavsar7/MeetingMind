@@ -1,7 +1,9 @@
 /// <reference types="chrome"/>
 
 let currentMeetingId = "";
-let currentWorkspaceId = ""; // Assume selected from UI
+let currentWorkspaceId = "";
+
+chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
 
 async function setupOffscreenDocument(path: string) {
   const offscreenUrl = chrome.runtime.getURL(path);
@@ -23,6 +25,20 @@ async function setupOffscreenDocument(path: string) {
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message.type === 'OPEN_SIDE_PANEL') {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const tabId = tabs[0]?.id;
+      if (tabId) {
+        chrome.sidePanel.open({ tabId }).then(() => {
+          sendResponse({ status: 'opened' });
+        }).catch((err) => {
+          sendResponse({ status: 'error', error: err.message });
+        });
+      }
+    });
+    return true;
+  }
+
   if (message.type === 'START_CAPTURE') {
     (async () => {
       try {
