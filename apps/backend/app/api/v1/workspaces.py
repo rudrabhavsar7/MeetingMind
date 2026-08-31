@@ -15,6 +15,8 @@ from app.models.user import User
 from app.models.workspace import WorkspaceMembership
 from app.schemas.workspace import (
     InvitationCreateRequest,
+    WorkspaceActionItemListEnvelope,
+    WorkspaceActionItemResponse,
     WorkspaceDetails,
     WorkspaceDetailsEnvelope,
     WorkspaceInvitationEnvelope,
@@ -266,3 +268,55 @@ async def remove_member(
         )
     except ForbiddenError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+
+
+@router.get("/{workspace_id}/action-items", response_model=WorkspaceActionItemListEnvelope)
+async def list_workspace_action_items(
+    workspace_id: uuid.UUID,
+    membership: Annotated[WorkspaceMembership, Depends(require_workspace_member)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+    status_filter: str | None = None,
+    cursor: str | None = None,
+    limit: int = 50,
+) -> WorkspaceActionItemListEnvelope:
+    from sqlalchemy import desc, select
+
+    from app.models.enums import ActionItemStatus
+    from app.models.meeting import ActionItem
+
+    if limit < 1 or limit > 100:
+        limit = 50
+
+    stmt = (
+        select(ActionItem)
+        .where(ActionItem.workspace_id == workspace_id, ActionItem.deleted_at.is_(None))
+        .order_by(desc(ActionItem.status == "open"), ActionItem.due_date.asc().nullslast(), ActionItem.created_at.desc())
+    )
+    if status_filter:
+        stmt = stmt.where(ActionItem.status == ActionItemStatus(status_filter))
+    if cursor:
+        stmt = stmt.where(ActionItem.id < uuid.UUID(cursor))
+    stmt = stmt.limit(limit + 1)
+
+    result = await db.execute(stmt)
+    rows = list(result.scalars().all())
+    has_more = len(rows) > limit
+    items = rows[:limit]
+    next_cursor = str(items[-1].id) if has_more and items else None
+
+    return WorkspaceActionItemListEnvelope(
+        data=[
+            WorkspaceActionItemResponse(
+                id=i.id,
+                workspace_id=i.workspace_id,
+                meeting_id=i.meeting_id,
+                text=i.text,
+                assignee_name=i.assignee_name,
+                due_date=i.due_date,
+                status=i.status.value if i.status else "open",
+                origin=i.origin.value if i.origin else "ai",
+            )
+            for i in items
+        ],
+        meta=WorkspaceActionItemListMeta(next_cursor=next_cursor, has_more=has_more, limit=limit),
+    )
