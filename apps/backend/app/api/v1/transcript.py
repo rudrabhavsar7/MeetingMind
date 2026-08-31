@@ -3,14 +3,14 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
-from sqlalchemy import select, or_
+from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import require_workspace_member
 from app.db.session import get_db_session
-from app.models.meeting import Meeting, TranscriptSegment
+from app.models.meeting import TranscriptSegment
 from app.models.workspace import WorkspaceMembership
 
 router = APIRouter()

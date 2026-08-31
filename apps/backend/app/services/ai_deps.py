@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from functools import lru_cache
 from typing import Annotated
 
 from fastapi import Depends
@@ -8,11 +7,11 @@ from fastapi import Depends
 from app.core.config import Settings, get_settings
 from app.services.transcription import (
     DiarizationService,
+    FasterWhisperSTTService,
     MockDiarizationService,
     MockSTTService,
     PyannoteDiarizationService,
     STTService,
-    FasterWhisperSTTService,
 )
 
 

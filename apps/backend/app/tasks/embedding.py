@@ -12,11 +12,12 @@ logger = logging.getLogger(__name__)
 def build_embeddings(self, meeting_id: str, workspace_id: str) -> dict[str, object]:
     import asyncio
 
+    from sqlalchemy import select
+
     from app.core.config import get_settings
     from app.db.session import async_session_factory
-    from app.models.meeting import Meeting, TranscriptSegment, TranscriptChunk
+    from app.models.meeting import Meeting, TranscriptChunk, TranscriptSegment
     from app.services.embedding import MockEmbeddingService, OllamaEmbeddingService, OpenAIEmbeddingService, chunk_transcript
-    from sqlalchemy import select
 
     settings = get_settings()
     mid = uuid.UUID(meeting_id)
@@ -28,11 +29,7 @@ def build_embeddings(self, meeting_id: str, workspace_id: str) -> dict[str, obje
             if not meeting:
                 return {"status": "error", "detail": "meeting_not_found"}
 
-            seg_stmt = (
-                select(TranscriptSegment)
-                .where(TranscriptSegment.meeting_id == mid)
-                .order_by(TranscriptSegment.start_time)
-            )
+            seg_stmt = select(TranscriptSegment).where(TranscriptSegment.meeting_id == mid).order_by(TranscriptSegment.start_time)
             result = await session.execute(seg_stmt)
             segments = list(result.scalars().all())
 
@@ -54,15 +51,21 @@ def build_embeddings(self, meeting_id: str, workspace_id: str) -> dict[str, obje
             if settings.use_mock_ai or settings.embedding_provider == "mock":
                 emb_service = MockEmbeddingService(dimensions=settings.embedding_dimensions)
             elif settings.embedding_provider == "ollama":
-                emb_service = OllamaEmbeddingService(model=settings.embedding_model, base_url=settings.llm_base_url or "http://localhost:11434", dimensions=settings.embedding_dimensions)
+                emb_service = OllamaEmbeddingService(
+                    model=settings.embedding_model,
+                    base_url=settings.llm_base_url or "http://localhost:11434",
+                    dimensions=settings.embedding_dimensions,
+                )
             else:
                 api_key = settings.llm_api_key.get_secret_value() if settings.llm_api_key else None
-                emb_service = OpenAIEmbeddingService(model=settings.embedding_model, api_key=api_key, dimensions=settings.embedding_dimensions)
+                emb_service = OpenAIEmbeddingService(
+                    model=settings.embedding_model, api_key=api_key, dimensions=settings.embedding_dimensions
+                )
 
             texts = [c["text"] for c in chunked]
             embeddings = await emb_service.embed_texts(texts)
 
-            for chunk_data, embedding in zip(chunked, embeddings):
+            for chunk_data, embedding in zip(chunked, embeddings, strict=False):
                 tc = TranscriptChunk(
                     workspace_id=wid,
                     meeting_id=mid,

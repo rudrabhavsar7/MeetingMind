@@ -71,12 +71,14 @@ class OllamaLLMService:
             data = json.loads(raw)
             items = []
             for item in data:
-                items.append(ActionItem(
-                    workspace_id=uuid.uuid4(),
-                    meeting_id=meeting_id,
-                    text=item.get("text", ""),
-                    assignee_name=item.get("assignee_name"),
-                ))
+                items.append(
+                    ActionItem(
+                        workspace_id=uuid.uuid4(),
+                        meeting_id=meeting_id,
+                        text=item.get("text", ""),
+                        assignee_name=item.get("assignee_name"),
+                    )
+                )
             return items
         except Exception as e:
             logger.warning("LLM action item extraction failed: %s", e)
@@ -94,13 +96,15 @@ class OllamaLLMService:
             data = json.loads(raw)
             decisions = []
             for item in data:
-                decisions.append(Decision(
-                    workspace_id=uuid.uuid4(),
-                    meeting_id=meeting_id,
-                    title=item.get("title", "Decision"),
-                    text=item.get("text", ""),
-                    rationale=item.get("rationale"),
-                ))
+                decisions.append(
+                    Decision(
+                        workspace_id=uuid.uuid4(),
+                        meeting_id=meeting_id,
+                        title=item.get("title", "Decision"),
+                        text=item.get("text", ""),
+                        rationale=item.get("rationale"),
+                    )
+                )
             return decisions
         except Exception as e:
             logger.warning("LLM decision extraction failed: %s", e)
@@ -159,7 +163,10 @@ class OpenAILLMService:
         try:
             raw = await self._chat(prompt)
             data = json.loads(raw)
-            return [ActionItem(workspace_id=uuid.uuid4(), meeting_id=meeting_id, text=i.get("text", ""), assignee_name=i.get("assignee_name")) for i in data]
+            return [
+                ActionItem(workspace_id=uuid.uuid4(), meeting_id=meeting_id, text=i.get("text", ""), assignee_name=i.get("assignee_name"))
+                for i in data
+            ]
         except Exception as e:
             logger.warning("OpenAI action item extraction failed: %s", e)
             return []
@@ -174,7 +181,16 @@ class OpenAILLMService:
         try:
             raw = await self._chat(prompt)
             data = json.loads(raw)
-            return [Decision(workspace_id=uuid.uuid4(), meeting_id=meeting_id, title=i.get("title", "Decision"), text=i.get("text", ""), rationale=i.get("rationale")) for i in data]
+            return [
+                Decision(
+                    workspace_id=uuid.uuid4(),
+                    meeting_id=meeting_id,
+                    title=i.get("title", "Decision"),
+                    text=i.get("text", ""),
+                    rationale=i.get("rationale"),
+                )
+                for i in data
+            ]
         except Exception as e:
             logger.warning("OpenAI decision extraction failed: %s", e)
             return []

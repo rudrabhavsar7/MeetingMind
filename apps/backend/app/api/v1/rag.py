@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -50,7 +49,11 @@ async def rag_chat(
     if settings.use_mock_ai or settings.embedding_provider == "mock":
         emb_service = MockEmbeddingService(dimensions=settings.embedding_dimensions)
     elif settings.embedding_provider == "ollama":
-        emb_service = OllamaEmbeddingService(model=settings.embedding_model, base_url=settings.llm_base_url or "http://localhost:11434", dimensions=settings.embedding_dimensions)
+        emb_service = OllamaEmbeddingService(
+            model=settings.embedding_model,
+            base_url=settings.llm_base_url or "http://localhost:11434",
+            dimensions=settings.embedding_dimensions,
+        )
     else:
         api_key = settings.llm_api_key.get_secret_value() if settings.llm_api_key else None
         emb_service = OpenAIEmbeddingService(model=settings.embedding_model, api_key=api_key, dimensions=settings.embedding_dimensions)
@@ -100,7 +103,7 @@ async def rag_chat(
 def _cosine_similarity(a: list[float], b: list[float]) -> float:
     import math
 
-    dot = sum(x * y for x, y in zip(a, b))
+    dot = sum(x * y for x, y in zip(a, b, strict=False))
     norm_a = math.sqrt(sum(x * x for x in a))
     norm_b = math.sqrt(sum(x * x for x in b))
     if norm_a == 0 or norm_b == 0:

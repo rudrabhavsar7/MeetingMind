@@ -8,6 +8,8 @@ from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisco
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import require_workspace_member
+from app.api.v1.meeting_actions import router as meeting_actions_router
+from app.api.v1.transcript import router as transcript_router
 from app.core.config import Settings, get_settings
 from app.db.session import get_db_session
 from app.models.enums import MeetingSourceType, MeetingStatus
@@ -29,12 +31,9 @@ from app.schemas.meeting import (
 )
 from app.services.meeting import MeetingService, SqlAlchemyMeetingRepository
 from app.services.storage import StorageService
-from app.api.v1.meeting_actions import router as meeting_actions_router
 
 router = APIRouter()
 router.include_router(meeting_actions_router)
-
-from app.api.v1.transcript import router as transcript_router
 router.include_router(transcript_router)
 
 

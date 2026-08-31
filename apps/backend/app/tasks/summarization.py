@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import UTC, datetime
 
 from app.tasks.celery_app import celery_app
 
@@ -13,13 +12,14 @@ logger = logging.getLogger(__name__)
 def generate_summary(self, meeting_id: str, workspace_id: str) -> dict[str, object]:
     import asyncio
 
+    from sqlalchemy import select
+
     from app.core.config import get_settings
     from app.db.session import async_session_factory
     from app.models.ai import SummaryVersion as SummaryVersionModel
-    from app.models.meeting import Meeting, TranscriptSegment, ActionItem, Decision
     from app.models.enums import MeetingStatus, SummaryKind, SummaryStatus
-    from app.services.ai import OllamaLLMService, OpenAILLMService, MockLLMService
-    from sqlalchemy import select
+    from app.models.meeting import Meeting, TranscriptSegment
+    from app.services.ai import MockLLMService, OllamaLLMService, OpenAILLMService
 
     settings = get_settings()
     mid = uuid.UUID(meeting_id)
@@ -43,23 +43,22 @@ def generate_summary(self, meeting_id: str, workspace_id: str) -> dict[str, obje
                 llm = OpenAILLMService(model=settings.llm_model, api_key=api_key)
 
             try:
-                seg_stmt = (
-                    select(TranscriptSegment)
-                    .where(TranscriptSegment.meeting_id == mid)
-                    .order_by(TranscriptSegment.start_time)
-                )
+                seg_stmt = select(TranscriptSegment).where(TranscriptSegment.meeting_id == mid).order_by(TranscriptSegment.start_time)
                 result = await session.execute(seg_stmt)
                 segments = list(result.scalars().all())
-                transcript_text = "\n".join(
-                    f"[{s.speaker_label}] {s.text}" for s in segments
-                )
+                transcript_text = "\n".join(f"[{s.speaker_label}] {s.text}" for s in segments)
 
                 summary = await llm.generate_summary(mid, transcript_text)
                 action_items = await llm.extract_action_items(mid, transcript_text)
                 decisions = await llm.extract_decisions(mid, transcript_text)
 
                 latest_version = 1
-                vs_stmt = select(SummaryVersionModel).where(SummaryVersionModel.meeting_id == mid).order_by(SummaryVersionModel.version.desc()).limit(1)
+                vs_stmt = (
+                    select(SummaryVersionModel)
+                    .where(SummaryVersionModel.meeting_id == mid)
+                    .order_by(SummaryVersionModel.version.desc())
+                    .limit(1)
+                )
                 vs_result = await session.execute(vs_stmt)
                 latest = vs_result.scalar_one_or_none()
                 if latest:
@@ -103,6 +102,6 @@ def generate_summary(self, meeting_id: str, workspace_id: str) -> dict[str, obje
                 meeting.last_error_message = str(exc)[:500]
                 await session.commit()
                 logger.exception("Summarization failed for meeting %s", meeting_id)
-                raise self.retry(exc=exc, countdown=60)
+                raise self.retry(exc=exc, countdown=60) from exc
 
     return asyncio.get_event_loop().run_until_complete(_run())

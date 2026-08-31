@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import uuid
-from pathlib import Path
 
 from app.tasks.celery_app import celery_app
 
@@ -12,19 +11,18 @@ logger = logging.getLogger(__name__)
 @celery_app.task(bind=True, name="app.tasks.transcription.process_audio", max_retries=3)
 def process_audio(self, meeting_id: str, workspace_id: str, file_path: str) -> dict[str, object]:
     import asyncio
+    from datetime import UTC, datetime
 
     from app.core.config import get_settings
     from app.db.session import async_session_factory
-    from app.models.meeting import Meeting, TranscriptSegment, MeetingParticipant
     from app.models.enums import MeetingStatus
+    from app.models.meeting import Meeting, MeetingParticipant
     from app.services.transcription import (
         FasterWhisperSTTService,
-        PyannoteDiarizationService,
-        MockSTTService,
         MockDiarizationService,
+        MockSTTService,
+        PyannoteDiarizationService,
     )
-    from sqlalchemy import select
-    from datetime import UTC, datetime
 
     settings = get_settings()
     mid = uuid.UUID(meeting_id)
@@ -102,6 +100,6 @@ def process_audio(self, meeting_id: str, workspace_id: str, file_path: str) -> d
                 meeting.last_error_message = str(exc)[:500]
                 await session.commit()
                 logger.exception("Transcription failed for meeting %s", meeting_id)
-                raise self.retry(exc=exc, countdown=60)
+                raise self.retry(exc=exc, countdown=60) from exc
 
     return asyncio.get_event_loop().run_until_complete(_run())

@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import Protocol
 
-from sqlalchemy import func, select, or_
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.meeting import TranscriptSegment

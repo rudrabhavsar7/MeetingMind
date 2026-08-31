@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import uuid
 from typing import Protocol
 
 logger = logging.getLogger(__name__)
@@ -32,7 +31,7 @@ class OllamaEmbeddingService:
                 )
                 resp.raise_for_status()
                 embedding = resp.json()["embedding"]
-                results.append(embedding[:self.dimensions])
+                results.append(embedding[: self.dimensions])
         return results
 
     async def embed_query(self, text: str) -> list[float]:
@@ -41,7 +40,13 @@ class OllamaEmbeddingService:
 
 
 class OpenAIEmbeddingService:
-    def __init__(self, model: str = "text-embedding-3-small", api_key: str | None = None, base_url: str = "https://api.openai.com/v1", dimensions: int = 768):
+    def __init__(
+        self,
+        model: str = "text-embedding-3-small",
+        api_key: str | None = None,
+        base_url: str = "https://api.openai.com/v1",
+        dimensions: int = 768,
+    ):
         self.model = model
         self.api_key = api_key
         self.base_url = base_url
@@ -97,15 +102,17 @@ def chunk_transcript(
             break
         text = "\n".join(f"[{s.get('speaker_label', 'SPEAKER_00')}] {s.get('text', '')}" for s in batch)
         content_hash = hashlib.sha256(text.encode()).hexdigest()
-        chunks.append({
-            "text": text,
-            "start_time": batch[0].get("start_time", 0.0),
-            "end_time": batch[-1].get("end_time", 0.0),
-            "first_segment_id": batch[0].get("id"),
-            "last_segment_id": batch[-1].get("id"),
-            "content_hash": content_hash,
-            "chunker_version": chunker_version,
-        })
+        chunks.append(
+            {
+                "text": text,
+                "start_time": batch[0].get("start_time", 0.0),
+                "end_time": batch[-1].get("end_time", 0.0),
+                "first_segment_id": batch[0].get("id"),
+                "last_segment_id": batch[-1].get("id"),
+                "content_hash": content_hash,
+                "chunker_version": chunker_version,
+            }
+        )
         if i + chunk_size >= len(segments):
             break
     return chunks

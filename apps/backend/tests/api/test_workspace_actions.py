@@ -2,9 +2,7 @@ from fastapi.testclient import TestClient
 
 
 def test_workspace_action_items_requires_auth(client: TestClient) -> None:
-    response = client.get(
-        "/api/v1/workspaces/00000000-0000-0000-0000-000000000001/action-items"
-    )
+    response = client.get("/api/v1/workspaces/00000000-0000-0000-0000-000000000001/action-items")
     assert response.status_code == 401
 
 

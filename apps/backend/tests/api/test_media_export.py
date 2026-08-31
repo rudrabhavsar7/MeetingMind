@@ -2,9 +2,7 @@ from fastapi.testclient import TestClient
 
 
 def test_media_url_requires_auth(client: TestClient) -> None:
-    response = client.get(
-        "/api/v1/workspaces/00000000-0000-0000-0000-000000000001/meetings/00000000-0000-0000-0000-000000000099/media-url"
-    )
+    response = client.get("/api/v1/workspaces/00000000-0000-0000-0000-000000000001/meetings/00000000-0000-0000-0000-000000000099/media-url")
     assert response.status_code == 401
 
 

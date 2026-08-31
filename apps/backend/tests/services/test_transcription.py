@@ -48,9 +48,9 @@ async def test_config_use_mock_ai_default():
 
 
 def test_ai_deps_returns_mock_when_use_mock_ai():
-    from app.services.ai_deps import get_stt_service, get_diarization_service
-    from app.services.transcription import MockSTTService, MockDiarizationService
     from app.core.config import Settings
+    from app.services.ai_deps import get_diarization_service, get_stt_service
+    from app.services.transcription import MockDiarizationService, MockSTTService
 
     settings = Settings(jwt_secret="test-secret-32-bytes-long!!!!!!!!")
     stt = get_stt_service(settings)
