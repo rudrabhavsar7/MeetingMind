@@ -56,83 +56,75 @@ export function usePipelineEvents({
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptsRef = useRef(0);
-  const callbacksRef = useRef({ onEvent, onConnected, onDisconnected });
   const [isConnected, setIsConnected] = useState(false);
   const [lastEvent, setLastEvent] = useState<PipelineEvent | null>(null);
   const [events, setEvents] = useState<PipelineEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  callbacksRef.current = { onEvent, onConnected, onDisconnected };
-
   const maxReconnectAttempts = 10;
   const baseReconnectDelay = 1000;
 
-  const connectRef = useRef<() => void>(() => {});
-
-  connectRef.current = () => {
+  useEffect(() => {
     if (!enabled || !workspaceId || !meetingId) return;
 
-    try {
-      const token = getAccessToken();
-      const wsUrl = `${API_BASE_URL.replace("http", "ws")}${API_V1_PREFIX}/workspaces/${workspaceId}/meetings/${meetingId}/pipeline-events${token ? `?token=${token}` : ""}`;
+    let cancelled = false;
 
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
+    function connect() {
+      if (cancelled) return;
 
-      ws.onopen = () => {
-        setIsConnected(true);
-        setError(null);
-        reconnectAttemptsRef.current = 0;
-        callbacksRef.current.onConnected?.();
-      };
+      try {
+        const token = getAccessToken();
+        const wsUrl = `${API_BASE_URL.replace("http", "ws")}${API_V1_PREFIX}/workspaces/${workspaceId}/meetings/${meetingId}/pipeline-events${token ? `?token=${token}` : ""}`;
 
-      ws.onmessage = (event) => {
-        try {
-          const data: PipelineEvent = JSON.parse(event.data);
-          setLastEvent(data);
-          setEvents((prev) => [...prev.slice(-99), data]);
-          callbacksRef.current.onEvent?.(data);
-        } catch {
-          // Ignore malformed messages
-        }
-      };
+        const ws = new WebSocket(wsUrl);
+        wsRef.current = ws;
 
-      ws.onclose = () => {
-        setIsConnected(false);
-        callbacksRef.current.onDisconnected?.();
+        ws.onopen = () => {
+          if (cancelled) return;
+          setIsConnected(true);
+          setError(null);
+          reconnectAttemptsRef.current = 0;
+          onConnected?.();
+        };
 
-        if (enabled && reconnectAttemptsRef.current < maxReconnectAttempts) {
-          const delay = baseReconnectDelay * Math.pow(2, reconnectAttemptsRef.current);
-          reconnectAttemptsRef.current += 1;
-          reconnectTimeoutRef.current = setTimeout(connectRef.current, Math.min(delay, 30000));
-        }
-      };
+        ws.onmessage = (event) => {
+          if (cancelled) return;
+          try {
+            const data: PipelineEvent = JSON.parse(event.data);
+            setLastEvent(data);
+            setEvents((prev) => [...prev.slice(-99), data]);
+            onEvent?.(data);
+          } catch {
+            // Ignore malformed messages
+          }
+        };
 
-      ws.onerror = () => {
-        setError("WebSocket connection error");
-      };
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to connect");
+        ws.onclose = () => {
+          if (cancelled) return;
+          setIsConnected(false);
+          onDisconnected?.();
+
+          if (!cancelled && reconnectAttemptsRef.current < maxReconnectAttempts) {
+            const delay = baseReconnectDelay * Math.pow(2, reconnectAttemptsRef.current);
+            reconnectAttemptsRef.current += 1;
+            reconnectTimeoutRef.current = setTimeout(connect, Math.min(delay, 30000));
+          }
+        };
+
+        ws.onerror = () => {
+          if (cancelled) return;
+          setError("WebSocket connection error");
+        };
+      } catch (err) {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "Failed to connect");
+      }
     }
-  };
 
-  const connect = useCallback(() => {
-    connectRef.current();
-  }, []);
-
-  const reconnect = useCallback(() => {
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-    reconnectAttemptsRef.current = 0;
-    connectRef.current();
-  }, []);
-
-  useEffect(() => {
-    connectRef.current();
+    connect();
 
     return () => {
+      cancelled = true;
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
@@ -141,7 +133,15 @@ export function usePipelineEvents({
         wsRef.current = null;
       }
     };
-  }, [workspaceId, meetingId, enabled]);
+  }, [workspaceId, meetingId, enabled, onEvent, onConnected, onDisconnected]);
+
+  const reconnect = useCallback(() => {
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    reconnectAttemptsRef.current = 0;
+  }, []);
 
   return { isConnected, lastEvent, events, error, reconnect };
 }
