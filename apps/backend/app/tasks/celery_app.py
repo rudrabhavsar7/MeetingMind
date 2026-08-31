@@ -12,16 +12,18 @@ celery_app = Celery(
 
 celery_app.conf.update(
     task_serializer="json",
-    result_serializer="json",
     accept_content=["json"],
+    result_serializer="json",
     timezone="UTC",
     enable_utc=True,
     task_track_started=True,
     task_acks_late=True,
     worker_prefetch_multiplier=1,
-    task_soft_time_limit=300,
-    task_time_limit=600,
-    worker_max_tasks_per_child=100,
+    task_routes={
+        "app.tasks.transcription.*": {"queue": "transcription"},
+        "app.tasks.summarization.*": {"queue": "ai"},
+        "app.tasks.embedding.*": {"queue": "ai"},
+    },
 )
 
 celery_app.autodiscover_tasks(["app.tasks"])
