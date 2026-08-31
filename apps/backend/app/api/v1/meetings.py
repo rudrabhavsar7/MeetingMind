@@ -34,8 +34,10 @@ from app.schemas.meeting import (
 )
 from app.services.meeting import MeetingService, SqlAlchemyMeetingRepository
 from app.services.storage import StorageService
+from app.api.v1.transcript import router as transcript_router
 
 router = APIRouter()
+router.include_router(transcript_router)
 
 
 async def get_meeting_service(
