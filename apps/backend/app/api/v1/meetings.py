@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
+from fastapi.responses import PlainTextResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import require_workspace_member
@@ -261,3 +262,77 @@ async def meeting_stream(
                     pass
     except WebSocketDisconnect:
         pass
+
+
+@router.get("/{meeting_id}/media-url")
+async def get_media_url(
+    workspace_id: uuid.UUID,
+    meeting_id: uuid.UUID,
+    membership: Annotated[WorkspaceMembership, Depends(require_workspace_member)],
+    meeting_service: Annotated[MeetingService, Depends(get_meeting_service)],
+    storage_service: Annotated[StorageService, Depends(get_storage_service)],
+) -> dict[str, object]:
+    meeting = await meeting_service.get_meeting_detail(meeting_id, workspace_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    if not meeting.raw_audio_retained:
+        raise HTTPException(status_code=404, detail="No retained media for this meeting")
+
+    object_key = f"workspaces/{workspace_id}/meetings/{meeting_id}/media"
+    try:
+        upload_url = await storage_service.generate_presigned_put_url(
+            object_key=object_key, mime_type="video/mp4", expires_in_seconds=900
+        )
+    except Exception:
+        raise HTTPException(status_code=404, detail="Media URL generation failed")
+
+    return {"data": {"meeting_id": str(meeting_id), "media_url": upload_url, "expires_at": (datetime.now(UTC) + timedelta(minutes=15)).isoformat(), "content_type": "video/mp4"}}
+
+
+@router.get("/{meeting_id}/exports/markdown")
+async def export_meeting_markdown(
+    workspace_id: uuid.UUID,
+    meeting_id: uuid.UUID,
+    membership: Annotated[WorkspaceMembership, Depends(require_workspace_member)],
+    meeting_service: Annotated[MeetingService, Depends(get_meeting_service)],
+) -> PlainTextResponse:
+    meeting = await meeting_service.get_meeting_detail(meeting_id, workspace_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+
+    from fastapi.responses import PlainTextResponse
+
+    title = meeting.title or "Untitled Meeting"
+    status_val = meeting.status.value if meeting.status else "unknown"
+    started = meeting.started_at.isoformat() if meeting.started_at else "N/A"
+    ended = meeting.ended_at.isoformat() if meeting.ended_at else "In progress"
+    duration = f"{meeting.duration_seconds}s" if meeting.duration_seconds else "N/A"
+
+    md_lines = [
+        f"# {title}",
+        "",
+        f"- **Status:** {status_val}",
+        f"- **Started:** {started}",
+        f"- **Ended:** {ended}",
+        f"- **Duration:** {duration}",
+        "",
+        "## Action Items",
+        "",
+        "_No action items yet._",
+        "",
+        "## Decisions",
+        "",
+        "_No decisions recorded._",
+        "",
+        "## Transcript",
+        "",
+        "_No transcript segments available._",
+        "",
+    ]
+    md_content = "\n".join(md_lines)
+    safe_title = "".join(c for c in title if c.isalnum() or c in " -_").strip() or "meeting"
+    return PlainTextResponse(
+        content=md_content,
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{safe_title}.md"'},
+    )
