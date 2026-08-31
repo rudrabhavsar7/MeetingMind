@@ -34,6 +34,9 @@ from app.api.v1.meeting_actions import router as meeting_actions_router
 router = APIRouter()
 router.include_router(meeting_actions_router)
 
+from app.api.v1.transcript import router as transcript_router
+router.include_router(transcript_router)
+
 
 async def get_meeting_service(
     session: Annotated[AsyncSession, Depends(get_db_session)],
