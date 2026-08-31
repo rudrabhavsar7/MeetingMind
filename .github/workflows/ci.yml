@@ -27,7 +27,7 @@ jobs:
       - name: Install Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
 
       - name: Install Poetry
         run: pipx install poetry
@@ -38,9 +38,9 @@ jobs:
           path: |
             apps/backend/.venv
             ~/.cache/pypoetry
-          key: backend-poetry-${{ runner.os }}-py3.11-${{ hashFiles('apps/backend/poetry.lock') }}
+          key: backend-poetry-${{ runner.os }}-py3.12-${{ hashFiles('apps/backend/poetry.lock') }}
           restore-keys: |
-            backend-poetry-${{ runner.os }}-py3.11-
+            backend-poetry-${{ runner.os }}-py3.12-
 
       - name: Install dependencies
         run: |
