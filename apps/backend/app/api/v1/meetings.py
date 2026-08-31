@@ -5,7 +5,6 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
-from fastapi.responses import PlainTextResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import require_workspace_member
@@ -20,11 +19,6 @@ from app.schemas.meeting import (
     LiveMeetingCreate,
     LiveMeetingEnvelope,
     LiveMeetingResponse,
-    MeetingDetailEnvelope,
-    MeetingDetailResponse,
-    MeetingListEnvelope,
-    MeetingListItem,
-    MeetingListMeta,
     MeetingResponse,
     PresignedUrlEnvelope,
     PresignedUrlRequest,
@@ -35,10 +29,10 @@ from app.schemas.meeting import (
 )
 from app.services.meeting import MeetingService, SqlAlchemyMeetingRepository
 from app.services.storage import StorageService
-from app.api.v1.transcript import router as transcript_router
+from app.api.v1.meeting_actions import router as meeting_actions_router
 
 router = APIRouter()
-router.include_router(transcript_router)
+router.include_router(meeting_actions_router)
 
 
 async def get_meeting_service(
@@ -51,101 +45,6 @@ async def get_storage_service(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> StorageService:
     return StorageService(settings)
-
-
-@router.get("", response_model=MeetingListEnvelope)
-async def list_meetings(
-    workspace_id: uuid.UUID,
-    membership: Annotated[WorkspaceMembership, Depends(require_workspace_member)],
-    meeting_service: Annotated[MeetingService, Depends(get_meeting_service)],
-    status_filter: str | None = None,
-    source_type_filter: str | None = None,
-    cursor: str | None = None,
-    limit: int = 50,
-) -> MeetingListEnvelope:
-    if limit < 1 or limit > 100:
-        limit = 50
-
-    parsed_status = MeetingStatus(status_filter) if status_filter else None
-    parsed_source = MeetingSourceType(source_type_filter) if source_type_filter else None
-
-    from datetime import datetime as dt
-
-    parsed_cursor = dt.fromisoformat(cursor) if cursor else None
-
-    meetings, next_cursor = await meeting_service.list_meetings(
-        workspace_id, status=parsed_status, source_type=parsed_source, cursor=parsed_cursor, limit=limit
-    )
-
-    items = []
-    for m in meetings:
-        participant_count = await meeting_service.get_participant_count(m.id)
-        summary_preview = await meeting_service.get_summary_preview(m.id)
-        items.append(
-            MeetingListItem(
-                id=m.id,
-                workspace_id=m.workspace_id,
-                title=m.title,
-                status=m.status.value if m.status else "scheduled",
-                source_type=m.source_type.value if m.source_type else "unknown",
-                source_app=m.source_app.value if m.source_app else None,
-                started_at=m.started_at,
-                ended_at=m.ended_at,
-                duration_seconds=m.duration_seconds,
-                participant_count=participant_count,
-                summary_preview=summary_preview,
-            )
-        )
-
-    return MeetingListEnvelope(
-        data=items,
-        meta=MeetingListMeta(next_cursor=next_cursor, has_more=next_cursor is not None, limit=limit),
-    )
-
-
-@router.get("/{meeting_id}", response_model=MeetingDetailEnvelope)
-async def get_meeting_detail(
-    workspace_id: uuid.UUID,
-    meeting_id: uuid.UUID,
-    membership: Annotated[WorkspaceMembership, Depends(require_workspace_member)],
-    meeting_service: Annotated[MeetingService, Depends(get_meeting_service)],
-) -> MeetingDetailEnvelope:
-    meeting = await meeting_service.get_meeting_detail(meeting_id, workspace_id)
-    if not meeting:
-        raise HTTPException(status_code=404, detail="Meeting not found")
-
-    participant_count = await meeting_service.get_participant_count(meeting.id)
-
-    return MeetingDetailEnvelope(
-        data=MeetingDetailResponse(
-            id=meeting.id,
-            workspace_id=meeting.workspace_id,
-            title=meeting.title,
-            status=meeting.status.value if meeting.status else "scheduled",
-            source_type=meeting.source_type.value if meeting.source_type else "unknown",
-            source_app=meeting.source_app.value if meeting.source_app else None,
-            source_url=meeting.source_url,
-            source_title=meeting.source_title,
-            started_at=meeting.started_at,
-            ended_at=meeting.ended_at,
-            duration_seconds=meeting.duration_seconds,
-            raw_audio_retained=meeting.raw_audio_retained,
-            created_by_user_id=meeting.created_by_user_id,
-            participant_count=participant_count,
-        )
-    )
-
-
-@router.delete("/{meeting_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
-async def delete_meeting(
-    workspace_id: uuid.UUID,
-    meeting_id: uuid.UUID,
-    membership: Annotated[WorkspaceMembership, Depends(require_workspace_member)],
-    meeting_service: Annotated[MeetingService, Depends(get_meeting_service)],
-) -> None:
-    deleted = await meeting_service.soft_delete_meeting(meeting_id, workspace_id)
-    if not deleted:
-        raise HTTPException(status_code=404, detail="Meeting not found")
 
 
 @router.post(
@@ -364,77 +263,3 @@ async def meeting_stream(
                     pass
     except WebSocketDisconnect:
         pass
-
-
-@router.get("/{meeting_id}/media-url")
-async def get_media_url(
-    workspace_id: uuid.UUID,
-    meeting_id: uuid.UUID,
-    membership: Annotated[WorkspaceMembership, Depends(require_workspace_member)],
-    meeting_service: Annotated[MeetingService, Depends(get_meeting_service)],
-    storage_service: Annotated[StorageService, Depends(get_storage_service)],
-) -> dict[str, object]:
-    meeting = await meeting_service.get_meeting_detail(meeting_id, workspace_id)
-    if not meeting:
-        raise HTTPException(status_code=404, detail="Meeting not found")
-    if not meeting.raw_audio_retained:
-        raise HTTPException(status_code=404, detail="No retained media for this meeting")
-
-    object_key = f"workspaces/{workspace_id}/meetings/{meeting_id}/media"
-    try:
-        upload_url = await storage_service.generate_presigned_put_url(
-            object_key=object_key, mime_type="video/mp4", expires_in_seconds=900
-        )
-    except Exception:
-        raise HTTPException(status_code=404, detail="Media URL generation failed")
-
-    return {"data": {"meeting_id": str(meeting_id), "media_url": upload_url, "expires_at": (datetime.now(UTC) + timedelta(minutes=15)).isoformat(), "content_type": "video/mp4"}}
-
-
-@router.get("/{meeting_id}/exports/markdown")
-async def export_meeting_markdown(
-    workspace_id: uuid.UUID,
-    meeting_id: uuid.UUID,
-    membership: Annotated[WorkspaceMembership, Depends(require_workspace_member)],
-    meeting_service: Annotated[MeetingService, Depends(get_meeting_service)],
-) -> PlainTextResponse:
-    meeting = await meeting_service.get_meeting_detail(meeting_id, workspace_id)
-    if not meeting:
-        raise HTTPException(status_code=404, detail="Meeting not found")
-
-    from fastapi.responses import PlainTextResponse
-
-    title = meeting.title or "Untitled Meeting"
-    status_val = meeting.status.value if meeting.status else "unknown"
-    started = meeting.started_at.isoformat() if meeting.started_at else "N/A"
-    ended = meeting.ended_at.isoformat() if meeting.ended_at else "In progress"
-    duration = f"{meeting.duration_seconds}s" if meeting.duration_seconds else "N/A"
-
-    md_lines = [
-        f"# {title}",
-        "",
-        f"- **Status:** {status_val}",
-        f"- **Started:** {started}",
-        f"- **Ended:** {ended}",
-        f"- **Duration:** {duration}",
-        "",
-        "## Action Items",
-        "",
-        "_No action items yet._",
-        "",
-        "## Decisions",
-        "",
-        "_No decisions recorded._",
-        "",
-        "## Transcript",
-        "",
-        "_No transcript segments available._",
-        "",
-    ]
-    md_content = "\n".join(md_lines)
-    safe_title = "".join(c for c in title if c.isalnum() or c in " -_").strip() or "meeting"
-    return PlainTextResponse(
-        content=md_content,
-        media_type="text/markdown; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="{safe_title}.md"'},
-    )
