@@ -15,7 +15,7 @@ def generate_summary(self, meeting_id: str, workspace_id: str) -> dict[str, obje
     from sqlalchemy import select
 
     from app.core.config import get_settings
-    from app.db.session import async_session_factory
+    from app.db.session import AsyncSessionLocal
     from app.models.ai import SummaryVersion as SummaryVersionModel
     from app.models.enums import MeetingStatus, SummaryKind, SummaryStatus
     from app.models.meeting import Meeting, TranscriptSegment
@@ -26,7 +26,7 @@ def generate_summary(self, meeting_id: str, workspace_id: str) -> dict[str, obje
     wid = uuid.UUID(workspace_id)
 
     async def _run():
-        async with async_session_factory() as session:
+        async with AsyncSessionLocal() as session:
             meeting = await session.get(Meeting, mid)
             if not meeting:
                 return {"status": "error", "detail": "meeting_not_found"}
@@ -34,6 +34,7 @@ def generate_summary(self, meeting_id: str, workspace_id: str) -> dict[str, obje
             meeting.status = MeetingStatus.SUMMARIZING
             await session.commit()
 
+            llm: MockLLMService | OllamaLLMService | OpenAILLMService
             if settings.use_mock_ai or settings.llm_provider == "mock":
                 llm = MockLLMService()
             elif settings.llm_provider == "ollama":

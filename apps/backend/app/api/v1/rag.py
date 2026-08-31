@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -45,6 +45,8 @@ async def rag_chat(
     from app.services.embedding import MockEmbeddingService, OllamaEmbeddingService, OpenAIEmbeddingService
 
     settings = get_settings()
+
+    emb_service: MockEmbeddingService | OllamaEmbeddingService | OpenAIEmbeddingService
 
     if settings.use_mock_ai or settings.embedding_provider == "mock":
         emb_service = MockEmbeddingService(dimensions=settings.embedding_dimensions)
@@ -111,7 +113,7 @@ def _cosine_similarity(a: list[float], b: list[float]) -> float:
     return dot / (norm_a * norm_b)
 
 
-async def _llm_answer(settings, question: str, context: str) -> str:
+async def _llm_answer(settings: Any, question: str, context: str) -> str:
     prompt = (
         f"You are a helpful meeting assistant. Answer the question based on the following meeting transcript context.\n\n"
         f"Context:\n{context}\n\n"
@@ -128,7 +130,8 @@ async def _llm_answer(settings, question: str, context: str) -> str:
                     json={"model": settings.llm_model, "messages": [{"role": "user", "content": prompt}], "stream": False},
                 )
                 resp.raise_for_status()
-                return resp.json()["message"]["content"]
+                data: dict[str, Any] = resp.json()
+                return str(data["message"]["content"])
         elif settings.llm_provider == "openai":
             import httpx
 
@@ -141,7 +144,8 @@ async def _llm_answer(settings, question: str, context: str) -> str:
                     json={"model": settings.llm_model, "messages": [{"role": "user", "content": prompt}]},
                 )
                 resp.raise_for_status()
-                return resp.json()["choices"][0]["message"]["content"]
+                data2: dict[str, Any] = resp.json()
+                return str(data2["choices"][0]["message"]["content"])
     except Exception:
         pass
     return f"Based on the meeting transcripts, here is what I found regarding '{question}':\n\n{context[:500]}"

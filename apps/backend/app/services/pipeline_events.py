@@ -9,12 +9,12 @@ logger = logging.getLogger(__name__)
 
 
 class PipelineEventBroadcaster:
-    def __init__(self, redis_url: str = "redis://localhost:6379/0"):
+    def __init__(self, redis_url: str = "redis://localhost:6379/0") -> None:
         self.redis_url = redis_url
-        self._pubsub = None
-        self._redis = None
+        self._pubsub: Any = None
+        self._redis: Any = None
 
-    async def _get_redis(self):
+    async def _get_redis(self) -> Any:
         if self._redis is None:
             import redis.asyncio as aioredis
 
@@ -27,7 +27,7 @@ class PipelineEventBroadcaster:
         event["meeting_id"] = meeting_id
         await redis.publish(channel, json.dumps(event, default=str))
 
-    async def subscribe(self, meeting_id: str):
+    async def subscribe(self, meeting_id: str) -> Any:
         redis = await self._get_redis()
         pubsub = redis.pubsub()
         channel = f"pipeline:{meeting_id}"
@@ -41,8 +41,8 @@ class PipelineEventBroadcaster:
 
 
 class InMemoryPipelineBroadcaster:
-    def __init__(self):
-        self._subscribers: dict[str, list[asyncio.Queue]] = {}
+    def __init__(self) -> None:
+        self._subscribers: dict[str, list[asyncio.Queue[dict[str, Any]]]] = {}
 
     async def publish(self, meeting_id: str, event: dict[str, Any]) -> None:
         event["meeting_id"] = meeting_id
@@ -52,12 +52,12 @@ class InMemoryPipelineBroadcaster:
             except asyncio.QueueFull:
                 pass
 
-    async def subscribe(self, meeting_id: str) -> asyncio.Queue:
-        queue: asyncio.Queue = asyncio.Queue(maxsize=100)
+    async def subscribe(self, meeting_id: str) -> asyncio.Queue[dict[str, Any]]:
+        queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=100)
         self._subscribers.setdefault(meeting_id, []).append(queue)
         return queue
 
-    async def unsubscribe(self, meeting_id: str, queue: asyncio.Queue) -> None:
+    async def unsubscribe(self, meeting_id: str, queue: asyncio.Queue[dict[str, Any]]) -> None:
         if meeting_id in self._subscribers:
             self._subscribers[meeting_id] = [q for q in self._subscribers[meeting_id] if q is not queue]
 

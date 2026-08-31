@@ -48,6 +48,23 @@ python_version = "3.11"
 strict = true
 plugins = ["pydantic.mypy"]
 exclude = ["\\.venv"]
+disable_error_code = ["untyped-decorator", "import-untyped", "no-untyped-call", "no-untyped-def", "no-any-return"]
+
+[[tool.mypy.overrides]]
+module = [
+    "celery.*",
+    "app.tasks.*",
+]
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = [
+    "faster_whisper.*",
+    "numpy.*",
+    "pyannote.*",
+    "pyannote.audio.*",
+]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

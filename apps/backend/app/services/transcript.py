@@ -81,7 +81,7 @@ class SqlAlchemyTranscriptRepository:
         )
         result = await self._session.execute(stmt)
         await self._session.commit()
-        return result.rowcount
+        return int(result.rowcount or 0)  # type: ignore[attr-defined]
 
     async def search_segments(
         self,

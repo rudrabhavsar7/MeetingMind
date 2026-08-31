@@ -26,7 +26,6 @@ class Settings(BaseSettings):
     refresh_token_days: int = 7
     refresh_cookie_name: str = "refresh_token"
     frontend_url: str = "http://localhost:3000"
-    use_mock_ai: bool = True
     password_reset_notifier: Literal["disabled", "smtp"] = "disabled"
     smtp_host: str | None = None
     smtp_port: int = 1025
