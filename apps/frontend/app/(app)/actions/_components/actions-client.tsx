@@ -138,7 +138,7 @@ export default function ActionsClient() {
 
   const { mutate: patchItem } = usePatchWorkspaceActionItem();
 
-  const items: ActionItem[] = data?.data ?? [];
+  const items: ActionItem[] = useMemo(() => data?.data ?? [], [data?.data]);
 
   const assignees = useMemo(() => {
     return [...new Set(items.map((i) => i.assignee).filter(Boolean))].sort() as string[];

@@ -89,7 +89,7 @@ export default function StandaloneCapturePage() {
   }, []);
 
   // ── Start capture — only fires after explicit user click ──────────────────
-  function connectWebSocket(streamUrl: string, streamToken: string, _meetingId: string) {
+  function connectWebSocket(streamUrl: string, streamToken: string) {
     const ws = new WebSocket(streamUrl, [streamToken]);
     wsRef.current = ws;
     ws.binaryType = "arraybuffer";
@@ -183,7 +183,7 @@ export default function StandaloneCapturePage() {
         started_at: new Date().toISOString()
       });
 
-      const { stream_url, stream_token, meeting } = data.data;
+      const { stream_url, stream_token } = data.data;
 
       const audioContext = new AudioContext({ sampleRate: 16000 });
       audioContextRef.current = audioContext;
@@ -206,7 +206,7 @@ export default function StandaloneCapturePage() {
       source.connect(workletNode);
       workletNode.connect(audioContext.destination);
 
-      connectWebSocket(stream_url, stream_token, meeting.id);
+      connectWebSocket(stream_url, stream_token);
 
       setCaptureState("recording");
       setElapsed(0);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -75,7 +75,7 @@ export default function MeetingDetailClient() {
   const { data: summaryVersions, isLoading: summariesLoading } = useSummaryVersions(meetingId);
   const { mutate: regenerate, isPending: isRegenerating } = useRegenerateSummary();
 
-  const displaySegments = segments ?? [];
+  const displaySegments = useMemo(() => segments ?? [], [segments]);
   const displayActions = actionItems ?? [];
   const displayDecisions = decisions ?? [];
 
@@ -105,6 +105,7 @@ export default function MeetingDetailClient() {
 
   // ── Virtualization ─────────────────────────────────────────────────────────
   const parentRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line react-hooks/incompatible-library
   const rowVirtualizer = useVirtualizer({
     count: filteredSegments.length,
     getScrollElement: () => parentRef.current,
