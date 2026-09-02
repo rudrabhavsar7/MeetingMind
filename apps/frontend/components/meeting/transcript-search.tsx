@@ -3,6 +3,9 @@
 import { useState, useCallback } from "react";
 import { Search, X, FileText } from "lucide-react";
 import { apiClient } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface TranscriptSearchResult {
   segment: {
@@ -61,61 +64,59 @@ export function TranscriptSearch({ workspaceId, meetingId }: TranscriptSearchPro
     <div className="space-y-4">
       <div className="flex gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <input
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             placeholder="Search transcript..."
-            className="w-full rounded-md border border-gray-300 bg-white py-2 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+            className="pl-9 pr-9"
           />
           {query && (
             <button
               onClick={() => { setQuery(""); setResults([]); setTotal(0); }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
               <X className="h-4 w-4" />
             </button>
           )}
         </div>
-        <button
+        <Button
           onClick={handleSearch}
           disabled={isSearching || !query.trim()}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
         >
           {isSearching ? "Searching..." : "Search"}
-        </button>
+        </Button>
       </div>
 
       {total > 0 && (
-        <p className="text-sm text-gray-500">{total} result{total !== 1 ? "s" : ""} found</p>
+        <p className="text-sm text-muted-foreground">{total} result{total !== 1 ? "s" : ""} found</p>
       )}
 
       <div className="space-y-3">
         {results.map((result) => (
-          <div
-            key={result.segment.id}
-            className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"
-          >
-            <div className="mb-2 flex items-center gap-2">
-              <FileText className="h-4 w-4 text-blue-500" />
-              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                {result.segment.speaker_name || result.segment.speaker_label}
-              </span>
-              <span className="text-xs text-gray-500">
-                {formatTime(result.segment.start_time)} - {formatTime(result.segment.end_time)}
-              </span>
-            </div>
-            <p className="text-sm text-gray-700 dark:text-gray-300">
-              {result.segment.text}
-            </p>
-          </div>
+          <Card key={result.segment.id}>
+            <CardContent className="p-4">
+              <div className="mb-2 flex items-center gap-2">
+                <FileText className="h-4 w-4 text-blue-500" />
+                <span className="text-sm font-medium">
+                  {result.segment.speaker_name || result.segment.speaker_label}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {formatTime(result.segment.start_time)} - {formatTime(result.segment.end_time)}
+                </span>
+              </div>
+              <p className="text-sm text-foreground">
+                {result.segment.text}
+              </p>
+            </CardContent>
+          </Card>
         ))}
       </div>
 
       {query && !isSearching && results.length === 0 && (
-        <p className="text-center text-sm text-gray-500">No results found</p>
+        <p className="text-center text-sm text-muted-foreground">No results found</p>
       )}
     </div>
   );
