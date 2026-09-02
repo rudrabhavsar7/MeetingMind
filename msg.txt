@@ -1,5 +1,0 @@
-﻿style(frontend): refactor export and search components to use shadcn ui
-
-- Refactored meeting-export-button.tsx to use the <Button> component
-- Refactored 	ranscript-search.tsx to use <Button>, <Input>, and <Card> components
-- Aligned raw tailwind styling with design system primitives
