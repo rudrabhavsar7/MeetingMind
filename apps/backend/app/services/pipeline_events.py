@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import uuid
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -18,6 +17,7 @@ class PipelineEventBroadcaster:
     async def _get_redis(self):
         if self._redis is None:
             import redis.asyncio as aioredis
+
             self._redis = aioredis.from_url(self.redis_url, decode_responses=True)
         return self._redis
 

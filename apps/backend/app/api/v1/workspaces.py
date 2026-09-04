@@ -16,6 +16,7 @@ from app.models.workspace import WorkspaceMembership
 from app.schemas.workspace import (
     InvitationCreateRequest,
     WorkspaceActionItemListEnvelope,
+    WorkspaceActionItemListMeta,
     WorkspaceActionItemResponse,
     WorkspaceDetails,
     WorkspaceDetailsEnvelope,

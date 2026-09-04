@@ -15,4 +15,6 @@ def get_embedding_service(settings: Annotated[Settings, Depends(get_settings)]):
     if settings.embedding_provider == "ollama":
         return OllamaEmbeddingService(model=settings.embedding_model, base_url=base_url, dimensions=settings.embedding_dimensions)
     api_key = settings.llm_api_key.get_secret_value() if settings.llm_api_key else None
-    return OpenAIEmbeddingService(model=settings.embedding_model, api_key=api_key, base_url=base_url, dimensions=settings.embedding_dimensions)
+    return OpenAIEmbeddingService(
+        model=settings.embedding_model, api_key=api_key, base_url=base_url, dimensions=settings.embedding_dimensions
+    )

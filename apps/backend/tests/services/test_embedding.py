@@ -43,9 +43,9 @@ def test_chunk_transcript_basic():
 
 
 def test_embedding_deps_returns_mock():
-    from app.services.embedding_deps import get_embedding_service
-    from app.services.embedding import MockEmbeddingService
     from app.core.config import Settings
+    from app.services.embedding import MockEmbeddingService
+    from app.services.embedding_deps import get_embedding_service
 
     settings = Settings(jwt_secret="test-secret-32-bytes-long!!!!!!!!")
     svc = get_embedding_service(settings)

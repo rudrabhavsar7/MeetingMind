@@ -41,6 +41,7 @@ class FasterWhisperSTTService(STTService):
     def _get_model(self):
         if self._model is None:
             from faster_whisper import WhisperModel
+
             self._model = WhisperModel(self.model_size, device=self.device, compute_type="int8" if self.device == "cpu" else "float16")
         return self._model
 
@@ -101,6 +102,7 @@ class PyannoteDiarizationService(DiarizationService):
     def _get_pipeline(self):
         if self._pipeline is None:
             from pyannote.audio import Pipeline
+
             self._pipeline = Pipeline.from_pretrained(self.model_name, use_auth_token=self.hf_token)
         return self._pipeline
 
@@ -108,19 +110,18 @@ class PyannoteDiarizationService(DiarizationService):
         return {"segments": [], "speaker_count": 0}
 
     async def diarize_batch(self, meeting_id: uuid.UUID, file_path: str) -> dict[str, Any]:
-        import tempfile
-        from pathlib import Path
-
         pipeline = self._get_pipeline()
         try:
             diarization = pipeline(file_path)
             segments: list[dict[str, Any]] = []
             for turn, _, speaker in diarization.itertracks(yield_label=True):
-                segments.append({
-                    "start": turn.start,
-                    "end": turn.end,
-                    "speaker": speaker,
-                })
+                segments.append(
+                    {
+                        "start": turn.start,
+                        "end": turn.end,
+                        "speaker": speaker,
+                    }
+                )
             speakers = {s["speaker"] for s in segments}
             return {"segments": segments, "speaker_count": len(speakers)}
         except Exception as e:

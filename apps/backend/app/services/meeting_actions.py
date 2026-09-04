@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
 from typing import Protocol
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.enums import ActionItemStatus, OutputOrigin
+from app.models.ai import AIOutputFeedback, SummaryVersion
+from app.models.enums import ActionItemStatus
 from app.models.meeting import ActionItem, Decision
-from app.models.ai import AIOutputCitation, AIOutputFeedback, SummaryVersion
 
 
 class MeetingActionRepository(Protocol):
@@ -53,9 +52,7 @@ class SqlAlchemyMeetingActionRepository:
         return list(result.scalars().all())
 
     async def list_summary_versions(self, meeting_id: uuid.UUID) -> list[SummaryVersion]:
-        stmt = (
-            select(SummaryVersion).where(SummaryVersion.meeting_id == meeting_id).order_by(SummaryVersion.version.desc())
-        )
+        stmt = select(SummaryVersion).where(SummaryVersion.meeting_id == meeting_id).order_by(SummaryVersion.version.desc())
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 

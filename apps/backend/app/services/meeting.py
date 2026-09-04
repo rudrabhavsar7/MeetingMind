@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.enums import MeetingSourceType, MeetingStatus
 from app.models.meeting import Meeting
-from app.models.user import User
 
 
 class MeetingRepository(Protocol):
@@ -60,11 +59,7 @@ class SqlAlchemyMeetingRepository:
         cursor: datetime | None = None,
         limit: int = 50,
     ) -> tuple[list[Meeting], datetime | None]:
-        stmt = (
-            select(Meeting)
-            .where(Meeting.workspace_id == workspace_id, Meeting.deleted_at.is_(None))
-            .order_by(Meeting.started_at.desc())
-        )
+        stmt = select(Meeting).where(Meeting.workspace_id == workspace_id, Meeting.deleted_at.is_(None)).order_by(Meeting.started_at.desc())
         if status is not None:
             stmt = stmt.where(Meeting.status == status)
         if source_type is not None:

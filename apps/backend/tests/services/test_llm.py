@@ -31,9 +31,9 @@ async def test_mock_llm_decisions():
 
 
 def test_llm_deps_returns_mock_when_use_mock_ai():
-    from app.services.ai_deps import get_llm_service
-    from app.services.ai import MockLLMService
     from app.core.config import Settings
+    from app.services.ai import MockLLMService
+    from app.services.ai_deps import get_llm_service
 
     settings = Settings(jwt_secret="test-secret-32-bytes-long!!!!!!!!")
     llm = get_llm_service(settings)

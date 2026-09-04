@@ -1,5 +1,4 @@
 import asyncio
-import uuid
 
 import pytest
 
@@ -38,11 +37,13 @@ async def test_in_memory_broadcaster_multiple_subscribers():
 
 def test_pipeline_events_module_importable():
     from app.api.v1.pipeline_events import router
+
     assert hasattr(router, "websocket")
 
 
 def test_pipeline_broadcaster_singleton():
-    from app.services.pipeline_events import get_pipeline_broadcaster, InMemoryPipelineBroadcaster
+    from app.services.pipeline_events import InMemoryPipelineBroadcaster, get_pipeline_broadcaster
+
     b1 = get_pipeline_broadcaster()
     b2 = get_pipeline_broadcaster()
     assert b1 is b2

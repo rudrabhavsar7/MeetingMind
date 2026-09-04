@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -9,25 +8,24 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import require_workspace_member, require_workspace_role
 from app.db.session import get_db_session
+from app.models.ai import AIOutputFeedback
 from app.models.enums import ActionItemStatus, WorkspaceRole
 from app.models.meeting import ActionItem, Decision
-from app.models.ai import AIOutputFeedback, SummaryVersion
 from app.models.workspace import WorkspaceMembership
 from app.schemas.meeting_actions import (
-    ActionItemResponse,
     ActionItemListEnvelope,
+    ActionItemResponse,
     ActionItemUpdateRequest,
+    AIFeedbackRequest,
+    AIFeedbackResponse,
     CitationResponse,
-    DecisionResponse,
     DecisionListEnvelope,
-    SummaryVersionResponse,
-    SummaryVersionListEnvelope,
+    DecisionResponse,
     SummaryRegenerateEnvelope,
     SummaryRegenerateRequest,
     SummaryRegenerateResponse,
-    SummaryEditRequest,
-    AIFeedbackRequest,
-    AIFeedbackResponse,
+    SummaryVersionListEnvelope,
+    SummaryVersionResponse,
 )
 from app.services.meeting import MeetingService, SqlAlchemyMeetingRepository
 from app.services.meeting_actions import MeetingActionService, SqlAlchemyMeetingActionRepository
@@ -197,9 +195,7 @@ async def regenerate_summary(
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
 
-    return SummaryRegenerateEnvelope(
-        data=SummaryRegenerateResponse(meeting_id=meeting_id, status="queued")
-    )
+    return SummaryRegenerateEnvelope(data=SummaryRegenerateResponse(meeting_id=meeting_id, status="queued"))
 
 
 @router.post("/{meeting_id}/ai-feedback", response_model=AIFeedbackResponse)

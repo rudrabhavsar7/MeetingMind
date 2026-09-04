@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import uuid
-
 from fastapi.testclient import TestClient
 
 
@@ -11,16 +9,12 @@ def test_meetings_list_requires_auth(client: TestClient) -> None:
 
 
 def test_meeting_detail_requires_auth(client: TestClient) -> None:
-    response = client.get(
-        "/api/v1/workspaces/00000000-0000-0000-0000-000000000001/meetings/00000000-0000-0000-0000-000000000099"
-    )
+    response = client.get("/api/v1/workspaces/00000000-0000-0000-0000-000000000001/meetings/00000000-0000-0000-0000-000000000099")
     assert response.status_code == 401
 
 
 def test_delete_meeting_requires_auth(client: TestClient) -> None:
-    response = client.delete(
-        "/api/v1/workspaces/00000000-0000-0000-0000-000000000001/meetings/00000000-0000-0000-0000-000000000099"
-    )
+    response = client.delete("/api/v1/workspaces/00000000-0000-0000-0000-000000000001/meetings/00000000-0000-0000-0000-000000000099")
     assert response.status_code == 401
 
 

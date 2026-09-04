@@ -13,16 +13,12 @@ def test_action_items_requires_auth(client: TestClient) -> None:
 
 
 def test_decisions_requires_auth(client: TestClient) -> None:
-    response = client.get(
-        "/api/v1/workspaces/00000000-0000-0000-0000-000000000001/meetings/00000000-0000-0000-0000-000000000099/decisions"
-    )
+    response = client.get("/api/v1/workspaces/00000000-0000-0000-0000-000000000001/meetings/00000000-0000-0000-0000-000000000099/decisions")
     assert response.status_code == 401
 
 
 def test_summaries_requires_auth(client: TestClient) -> None:
-    response = client.get(
-        "/api/v1/workspaces/00000000-0000-0000-0000-000000000001/meetings/00000000-0000-0000-0000-000000000099/summaries"
-    )
+    response = client.get("/api/v1/workspaces/00000000-0000-0000-0000-000000000001/meetings/00000000-0000-0000-0000-000000000099/summaries")
     assert response.status_code == 401
 
 
