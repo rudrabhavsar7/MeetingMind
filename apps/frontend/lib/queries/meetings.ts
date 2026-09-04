@@ -267,3 +267,32 @@ export function useDeleteMeeting() {
     },
   });
 }
+
+// ─── Rename Speaker ────────────────────────────────────────────────────────
+
+interface RenameSpeakerPayload {
+  meetingId: string;
+  speakerLabel: string;
+  speakerName: string;
+}
+
+async function renameSpeaker(payload: RenameSpeakerPayload): Promise<TranscriptSegment[]> {
+  const { meetingId, speakerLabel, speakerName } = payload;
+  const { data } = await apiClient.patch<ApiResponse<TranscriptSegment[]>>(
+    `/meetings/${meetingId}/transcript/speakers/${encodeURIComponent(speakerLabel)}`,
+    { speaker_name: speakerName }
+  );
+  return data.data;
+}
+
+export function useRenameSpeaker() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: renameSpeaker,
+    onSuccess: (_data, variables) => {
+      void qc.invalidateQueries({
+        queryKey: meetingKeys.transcript(variables.meetingId),
+      });
+    },
+  });
+}

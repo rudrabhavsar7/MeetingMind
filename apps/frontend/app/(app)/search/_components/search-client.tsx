@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import { Send, Sparkles, Loader2, User, Bot, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { useAskAI } from "@/lib/queries/chat";
+import { useAskAI, useChatHistory } from "@/lib/queries/chat";
 import { useAuthStore } from "@/stores/auth-store";
 import type { ChatMessage, Citation } from "@/types/api.types";
 
@@ -100,11 +100,25 @@ export default function SearchClient() {
 
   const [query, setQuery] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [conversationId, setConversationId] = useState<string | undefined>();
+  const historyLoadedRef = useRef(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const { mutateAsync: askAI, isPending } = useAskAI();
   const isLoading = isPending;
+
+  // Load chat history when conversationId is set
+  const { data: historyMessages } = useChatHistory(workspaceId, conversationId);
+
+  // Merge history into messages on first load
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing external API data into local state is a valid effect use case
+  useEffect(() => {
+    if (!historyLoadedRef.current && historyMessages && historyMessages.length > 0) {
+      historyLoadedRef.current = true;
+      setMessages(historyMessages);
+    }
+  }, [historyMessages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -134,6 +148,9 @@ export default function SearchClient() {
         created_at: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, assistantMsg]);
+      if (result.conversation_id) {
+        setConversationId(result.conversation_id);
+      }
     } catch {
       const errorMsg: ChatMessage = {
         id: `e-${crypto.randomUUID()}`,

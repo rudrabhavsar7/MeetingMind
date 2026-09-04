@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import ReactMarkdown from "react-markdown";
@@ -19,13 +19,29 @@ import {
   Loader2,
   Search,
   Volume2,
+  Trash2,
+  Wifi,
+  WifiOff,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { useMeeting, useTranscriptSegments, useActionItems, useDecisions, usePatchActionItem, useSummaryVersions, useRegenerateSummary } from "@/lib/queries/meetings";
+import { useMeeting, useTranscriptSegments, useActionItems, useDecisions, usePatchActionItem, useSummaryVersions, useRegenerateSummary, useDeleteMeeting, useRenameSpeaker } from "@/lib/queries/meetings";
 import { useAuthStore } from "@/stores/auth-store";
-import type { TranscriptSegment, ActionItem, SummaryVersion } from "@/types/api.types";
+import { usePipelineEvents, type PipelineEvent } from "@/hooks/use-pipeline-events";
+import type { TranscriptSegment, ActionItem, SummaryVersion, MeetingStatus } from "@/types/api.types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -54,10 +70,44 @@ function speakerColor(label: string): string {
 
 type InsightsTab = "summary" | "decisions" | "actions";
 
+const PIPELINE_STATUS: Record<string, { label: string; color: string }> = {
+  transcribing: { label: "Transcribing", color: "bg-blue-500/15 text-blue-700 dark:text-blue-400" },
+  summarizing: { label: "Summarizing", color: "bg-violet-500/15 text-violet-700 dark:text-violet-400" },
+  embedding: { label: "Embedding", color: "bg-amber-500/15 text-amber-700 dark:text-amber-400" },
+  completed: { label: "Completed", color: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" },
+  failed: { label: "Failed", color: "bg-destructive/15 text-destructive" },
+};
+
+function getPipelineStage(event: PipelineEvent | null): string | null {
+  if (!event) return null;
+  switch (event.type) {
+    case "transcription_started":
+    case "transcription_progress":
+      return "transcribing";
+    case "transcription_completed":
+    case "summarization_started":
+      return "summarizing";
+    case "summarization_completed":
+    case "embedding_started":
+      return "embedding";
+    case "embedding_completed":
+    case "meeting_completed":
+      return "completed";
+    case "transcription_failed":
+    case "summarization_failed":
+    case "embedding_failed":
+    case "meeting_failed":
+      return "failed";
+    default:
+      return null;
+  }
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function MeetingDetailClient() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const meetingId = params?.id;
   const { user } = useAuthStore();
   const workspaceId = user?.workspaces?.[0]?.id ?? "default";
@@ -65,6 +115,9 @@ export default function MeetingDetailClient() {
   const [activeTab, setActiveTab] = useState<InsightsTab>("summary");
   const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null);
   const [transcriptSearch, setTranscriptSearch] = useState("");
+  const [editingSpeaker, setEditingSpeaker] = useState<string | null>(null);
+  const [editSpeakerName, setEditSpeakerName] = useState("");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // ── Queries ────────────────────────────────────────────────────────────────
@@ -74,6 +127,19 @@ export default function MeetingDetailClient() {
   const { data: decisions, isLoading: decisionsLoading } = useDecisions(meetingId);
   const { data: summaryVersions, isLoading: summariesLoading } = useSummaryVersions(meetingId);
   const { mutate: regenerate, isPending: isRegenerating } = useRegenerateSummary();
+  const { mutate: deleteMeeting, isPending: isDeleting } = useDeleteMeeting();
+  const { mutate: renameSpeaker, isPending: isRenaming } = useRenameSpeaker();
+
+  // ── Pipeline Events ────────────────────────────────────────────────────────
+  const isMeetingActive = meeting?.status === "recording" || meeting?.status === "transcribing" || meeting?.status === "analyzing" || meeting?.status === "paused";
+  const { isConnected, lastEvent } = usePipelineEvents({
+    workspaceId,
+    meetingId: meetingId ?? "",
+    enabled: isMeetingActive,
+  });
+  const pipelineStage = getPipelineStage(lastEvent);
+  const userRole = user?.workspaces?.[0]?.role;
+  const canDelete = userRole === "owner" || userRole === "admin";
 
   const displaySegments = segments ?? [];
   const displayActions = actionItems ?? [];
@@ -91,6 +157,32 @@ export default function MeetingDetailClient() {
     if (meetingId) {
       patchItem({ meetingId, itemId: item.id, status: newStatus });
     }
+  }
+
+  function startEditSpeaker(seg: TranscriptSegment) {
+    setEditingSpeaker(seg.speaker_label);
+    setEditSpeakerName(seg.speaker_name ?? seg.speaker_label);
+  }
+
+  function cancelEditSpeaker() {
+    setEditingSpeaker(null);
+    setEditSpeakerName("");
+  }
+
+  function saveSpeakerName(speakerLabel: string) {
+    if (!meetingId || !editSpeakerName.trim()) return;
+    renameSpeaker(
+      { meetingId, speakerLabel, speakerName: editSpeakerName.trim() },
+      { onSuccess: () => { setEditingSpeaker(null); setEditSpeakerName(""); } }
+    );
+  }
+
+  function handleDeleteMeeting() {
+    if (!workspaceId || !meetingId) return;
+    deleteMeeting(
+      { workspaceId, meetingId },
+      { onSuccess: () => { setDeleteDialogOpen(false); router.push("/meetings"); } }
+    );
   }
 
   const filteredSegments = transcriptSearch.trim()
@@ -166,6 +258,41 @@ export default function MeetingDetailClient() {
   return (
     <div className="flex flex-col min-h-full">
       <header className="border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-10">
+        {/* Pipeline Status Banner */}
+        {isMeetingActive && (
+          <div className={cn(
+            "px-6 py-2 flex items-center gap-3 text-xs border-b border-border",
+            pipelineStage ? "bg-primary/5" : "bg-muted/30"
+          )}>
+            <div className="flex items-center gap-2">
+              {isConnected ? (
+                <Wifi className="h-3.5 w-3.5 text-primary" />
+              ) : (
+                <WifiOff className="h-3.5 w-3.5 text-muted-foreground" />
+              )}
+              <span className="text-muted-foreground">
+                {isConnected ? "Live" : "Reconnecting..."}
+              </span>
+            </div>
+            {pipelineStage && (
+              <>
+                <div className="h-3 w-px bg-border" />
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                  <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold", PIPELINE_STATUS[pipelineStage].color)}>
+                    {PIPELINE_STATUS[pipelineStage].label}
+                  </span>
+                  {lastEvent?.message && (
+                    <span className="text-muted-foreground truncate max-w-xs">
+                      {lastEvent.message}
+                    </span>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
         <div className="px-6 py-3 flex items-center gap-4">
           <Link href="/meetings">
             <Button variant="ghost" size="sm" className="gap-1.5 -ml-2 text-muted-foreground hover:text-foreground">
@@ -196,6 +323,50 @@ export default function MeetingDetailClient() {
                   <Users className="h-3.5 w-3.5" />
                   {meeting.participant_count} participants
                 </span>
+              )}
+              {canDelete && (
+                <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                  <DialogTrigger
+                    render={
+                      <Button
+                        variant="destructive"
+                        size="icon-xs"
+                        aria-label="Delete meeting"
+                      />
+                    }
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Delete Meeting</DialogTitle>
+                      <DialogDescription>
+                        Are you sure you want to delete &ldquo;{meeting.title}&rdquo;?
+                        This action cannot be undone. All transcript data, summaries,
+                        and action items will be permanently removed.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={handleDeleteMeeting}
+                        disabled={isDeleting}
+                      >
+                        {isDeleting ? (
+                          <>
+                            <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                            Deleting...
+                          </>
+                        ) : (
+                          "Delete"
+                        )}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               )}
             </div>
           )}
@@ -273,9 +444,49 @@ export default function MeetingDetailClient() {
                         aria-label={`${seg.speaker_name ?? seg.speaker_label} at ${formatTime(seg.start_time)}`}
                       >
                         <div className="flex items-center gap-2 mb-1.5">
-                          <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold", speakerColor(seg.speaker_label))}>
-                            {seg.speaker_name ?? seg.speaker_label}
-                          </span>
+                          {editingSpeaker === seg.speaker_label ? (
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="text"
+                                value={editSpeakerName}
+                                onChange={(e) => setEditSpeakerName(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") saveSpeakerName(seg.speaker_label);
+                                  if (e.key === "Escape") cancelEditSpeaker();
+                                }}
+                                className="h-5 rounded border border-input bg-background px-1.5 text-[11px] font-semibold focus:outline-none focus:ring-1 focus:ring-ring w-28"
+                                autoFocus
+                                disabled={isRenaming}
+                                aria-label="Rename speaker"
+                              />
+                              <button
+                                onClick={() => saveSpeakerName(seg.speaker_label)}
+                                disabled={isRenaming || !editSpeakerName.trim()}
+                                className="text-primary hover:text-primary/80 disabled:opacity-50"
+                                aria-label="Save speaker name"
+                              >
+                                <Check className="h-3 w-3" />
+                              </button>
+                              <button
+                                onClick={cancelEditSpeaker}
+                                className="text-muted-foreground hover:text-foreground"
+                                aria-label="Cancel rename"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => startEditSpeaker(seg)}
+                              className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold group/speaker hover:opacity-80 transition-opacity", speakerColor(seg.speaker_label))}
+                              title="Click to rename speaker"
+                            >
+                              <span className="inline-flex items-center gap-1">
+                                {seg.speaker_name ?? seg.speaker_label}
+                                <Pencil className="h-2.5 w-2.5 opacity-0 group-hover/speaker:opacity-100 transition-opacity" />
+                              </span>
+                            </button>
+                          )}
                           <button
                             onClick={() => seekToSegment(seg)}
                             className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"

@@ -27,7 +27,8 @@ const navItems = [
 
 const bottomNavItems = [
   { href: "/settings/extension", label: "Extension", icon: Puzzle },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/settings/workspace", label: "Workspace", icon: Settings },
+  { href: "/settings/profile", label: "Profile", icon: Settings },
 ];
 
 export function AppSidebar() {
