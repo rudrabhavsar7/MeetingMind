@@ -56,15 +56,20 @@ export function usePipelineEvents({
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptsRef = useRef(0);
+  const callbacksRef = useRef({ onEvent, onConnected, onDisconnected });
   const [isConnected, setIsConnected] = useState(false);
   const [lastEvent, setLastEvent] = useState<PipelineEvent | null>(null);
   const [events, setEvents] = useState<PipelineEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  callbacksRef.current = { onEvent, onConnected, onDisconnected };
+
   const maxReconnectAttempts = 10;
   const baseReconnectDelay = 1000;
 
-  const connect = useCallback(() => {
+  const connectRef = useRef<() => void>(() => {});
+
+  connectRef.current = () => {
     if (!enabled || !workspaceId || !meetingId) return;
 
     try {
@@ -78,7 +83,7 @@ export function usePipelineEvents({
         setIsConnected(true);
         setError(null);
         reconnectAttemptsRef.current = 0;
-        onConnected?.();
+        callbacksRef.current.onConnected?.();
       };
 
       ws.onmessage = (event) => {
@@ -86,7 +91,7 @@ export function usePipelineEvents({
           const data: PipelineEvent = JSON.parse(event.data);
           setLastEvent(data);
           setEvents((prev) => [...prev.slice(-99), data]);
-          onEvent?.(data);
+          callbacksRef.current.onEvent?.(data);
         } catch {
           // Ignore malformed messages
         }
@@ -94,12 +99,12 @@ export function usePipelineEvents({
 
       ws.onclose = () => {
         setIsConnected(false);
-        onDisconnected?.();
+        callbacksRef.current.onDisconnected?.();
 
         if (enabled && reconnectAttemptsRef.current < maxReconnectAttempts) {
           const delay = baseReconnectDelay * Math.pow(2, reconnectAttemptsRef.current);
           reconnectAttemptsRef.current += 1;
-          reconnectTimeoutRef.current = setTimeout(connect, Math.min(delay, 30000));
+          reconnectTimeoutRef.current = setTimeout(connectRef.current, Math.min(delay, 30000));
         }
       };
 
@@ -109,7 +114,11 @@ export function usePipelineEvents({
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to connect");
     }
-  }, [workspaceId, meetingId, enabled, onEvent, onConnected, onDisconnected]);
+  };
+
+  const connect = useCallback(() => {
+    connectRef.current();
+  }, []);
 
   const reconnect = useCallback(() => {
     if (wsRef.current) {
@@ -117,11 +126,11 @@ export function usePipelineEvents({
       wsRef.current = null;
     }
     reconnectAttemptsRef.current = 0;
-    connect();
-  }, [connect]);
+    connectRef.current();
+  }, []);
 
   useEffect(() => {
-    connect();
+    connectRef.current();
 
     return () => {
       if (reconnectTimeoutRef.current) {
@@ -132,7 +141,7 @@ export function usePipelineEvents({
         wsRef.current = null;
       }
     };
-  }, [connect]);
+  }, [workspaceId, meetingId, enabled]);
 
   return { isConnected, lastEvent, events, error, reconnect };
 }
