@@ -198,9 +198,7 @@ async def regenerate_summary(
     from app.tasks.summarization import generate_summary
 
     task_result = generate_summary.delay(str(meeting_id), str(workspace_id))
-    return SummaryRegenerateEnvelope(
-        data=SummaryRegenerateResponse(meeting_id=meeting_id, status="queued", queued_task_id=task_result.id)
-    )
+    return SummaryRegenerateEnvelope(data=SummaryRegenerateResponse(meeting_id=meeting_id, status="queued", queued_task_id=task_result.id))
 
 
 @router.post("/{meeting_id}/ai-feedback", response_model=AIFeedbackResponse)
