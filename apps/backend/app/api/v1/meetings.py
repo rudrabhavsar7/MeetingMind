@@ -4,7 +4,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
+from fastapi import APIRouter, Depends, HTTPException, Response, WebSocket, WebSocketDisconnect, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import require_workspace_member
@@ -21,6 +21,11 @@ from app.schemas.meeting import (
     LiveMeetingCreate,
     LiveMeetingEnvelope,
     LiveMeetingResponse,
+    MeetingDetailEnvelope,
+    MeetingDetailResponse,
+    MeetingListEnvelope,
+    MeetingListItem,
+    MeetingListMeta,
     MeetingResponse,
     PresignedUrlEnvelope,
     PresignedUrlRequest,
@@ -47,6 +52,109 @@ async def get_storage_service(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> StorageService:
     return StorageService(settings)
+
+
+@router.get("", response_model=MeetingListEnvelope, summary="List meetings in a workspace")
+async def list_meetings(
+    workspace_id: uuid.UUID,
+    membership: Annotated[WorkspaceMembership, Depends(require_workspace_member)],
+    meeting_service: Annotated[MeetingService, Depends(get_meeting_service)],
+    limit: int = 50,
+) -> MeetingListEnvelope:
+    meetings, next_cursor = await meeting_service.list_meetings(workspace_id, limit=limit)
+    items = []
+    for m in meetings:
+        participant_count = await meeting_service.get_participant_count(m.id)
+        summary_preview = await meeting_service.get_summary_preview(m.id)
+        items.append(
+            MeetingListItem(
+                id=m.id,
+                workspace_id=m.workspace_id,
+                title=m.title,
+                status=m.status.value,
+                source_type=m.source_type.value,
+                source_app=m.source_app,
+                started_at=m.started_at,
+                ended_at=m.ended_at,
+                duration_seconds=m.duration_seconds,
+                participant_count=participant_count,
+                summary_preview=summary_preview,
+            )
+        )
+    return MeetingListEnvelope(
+        data=items,
+        meta=MeetingListMeta(next_cursor=next_cursor, has_more=next_cursor is not None, limit=limit),
+    )
+
+
+@router.get("/{meeting_id}", response_model=MeetingDetailEnvelope, summary="Get meeting detail")
+async def get_meeting_detail(
+    workspace_id: uuid.UUID,
+    meeting_id: uuid.UUID,
+    membership: Annotated[WorkspaceMembership, Depends(require_workspace_member)],
+    meeting_service: Annotated[MeetingService, Depends(get_meeting_service)],
+) -> MeetingDetailEnvelope:
+    meeting = await meeting_service.get_meeting_detail(meeting_id, workspace_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    participant_count = await meeting_service.get_participant_count(meeting.id)
+    return MeetingDetailEnvelope(
+        data=MeetingDetailResponse(
+            id=meeting.id,
+            workspace_id=meeting.workspace_id,
+            title=meeting.title,
+            status=meeting.status.value,
+            source_type=meeting.source_type.value,
+            source_app=meeting.source_app,
+            source_url=meeting.source_url,
+            source_title=meeting.source_title,
+            started_at=meeting.started_at,
+            ended_at=meeting.ended_at,
+            duration_seconds=meeting.duration_seconds,
+            raw_audio_retained=meeting.raw_audio_retained,
+            created_by_user_id=meeting.created_by_user_id,
+            participant_count=participant_count,
+        )
+    )
+
+
+@router.delete("/{meeting_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Soft-delete a meeting")
+async def delete_meeting(
+    workspace_id: uuid.UUID,
+    meeting_id: uuid.UUID,
+    membership: Annotated[WorkspaceMembership, Depends(require_workspace_member)],
+    meeting_service: Annotated[MeetingService, Depends(get_meeting_service)],
+) -> Response:
+    deleted = await meeting_service.soft_delete_meeting(meeting_id, workspace_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/{meeting_id}/media-url", summary="Get media download URL for a meeting")
+async def get_media_url(
+    workspace_id: uuid.UUID,
+    meeting_id: uuid.UUID,
+    membership: Annotated[WorkspaceMembership, Depends(require_workspace_member)],
+    meeting_service: Annotated[MeetingService, Depends(get_meeting_service)],
+) -> dict[str, str]:
+    meeting = await meeting_service.get_meeting_detail(meeting_id, workspace_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    return {"meeting_id": str(meeting.id), "media_url": ""}
+
+
+@router.get("/{meeting_id}/exports/markdown", summary="Export meeting transcript as Markdown")
+async def export_markdown(
+    workspace_id: uuid.UUID,
+    meeting_id: uuid.UUID,
+    membership: Annotated[WorkspaceMembership, Depends(require_workspace_member)],
+    meeting_service: Annotated[MeetingService, Depends(get_meeting_service)],
+) -> dict[str, str]:
+    meeting = await meeting_service.get_meeting_detail(meeting_id, workspace_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    return {"meeting_id": str(meeting.id), "markdown": ""}
 
 
 @router.post(
