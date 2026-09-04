@@ -57,6 +57,26 @@ class StorageService:
             logger.error("Failed to generate presigned URL: %s", exc)
             raise StorageError("Could not generate presigned upload URL") from exc
 
+    async def generate_presigned_get_url(self, object_key: str, expires_in_seconds: int = 3600) -> str:
+        """
+        Generate a short-lived presigned GET URL for downloading objects from S3/MinIO.
+        """
+        client_kwargs = self._get_client_kwargs()
+        try:
+            async with self._session.create_client(**client_kwargs) as client:
+                url = await client.generate_presigned_url(
+                    "get_object",
+                    Params={
+                        "Bucket": self.bucket,
+                        "Key": object_key,
+                    },
+                    ExpiresIn=expires_in_seconds,
+                )
+                return str(url)
+        except Exception as exc:
+            logger.error("Failed to generate presigned GET URL: %s", exc)
+            raise StorageError("Could not generate presigned download URL") from exc
+
     async def object_exists(self, object_key: str) -> bool:
         """
         Verify that an object exists in the bucket.

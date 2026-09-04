@@ -195,7 +195,12 @@ async def regenerate_summary(
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
 
-    return SummaryRegenerateEnvelope(data=SummaryRegenerateResponse(meeting_id=meeting_id, status="queued"))
+    from app.tasks.summarization import generate_summary
+
+    task_result = generate_summary.delay(str(meeting_id), str(workspace_id))
+    return SummaryRegenerateEnvelope(
+        data=SummaryRegenerateResponse(meeting_id=meeting_id, status="queued", queued_task_id=task_result.id)
+    )
 
 
 @router.post("/{meeting_id}/ai-feedback", response_model=AIFeedbackResponse)

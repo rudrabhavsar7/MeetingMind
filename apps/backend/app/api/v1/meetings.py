@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, WebSocket, WebSocketDisconnect, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import require_workspace_member
@@ -12,7 +13,8 @@ from app.api.v1.meeting_actions import router as meeting_actions_router
 from app.api.v1.transcript import router as transcript_router
 from app.core.config import Settings, get_settings
 from app.db.session import get_db_session
-from app.models.enums import MeetingSourceType, MeetingStatus
+from app.models.enums import MediaKind, MeetingSourceType, MeetingStatus
+from app.models.meeting import ActionItem, Decision, MediaObject, TranscriptSegment
 from app.models.workspace import WorkspaceMembership
 from app.schemas.meeting import (
     ImportCompleteEnvelope,
@@ -137,11 +139,32 @@ async def get_media_url(
     meeting_id: uuid.UUID,
     membership: Annotated[WorkspaceMembership, Depends(require_workspace_member)],
     meeting_service: Annotated[MeetingService, Depends(get_meeting_service)],
+    storage_service: Annotated[StorageService, Depends(get_storage_service)],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> dict[str, str]:
     meeting = await meeting_service.get_meeting_detail(meeting_id, workspace_id)
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
-    return {"meeting_id": str(meeting.id), "media_url": ""}
+
+    stmt = (
+        select(MediaObject)
+        .where(
+            MediaObject.meeting_id == meeting_id,
+            MediaObject.workspace_id == workspace_id,
+            MediaObject.kind.in_([MediaKind.IMPORT, MediaKind.LIVE_AUDIO]),
+            MediaObject.deleted_at.is_(None),
+        )
+        .order_by(MediaObject.created_at.desc())
+        .limit(1)
+    )
+    result = await session.execute(stmt)
+    media_object = result.scalar_one_or_none()
+
+    if not media_object:
+        raise HTTPException(status_code=404, detail="No media found for this meeting")
+
+    media_url = await storage_service.generate_presigned_get_url(media_object.object_key)
+    return {"meeting_id": str(meeting.id), "media_url": media_url}
 
 
 @router.get("/{meeting_id}/exports/markdown", summary="Export meeting transcript as Markdown")
@@ -150,11 +173,99 @@ async def export_markdown(
     meeting_id: uuid.UUID,
     membership: Annotated[WorkspaceMembership, Depends(require_workspace_member)],
     meeting_service: Annotated[MeetingService, Depends(get_meeting_service)],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> dict[str, str]:
     meeting = await meeting_service.get_meeting_detail(meeting_id, workspace_id)
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
-    return {"meeting_id": str(meeting.id), "markdown": ""}
+
+    seg_stmt = (
+        select(TranscriptSegment)
+        .where(TranscriptSegment.meeting_id == meeting_id, TranscriptSegment.is_final.is_(True))
+        .order_by(TranscriptSegment.sequence_number, TranscriptSegment.start_time)
+    )
+    seg_result = await session.execute(seg_stmt)
+    segments = list(seg_result.scalars().all())
+
+    ai_stmt = select(ActionItem).where(ActionItem.meeting_id == meeting_id, ActionItem.deleted_at.is_(None))
+    ai_result = await session.execute(ai_stmt)
+    action_items = list(ai_result.scalars().all())
+
+    dec_stmt = select(Decision).where(Decision.meeting_id == meeting_id, Decision.deleted_at.is_(None))
+    dec_result = await session.execute(dec_stmt)
+    decisions = list(dec_result.scalars().all())
+
+    from app.models.ai import SummaryVersion
+
+    sv_stmt = (
+        select(SummaryVersion)
+        .where(SummaryVersion.meeting_id == meeting_id, SummaryVersion.status == "current")
+        .order_by(SummaryVersion.version.desc())
+        .limit(1)
+    )
+    sv_result = await session.execute(sv_stmt)
+    summary = sv_result.scalar_one_or_none()
+
+    lines: list[str] = []
+    lines.append(f"# {meeting.title}")
+    lines.append("")
+    lines.append("## Metadata")
+    lines.append("")
+    lines.append(f"- **Status:** {meeting.status.value}")
+    lines.append(f"- **Source:** {meeting.source_type.value}")
+    if meeting.source_app:
+        lines.append(f"- **Source App:** {meeting.source_app.value if hasattr(meeting.source_app, 'value') else meeting.source_app}")
+    lines.append(f"- **Started:** {meeting.started_at.isoformat() if meeting.started_at else 'N/A'}")
+    if meeting.ended_at:
+        lines.append(f"- **Ended:** {meeting.ended_at.isoformat()}")
+    if meeting.duration_seconds is not None:
+        lines.append(f"- **Duration:** {meeting.duration_seconds}s")
+    lines.append("")
+
+    if summary and summary.executive_summary:
+        lines.append("## Executive Summary")
+        lines.append("")
+        lines.append(summary.executive_summary)
+        lines.append("")
+        if summary.key_points:
+            lines.append("### Key Points")
+            lines.append("")
+            for point in summary.key_points:
+                lines.append(f"- {point}")
+            lines.append("")
+
+    if action_items:
+        lines.append("## Action Items")
+        lines.append("")
+        for item in action_items:
+            assignee = f" ({item.assignee_name})" if item.assignee_name else ""
+            due = f" - due {item.due_date.strftime('%Y-%m-%d')}" if item.due_date else ""
+            lines.append(f"- [{item.status.value}]{assignee} {item.text}{due}")
+        lines.append("")
+
+    if decisions:
+        lines.append("## Decisions")
+        lines.append("")
+        for dec in decisions:
+            lines.append(f"### {dec.title}")
+            lines.append("")
+            lines.append(dec.text)
+            if dec.rationale:
+                lines.append(f"\n**Rationale:** {dec.rationale}")
+            lines.append("")
+
+    if segments:
+        lines.append("## Transcript")
+        lines.append("")
+        for seg in segments:
+            start_m, start_s = divmod(int(seg.start_time), 60)
+            end_m, end_s = divmod(int(seg.end_time), 60)
+            speaker = seg.speaker_name or seg.speaker_label
+            lines.append(f"**[{start_m:02d}:{start_s:02d} - {end_m:02d}:{end_s:02d}] {speaker}:** {seg.text}")
+            lines.append("")
+
+    markdown_content = "\n".join(lines)
+    return {"meeting_id": str(meeting.id), "markdown": markdown_content}
 
 
 @router.post(
@@ -225,8 +336,10 @@ async def import_complete(
 
     await meeting_service.update_status(payload.meeting_id, MeetingStatus.TRANSCRIBING)
 
-    # In a real implementation, we would queue a celery task here.
-    queued_task_id = "celery-task-id-mock"
+    from app.tasks.transcription import process_audio
+
+    task_result = process_audio.delay(str(payload.meeting_id), str(workspace_id))
+    queued_task_id = task_result.id
 
     return ImportCompleteEnvelope(
         data=ImportCompleteResponse(

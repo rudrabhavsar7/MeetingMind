@@ -15,6 +15,8 @@ interface ExtensionStore {
   meetingTitle: string | null;
   elapsedSeconds: number;
   transcript: TranscriptSnippet[];
+  isPaused: boolean;
+  errorMessage: string | null;
   
   setState: (state: ExtensionState) => void;
   setWorkspaceName: (name: string) => void;
@@ -23,6 +25,8 @@ interface ExtensionStore {
   resetElapsed: () => void;
   addTranscriptSnippet: (snippet: TranscriptSnippet) => void;
   clearTranscript: () => void;
+  setPaused: (paused: boolean) => void;
+  setErrorMessage: (message: string | null) => void;
 }
 
 export const useExtensionStore = create<ExtensionStore>((set) => ({
@@ -31,6 +35,8 @@ export const useExtensionStore = create<ExtensionStore>((set) => ({
   meetingTitle: null,
   elapsedSeconds: 0,
   transcript: [],
+  isPaused: false,
+  errorMessage: null,
 
   setState: (state) => set({ state }),
   setWorkspaceName: (workspaceName) => set({ workspaceName }),
@@ -45,5 +51,7 @@ export const useExtensionStore = create<ExtensionStore>((set) => ({
     }
     return { transcript: [...s.transcript, snippet] };
   }),
-  clearTranscript: () => set({ transcript: [] })
+  clearTranscript: () => set({ transcript: [] }),
+  setPaused: (isPaused) => set({ isPaused }),
+  setErrorMessage: (errorMessage) => set({ errorMessage })
 }));

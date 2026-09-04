@@ -87,6 +87,7 @@ class SummaryRegenerateRequest(BaseModel):
 class SummaryRegenerateResponse(BaseModel):
     meeting_id: uuid.UUID
     status: str
+    queued_task_id: str | None = None
 
 
 class SummaryRegenerateEnvelope(BaseModel):

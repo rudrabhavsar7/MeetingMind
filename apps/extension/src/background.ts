@@ -25,6 +25,35 @@ async function setupOffscreenDocument(path: string) {
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message.type === 'LOGIN') {
+    (async () => {
+      try {
+        const storage = await chrome.storage.local.get(['apiBaseUrl']);
+        const apiBaseUrl = storage.apiBaseUrl || "http://localhost:3000";
+        await chrome.tabs.create({ url: `${apiBaseUrl}/auth/login` });
+        sendResponse({ status: 'opened' });
+      } catch (err) {
+        sendResponse({ status: 'error', error: err instanceof Error ? err.message : String(err) });
+      }
+    })();
+    return true;
+  }
+
+  if (message.type === 'GET_AUTH_STATUS') {
+    (async () => {
+      const storage = await chrome.storage.local.get(['extensionToken']);
+      sendResponse({ authenticated: !!storage.extensionToken });
+    })();
+    return true;
+  }
+
+  if (message.type === 'LOGOUT') {
+    chrome.storage.local.remove(['extensionToken'], () => {
+      sendResponse({ status: 'logged_out' });
+    });
+    return true;
+  }
+
   if (message.type === 'OPEN_SIDE_PANEL') {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const tabId = tabs[0]?.id;

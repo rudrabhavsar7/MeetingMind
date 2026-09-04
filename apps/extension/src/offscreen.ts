@@ -87,7 +87,7 @@ async function startCapture(payload: {streamId: string, token: string, url: stri
   workletNode.port.onmessage = (event) => {
     if (isPaused) return;
     const pcmBuffer = event.data; // Int16Array
-    sendAudioChunk(pcmBuffer);
+    sendAudioChunk(pcmBuffer, false);
   };
 
   connectWebSocket();
@@ -146,14 +146,16 @@ function connectWebSocket() {
     if (typeof event.data === 'string') {
       try {
         const msg = JSON.parse(event.data);
-        if (msg.type === 'stream_ready') {
+        if (msg.type === 'ping') {
+          ws?.send(JSON.stringify({ type: 'pong', nonce: msg.nonce }));
+        } else if (msg.type === 'stream_ready') {
           recommendedChunkMs = msg.recommended_chunk_ms || recommendedChunkMs;
           if (workletNode) {
             workletNode.port.postMessage({ type: 'UPDATE_CHUNK_SIZE', chunkDurationMs: recommendedChunkMs });
           }
           // Replay unacked buffer if any
           for (const item of replayBuffer) {
-            ws?.send(item.buffer);
+            sendAudioChunk(new Int16Array(item.buffer, 20), true);
           }
         } else if (msg.type === 'audio_ack') {
           const ackedSeq = msg.highest_contiguous_sequence;
@@ -188,6 +190,11 @@ function connectWebSocket() {
 
   ws.onerror = (error) => {
     console.error("WebSocket error:", error);
+    chrome.runtime.sendMessage({ 
+      target: 'ui', 
+      type: 'capture_error', 
+      payload: { error: 'WebSocket connection error' } 
+    });
   };
 }
 
@@ -209,7 +216,7 @@ function scheduleReconnect() {
   reconnectDelayMs = Math.min(reconnectDelayMs * 2, 15000); // Exponential backoff with 15s max
 }
 
-function sendAudioChunk(pcmData: Int16Array) {
+function sendAudioChunk(pcmData: Int16Array, isReplay: boolean) {
   if (!ws || ws.readyState !== WebSocket.OPEN) {
     // Buffer if disconnected (we rely on the audioContext keep pumping)
     // Actually we buffer the constructed MM01 frame
@@ -241,8 +248,8 @@ function sendAudioChunk(pcmData: Int16Array) {
   // 16-17: Duration in milliseconds (UInt16 BE)
   dataView.setUint16(16, durationMs, false);
   
-  // 18-19: Flags (UInt16 BE), 0 for now
-  dataView.setUint16(18, 0, false);
+  // 18-19: Flags (UInt16 BE), 1 for replay, 0 for normal
+  dataView.setUint16(18, isReplay ? 1 : 0, false);
   
   // 20+: PCM payload
   const payloadView = new Int16Array(buffer, headerSize);
