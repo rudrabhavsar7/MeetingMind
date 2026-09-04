@@ -15,7 +15,7 @@ def build_embeddings(self, meeting_id: str, workspace_id: str) -> dict[str, obje
     from sqlalchemy import select
 
     from app.core.config import get_settings
-    from app.db.session import async_session_factory
+    from app.db.session import AsyncSessionLocal
     from app.models.meeting import Meeting, TranscriptChunk, TranscriptSegment
     from app.services.embedding import MockEmbeddingService, OllamaEmbeddingService, OpenAIEmbeddingService, chunk_transcript
 
@@ -24,7 +24,7 @@ def build_embeddings(self, meeting_id: str, workspace_id: str) -> dict[str, obje
     wid = uuid.UUID(workspace_id)
 
     async def _run():
-        async with async_session_factory() as session:
+        async with AsyncSessionLocal() as session:
             meeting = await session.get(Meeting, mid)
             if not meeting:
                 return {"status": "error", "detail": "meeting_not_found"}
@@ -48,6 +48,7 @@ def build_embeddings(self, meeting_id: str, workspace_id: str) -> dict[str, obje
             ]
             chunked = chunk_transcript(seg_dicts, chunk_size=10, overlap=2)
 
+            emb_service: MockEmbeddingService | OllamaEmbeddingService | OpenAIEmbeddingService
             if settings.use_mock_ai or settings.embedding_provider == "mock":
                 emb_service = MockEmbeddingService(dimensions=settings.embedding_dimensions)
             elif settings.embedding_provider == "ollama":

@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from aiobotocore.session import get_session  # type: ignore
+from aiobotocore.session import get_session
 
 from app.core.config import Settings
 

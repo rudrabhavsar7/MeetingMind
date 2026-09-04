@@ -20,9 +20,12 @@ class MeetingStatus(StrEnum):
     RECORDING = "recording"
     PAUSED = "paused"
     TRANSCRIBING = "transcribing"
+    TRANSCRIBED = "transcribed"
+    SUMMARIZING = "summarizing"
     ANALYZING = "analyzing"
     COMPLETED = "completed"
     FAILED = "failed"
+    PROCESSING_FAILED = "processing_failed"
 
 
 class MeetingSourceType(StrEnum):
@@ -87,6 +90,7 @@ class SummaryKind(StrEnum):
     ROLLING = "rolling"
     FINAL = "final"
     USER_EDITED = "user_edited"
+    AUTO = "auto"
 
 
 class SummaryStatus(StrEnum):

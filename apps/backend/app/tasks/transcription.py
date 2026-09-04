@@ -14,7 +14,7 @@ def process_audio(self, meeting_id: str, workspace_id: str, file_path: str) -> d
     from datetime import UTC, datetime
 
     from app.core.config import get_settings
-    from app.db.session import async_session_factory
+    from app.db.session import AsyncSessionLocal
     from app.models.enums import MeetingStatus
     from app.models.meeting import Meeting, MeetingParticipant
     from app.services.transcription import (
@@ -29,7 +29,7 @@ def process_audio(self, meeting_id: str, workspace_id: str, file_path: str) -> d
     wid = uuid.UUID(workspace_id)
 
     async def _run():
-        async with async_session_factory() as session:
+        async with AsyncSessionLocal() as session:
             meeting = await session.get(Meeting, mid)
             if not meeting:
                 logger.error("Meeting %s not found", meeting_id)
@@ -38,6 +38,8 @@ def process_audio(self, meeting_id: str, workspace_id: str, file_path: str) -> d
             meeting.status = MeetingStatus.TRANSCRIBING
             await session.commit()
 
+            stt: MockSTTService | FasterWhisperSTTService
+            diar: MockDiarizationService | PyannoteDiarizationService
             if settings.use_mock_ai:
                 stt = MockSTTService()
                 diar = MockDiarizationService()

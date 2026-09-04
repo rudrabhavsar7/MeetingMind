@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from typing import Protocol
+from typing import Any, Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -87,12 +87,12 @@ class MockEmbeddingService:
 
 
 def chunk_transcript(
-    segments: list[dict],
+    segments: list[dict[str, Any]],
     chunk_size: int = 10,
     overlap: int = 2,
     chunker_version: str = "v1",
-) -> list[dict]:
-    chunks = []
+) -> list[dict[str, Any]]:
+    chunks: list[dict[str, Any]] = []
     if not segments:
         return chunks
 

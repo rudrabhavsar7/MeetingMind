@@ -8,7 +8,9 @@ from app.core.config import Settings, get_settings
 from app.services.embedding import MockEmbeddingService, OllamaEmbeddingService, OpenAIEmbeddingService
 
 
-def get_embedding_service(settings: Annotated[Settings, Depends(get_settings)]):
+def get_embedding_service(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> MockEmbeddingService | OllamaEmbeddingService | OpenAIEmbeddingService:
     if settings.use_mock_ai or settings.embedding_provider == "mock":
         return MockEmbeddingService(dimensions=settings.embedding_dimensions)
     base_url = settings.llm_base_url or "http://localhost:11434"

@@ -201,6 +201,7 @@ class TranscriptSegment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     supersedes_segment_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("transcript_segments.id", ondelete="RESTRICT"), nullable=True
     )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     workspace: Mapped[Workspace] = relationship()
     meeting: Mapped[Meeting] = relationship(back_populates="transcript_segments")

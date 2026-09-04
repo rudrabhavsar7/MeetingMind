@@ -211,14 +211,20 @@ async def create_ai_feedback(
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
 
-    feedback = AIOutputFeedback(
-        workspace_id=workspace_id,
-        meeting_id=meeting_id,
-        output_type=payload.output_type,
-        output_id=payload.output_id,
-        rating=payload.rating,
-        comment=payload.comment,
-        actor_user_id=membership.user_id,
-    )
+    feedback_kwargs: dict[str, object] = {
+        "workspace_id": workspace_id,
+        "meeting_id": meeting_id,
+        "user_id": membership.user_id,
+        "rating": payload.rating,
+        "comment": payload.comment,
+    }
+    if payload.output_type == "summary_version":
+        feedback_kwargs["summary_version_id"] = payload.output_id
+    elif payload.output_type == "action_item":
+        feedback_kwargs["action_item_id"] = payload.output_id
+    elif payload.output_type == "decision":
+        feedback_kwargs["decision_id"] = payload.output_id
+
+    feedback = AIOutputFeedback(**feedback_kwargs)
     created = await action_service.create_feedback(feedback)
-    return AIFeedbackResponse(id=created.id, output_type=created.output_type, output_id=created.output_id, rating=created.rating)
+    return AIFeedbackResponse(id=created.id, output_type=payload.output_type, output_id=payload.output_id, rating=created.rating)

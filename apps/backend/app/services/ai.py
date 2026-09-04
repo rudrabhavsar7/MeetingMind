@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from typing import Protocol
+from typing import Any, Protocol
 
 from app.models.ai import SummaryVersion
 from app.models.meeting import ActionItem, Decision
@@ -37,7 +37,8 @@ class OllamaLLMService:
                 },
             )
             resp.raise_for_status()
-            return resp.json()["message"]["content"]
+            data: dict[str, Any] = resp.json()
+            return str(data["message"]["content"])
 
     async def generate_summary(self, meeting_id: uuid.UUID, transcript_text: str) -> SummaryVersion:
         prompt = (
@@ -131,7 +132,8 @@ class OpenAILLMService:
                 },
             )
             resp.raise_for_status()
-            return resp.json()["choices"][0]["message"]["content"]
+            data2: dict[str, Any] = resp.json()
+            return str(data2["choices"][0]["message"]["content"])
 
     async def generate_summary(self, meeting_id: uuid.UUID, transcript_text: str) -> SummaryVersion:
         prompt = (
