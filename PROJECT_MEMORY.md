@@ -1,6 +1,6 @@
 # MeetingMind Project Memory
 
-Last reviewed: 2026-09-07
+Last reviewed: 2026-09-08
 
 ## What This Repository Is
 
@@ -328,11 +328,30 @@ contracts. Completed generation inventories, duplicated tool prompt copies, and
 the duplicate engineering testing strategy were also removed. Git history preserves
 the superseded material.
 
-## Implementation Status (as of 2026-09-07)
+## Implementation Status (as of 2026-09-08)
 
 All 19 original Jira tickets implemented across 18 PRs, all merged into main. CI is
 fully green (run 33926158372 passed). 107 backend unit/integration tests pass. Ruff
-lint, MyPy strict, and Vitest frontend tests are clean.
+lint, MyPy strict, Vitest frontend tests (10 tests), and Playwright E2E tests (27 tests)
+are clean.
+
+### Core AI Pipeline — Wired
+
+The WebSocket `/stream` endpoint now buffers incoming MM01 PCM audio frames and, on
+disconnect, writes a WAV file and dispatches the full Celery chain: transcription →
+summarization → embeddings. Dependencies added to `pyproject.toml`: `faster-whisper`,
+`pyannote-audio`, `numpy`, `httpx`, `redis`. The `audio-processor.js` AudioWorklet
+module exists in `apps/extension/public/` and correctly converts Float32 tab audio to
+16kHz mono PCM Int16 chunks.
+
+Pipeline still defaults to MOCK mode (`use_mock_ai=True`). Set these env vars for real AI:
+- `MEETINGMIND_USE_MOCK_AI=false`
+- `MEETINGMIND_LLM_PROVIDER=ollama` (or `openai`)
+- `MEETINGMIND_EMBEDDING_PROVIDER=ollama` (or `openai`)
+- `MEETINGMIND_DIARIZATION_HUGGINGFACE_TOKEN=<your-token>`
+
+Note: RAG search currently does brute-force cosine similarity in Python, not pgvector
+native SQL. This will need pgvector SQL operators for production scale.
 
 ### Infrastructure Running Locally
 
