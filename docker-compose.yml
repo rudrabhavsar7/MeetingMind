@@ -74,12 +74,10 @@ services:
         required: false
     environment:
       - MEETINGMIND_ENV=${MEETINGMIND_ENV:-production}
-      - MEETINGMIND_DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-meetingmind}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-meetingmind}
+      - MEETINGMIND_DATABASE_URL=${MEETINGMIND_DATABASE_URL}
       - MEETINGMIND_REDIS_URL=redis://redis:6379/0
       - MEETINGMIND_STORAGE_ENDPOINT=http://minio:9000
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
       minio:
@@ -111,12 +109,10 @@ services:
         required: false
     environment:
       - MEETINGMIND_ENV=${MEETINGMIND_ENV:-production}
-      - MEETINGMIND_DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-meetingmind}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-meetingmind}
+      - MEETINGMIND_DATABASE_URL=${MEETINGMIND_DATABASE_URL}
       - MEETINGMIND_REDIS_URL=redis://redis:6379/0
       - MEETINGMIND_STORAGE_ENDPOINT=http://minio:9000
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
     restart: unless-stopped

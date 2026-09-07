@@ -1,6 +1,6 @@
 # MeetingMind Project Memory
 
-Last reviewed: 2026-07-27
+Last reviewed: 2026-09-07
 
 ## What This Repository Is
 
@@ -327,3 +327,39 @@ component APIs, and durable product interactions belong to page/product/API
 contracts. Completed generation inventories, duplicated tool prompt copies, and
 the duplicate engineering testing strategy were also removed. Git history preserves
 the superseded material.
+
+## Implementation Status (as of 2026-09-07)
+
+All 19 original Jira tickets implemented across 18 PRs, all merged into main. CI is
+fully green (run 33926158372 passed). 107 backend unit/integration tests pass. Ruff
+lint, MyPy strict, and Vitest frontend tests are clean.
+
+### Infrastructure Running Locally
+
+- **Docker Compose**: API (port 8000), Redis (6379), MinIO (9000/9001) containers running.
+- **Database**: Supabase session pooler (`aws-1-ap-northeast-2.pooler.supabase.com:6543`),
+  async `session.py` and Alembic `migrations/env.py` both handle SSL for Supabase.
+  Alembic is at head (`f7f4ecb2373b`).
+- **Frontend**: Next.js dev server on `localhost:3000`.
+
+### E2E Tests
+
+27 Playwright tests across 7 spec files, all passing in ~2 minutes:
+
+| File | Tests |
+|------|-------|
+| `e2e/auth.spec.ts` | Login form, invalid creds error, valid login redirect, register link, protected routes |
+| `e2e/dashboard.spec.ts` | Dashboard display, sidebar nav, meetings/actions/search/profile navigation |
+| `e2e/meetings.spec.ts` | Meetings list, empty state, new meeting, import, invalid ID handling |
+| `e2e/search.spec.ts` | Search page display, query typing |
+| `e2e/settings.spec.ts` | Profile, workspace, extension settings, inter-settings navigation |
+| `e2e/actions.spec.ts` | Actions page display, empty state |
+| `e2e/navigation.spec.ts` | Full user journey, console error check |
+
+Test user: `t1@test.com` / `12345678` (workspace slug: `test`).
+
+### Key Infrastructure Notes
+
+- Backend Dockerfile required `poetry-plugin-export` for Poetry 2.x compatibility.
+- Auth token is in-memory only (`lib/api.ts`), not persisted to localStorage.
+- `POST /workspaces` and workspace switching are deferred to v1.2 per ADR 010.
