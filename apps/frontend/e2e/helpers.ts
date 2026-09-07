@@ -1,4 +1,4 @@
-import { test as base, expect, type APIRequestContext } from "@playwright/test";
+import { test as base, expect, request as pwRequest, type APIRequestContext } from "@playwright/test";
 
 const API_BASE = process.env.API_URL ?? "http://localhost:8000";
 const API_V1 = `${API_BASE}/api/v1`;
@@ -54,13 +54,12 @@ type TestFixtures = {
 };
 
 export const test = base.extend<TestFixtures>({
-  apiToken: async ({}, use, testInfo) => {
-    // Share token across all tests in the same file via worker storage
-    const token = await ensureTestUser(
-      // Use a fresh request context for setup
-      await base.request.newContext({ baseURL: API_BASE })
-    );
-    await use(token);
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  apiToken: async ({}, callback) => {
+    const apiContext = await pwRequest.newContext({ baseURL: API_BASE });
+    const token = await ensureTestUser(apiContext);
+    await callback(token);
+    await apiContext.dispose();
   },
 });
 

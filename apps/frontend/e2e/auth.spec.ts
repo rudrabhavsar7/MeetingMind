@@ -2,7 +2,7 @@ import { test, expect } from "./helpers";
 
 test.describe("Authentication", () => {
   test.describe("Login", () => {
-    test("shows login form", async ({ page, request }) => {
+    test("shows login form", async ({ page }) => {
       await page.goto("/login");
       await expect(page.locator("#login-email")).toBeVisible({ timeout: 10_000 });
       await expect(page.locator("#login-password")).toBeVisible();

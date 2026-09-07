@@ -1,7 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const API_URL = process.env.API_URL ?? "http://localhost:8000";
-
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
