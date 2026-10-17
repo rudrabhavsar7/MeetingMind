@@ -1,9 +1,9 @@
 ---
 Title: MeetingMind - Extension Capture Experience
-Version: 1.1.0
+Version: 1.1.1
 Status: Approved
 Owner: Lead UX Designer
-Last Updated: 2026-07-10
+Last Updated: 2026-10-17
 Dependencies: 01-product/prd.md, 01-product/functional-requirements.md
 Related Documents:
   - 03-design/design-system.md
@@ -27,7 +27,7 @@ v1 requires Chrome 116+ and follows `04-backend/realtime-protocol.md`. The popup
 * **Disconnected:** User must connect the extension to MeetingMind.
 * **No Meeting Detected:** User is not on a supported meeting page.
 * **Detected:** Supported meeting page found; user can start capture.
-* **Permission Required:** Browser tab audio permission is needed.
+* **Permission Required:** Tab access or microphone permission is needed; microphone denial opens the permission guidance page with steps to grant access and retry.
 * **Recording:** Audio is streaming and transcript events are arriving.
 * **Reconnecting:** WebSocket dropped and the extension is retrying.
 * **Paused:** Session and heartbeat remain connected, but no audio is captured or transmitted.
@@ -66,6 +66,8 @@ The extension must make capture state obvious:
 * Show a persistent recording indicator while streaming.
 * Never auto-start capture.
 * Require explicit user action before audio capture.
+* Request explicit local microphone permission for capture; include local-speaker speech so solo Meet users are transcribed. If permission fails, do not start capture and provide actionable permission guidance.
 * Explain whether raw audio retention is enabled for the workspace.
 * Keep meeting audio audible to the user while tab capture is active.
+* Mix the tab and microphone sources into the transcription worklet. Route captured tab audio to the default destination to preserve audibility; never connect the microphone source to that destination, preventing feedback.
 * If a reconnect exceeds the 60-second in-memory replay window, disclose the transcript gap instead of implying complete capture.

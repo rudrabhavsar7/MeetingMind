@@ -12,6 +12,7 @@ interface TranscriptSnippet {
 interface ExtensionStore {
   state: ExtensionState;
   workspaceName: string;
+  workspaceId: string | null;
   meetingTitle: string | null;
   elapsedSeconds: number;
   transcript: TranscriptSnippet[];
@@ -20,6 +21,7 @@ interface ExtensionStore {
   
   setState: (state: ExtensionState) => void;
   setWorkspaceName: (name: string) => void;
+  setWorkspaceId: (id: string) => void;
   setMeetingTitle: (title: string | null) => void;
   tickElapsed: () => void;
   resetElapsed: () => void;
@@ -32,6 +34,7 @@ interface ExtensionStore {
 export const useExtensionStore = create<ExtensionStore>((set) => ({
   state: 'disconnected', // Default to disconnected initially
   workspaceName: 'Engineering Workspace',
+  workspaceId: null,
   meetingTitle: null,
   elapsedSeconds: 0,
   transcript: [],
@@ -40,10 +43,19 @@ export const useExtensionStore = create<ExtensionStore>((set) => ({
 
   setState: (state) => set({ state }),
   setWorkspaceName: (workspaceName) => set({ workspaceName }),
+  setWorkspaceId: (workspaceId) => set({ workspaceId }),
   setMeetingTitle: (meetingTitle) => set({ meetingTitle }),
   tickElapsed: () => set((s) => ({ elapsedSeconds: s.elapsedSeconds + 1 })),
   resetElapsed: () => set({ elapsedSeconds: 0 }),
   addTranscriptSnippet: (snippet) => set((s) => {
+    const existingIndex = s.transcript.findIndex((item) => item.id === snippet.id);
+    if (existingIndex >= 0) {
+      const existing = s.transcript[existingIndex];
+      if (existing.isFinal && !snippet.isFinal) return s;
+      const transcript = [...s.transcript];
+      transcript[existingIndex] = snippet;
+      return { transcript };
+    }
     // If it's a final snippet and matches the last interim, replace it
     const last = s.transcript[s.transcript.length - 1];
     if (last && !last.isFinal && last.speaker === snippet.speaker) {

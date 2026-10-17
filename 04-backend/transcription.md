@@ -1,9 +1,9 @@
 ---
 Title: MeetingMind — Backend: Transcription & Diarization
-Version: 1.1.0
+Version: 1.1.1
 Status: Approved
 Owner: AI Engineer
-Last Updated: 2026-07-10
+Last Updated: 2026-10-17
 Dependencies: 04-backend/ai-pipeline.md
 ---
 
@@ -27,7 +27,7 @@ Pyannote is excellent at identifying distinct speakers (Speaker 1, Speaker 2) an
 ## 4. Pipeline Execution Steps (Extension Real-Time Streams)
 1. **Meeting Detection:** The Chrome extension detects a supported meeting tab, starting with Google Meet.
 2. **WebSocket Ingestion:** The extension establishes a `wss://` connection to `/api/v1/workspaces/{workspace_id}/meetings/{id}/stream`.
-3. **Audio Chunking:** The extension streams tab audio as PCM audio chunks (typically 250ms - 500ms).
+3. **Audio Chunking:** The extension mixes Google Meet tab audio and the user's local microphone in the offscreen AudioWorklet and streams the result as PCM audio chunks (typically 250ms - 500ms), including solo-user speech.
 4. **Live STT:** Chunks are fed into the local streaming STT engine by default.
 5. **Interim vs Final Transcripts:** Interim results are emitted to the extension and console immediately for low-latency UI. Once a natural pause is detected, a `final` transcript segment is locked in.
 6. **Diarization Sync:** The online diarization model tags the `final` segment with a speaker ID before it is saved to the database.

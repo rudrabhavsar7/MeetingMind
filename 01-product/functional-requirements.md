@@ -1,9 +1,9 @@
 ---
 Title: MeetingMind — Functional Requirements
-Version: 1.2.0
+Version: 1.2.1
 Status: Approved
 Owner: Senior Product Manager
-Last Updated: 2026-07-11
+Last Updated: 2026-10-17
 Dependencies: 01-product/prd.md
 ---
 
@@ -32,8 +32,8 @@ This document details the specific, testable functional requirements for the MVP
 |---|---|---|---|---|
 | **FR-011** | Extension Authentication | Users can connect the Chrome extension to the deployment's default workspace. | **Given** a logged-in user installs the extension<br>**When** they click Connect<br>**Then** the extension receives a short-lived device/session token scoped to their default workspace. | P0 |
 | **FR-012** | Meeting Page Detection | The extension detects supported meeting apps. | **Given** a user opens Google Meet in Chrome<br>**When** they join a meeting<br>**Then** the MeetingMind extension shows a capture-ready state for that tab. | P0 |
-| **FR-013** | Start Extension Capture | Users can start capture from the extension. | **Given** the extension detects a supported meeting<br>**When** the user clicks Start Capture and grants tab audio permission<br>**Then** a Meeting record is created and the extension enters Recording state. | P0 |
-| **FR-014** | Audio Streaming | The extension streams tab audio through the versioned WebSocket protocol. | **Given** a live capture session is active<br>**When** meeting audio is present<br>**Then** the offscreen capture owner sends acknowledged 250-500ms PCM frames without routing through file upload. | P0 |
+| **FR-013** | Start Extension Capture | Users can start capture from the extension with tab and local microphone audio. | **Given** the extension detects a supported meeting<br>**When** the user clicks Start Capture, grants tab access, and grants microphone permission<br>**Then** a Meeting record is created and the extension enters Recording state; microphone denial shows actionable permission guidance. | P0 |
+| **FR-014** | Audio Streaming | The extension mixes tab and local microphone audio through the versioned WebSocket protocol. | **Given** a live capture session is active<br>**When** meeting or local-speaker audio is present<br>**Then** the offscreen capture owner sends acknowledged 250-500ms PCM frames without routing through file upload, keeps tab audio audible, and never routes microphone audio to the audio destination. | P0 |
 | **FR-015** | Meeting Context Sync | The extension syncs available meeting metadata. | **Given** a capture session starts<br>**When** the source page exposes metadata<br>**Then** source app, meeting URL, title, start time, and visible participants are saved to the Meeting record. | P0 |
 | **FR-016** | Live Transcript Updates | The extension and console display live transcription. | **Given** the backend receives speech audio<br>**When** interim and final transcript events are produced<br>**Then** the UI renders interim text and persists final speaker-labeled segments. | P0 |
 | **FR-017** | Recording Import Fallback | Users can import existing recordings. | **Given** a user has an MP3, MP4, WAV, M4A, or WebM file up to 2GB<br>**When** they use the import flow<br>**Then** the file uploads directly to MinIO via presigned URL and enters batch processing. | P1 |

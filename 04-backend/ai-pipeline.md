@@ -1,9 +1,9 @@
 ---
 Title: MeetingMind — Backend: AI Pipeline Architecture
-Version: 1.1.0
+Version: 1.2.1
 Status: Approved
 Owner: Lead Backend Engineer
-Last Updated: 2026-07-10
+Last Updated: 2026-10-17
 Dependencies: None
 ---
 
@@ -26,7 +26,7 @@ MeetingMind is extension-first and supports standalone web capture plus recordin
 
 ### 3.1 Extension Real-Time Streaming Flow (WebSockets)
 1. **Detection:** Chrome extension detects a supported meeting app tab, starting with Google Meet.
-2. **Ingestion:** Extension connects via WebSocket and streams tab audio chunks (e.g., PCM 16kHz).
+2. **Ingestion:** Extension mixes meeting-tab audio and local microphone audio in its offscreen AudioWorklet, then streams PCM chunks (e.g., 16 kHz) via WebSocket. Tab audio remains audible; microphone audio is not routed to speakers.
 3. **Context Sync:** Extension sends source app, source URL, visible title, and visible participants when available.
 4. **Transcription:** Audio chunks are immediately piped to local streaming Whisper-compatible STT by default. External streaming STT providers are opt-in only.
 5. **Rolling Analysis:** As transcript segments complete, they are pushed to a rolling LLM context buffer. The LLM generates live summaries and action items using streaming events.
@@ -72,6 +72,8 @@ For imported recordings, the pipeline follows a strict DAG (Directed Acyclic Gra
 * If Stage 3 (LLM) fails due to API rate limits, Celery should use exponential backoff and retry the specific task.
 * Every stage creates/updates an `AIProcessingRun`; failures preserve transcript source data and previously current AI output.
 * An AI-origin summary, action, or decision cannot become current/user-visible until at least one same-meeting source citation is persisted.
+* Provider output uses plain strings for summary text and key points, with citations resolved against the current prompt window. The parser accepts exact field-level `{ "text", "citations" }` wrappers; for key points only, it also accepts `{ "text", "speaker", "citations" }` when speaker matches every exactly cited source segment. Unknown wrapper fields fail closed with key/type-only diagnostics. Actions and decisions do not accept the speaker wrapper.
+* `AIProcessingRun` uses a hashed idempotency key, optional regeneration base version, attempt counter, and expiring queue/worker leases. Scheduled reconciliation recovers expired work and missing transcript embeddings; see [`background-jobs.md`](background-jobs.md) and [`data-dictionary.md`](data-dictionary.md).
 
 ## 5. Infrastructure Considerations
 * **CPU vs GPU:** Celery workers running Stage 1 (FFmpeg) and Stage 3/4 (API calls) can run on cheap CPU instances. Stage 2 (Whisper/Pyannote) requires GPUs (T4 or A10G) to process in a reasonable timeframe (e.g., 10x real-time speed).

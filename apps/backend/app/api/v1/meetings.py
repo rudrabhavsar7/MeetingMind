@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, WebSocket, WebSocketDisconnect, status
@@ -428,10 +429,14 @@ async def meeting_stream(
 ) -> None:
     await websocket.accept()
     highest_sequence = -1
-    seen_sequences = set()
+    seen_sequences: set[int] = set()
+    import io
+    import struct
+    import wave
+
+    audio_chunks: list[bytes] = []
 
     try:
-        # Handshake
         data = await websocket.receive_json()
         if data.get("type") == "stream_hello":
             await websocket.send_json(
@@ -451,20 +456,15 @@ async def meeting_stream(
             if "bytes" in message:
                 payload = message["bytes"]
                 if len(payload) >= 20 and payload[0:4] == b"MM01":
-                    import struct
-
                     sequence = struct.unpack(">I", payload[4:8])[0]
-                    # Start offset ms: unpack(">Q", payload[8:16])[0]
-                    # Duration ms: unpack(">H", payload[16:18])[0]
-                    # Flags: unpack(">H", payload[18:20])[0]
 
                     if sequence not in seen_sequences:
                         seen_sequences.add(sequence)
-                        # Normalize logic or pass to Celery/streaming STT queue would go here
+                        pcm_data = payload[20:]
+                        audio_chunks.append(pcm_data)
 
                         if sequence == highest_sequence + 1:
                             highest_sequence = sequence
-                            # Optionally advance highest_sequence if next ones are already in seen_sequences
                             while highest_sequence + 1 in seen_sequences:
                                 highest_sequence += 1
 
@@ -486,3 +486,29 @@ async def meeting_stream(
                     pass
     except WebSocketDisconnect:
         pass
+
+    if audio_chunks:
+        wav_buffer = io.BytesIO()
+        with wave.open(wav_buffer, "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(16000)
+            for chunk in audio_chunks:
+                wf.writeframes(chunk)
+        wav_bytes = wav_buffer.getvalue()
+
+        audio_dir = Path(__file__).resolve().parent.parent.parent / "uploads" / "stream"
+        audio_dir.mkdir(parents=True, exist_ok=True)
+        audio_path = audio_dir / f"{meeting_id}.wav"
+        audio_path.write_bytes(wav_bytes)
+
+        from app.tasks.embedding import build_embeddings
+        from app.tasks.summarization import generate_summary
+        from app.tasks.transcription import process_audio
+
+        chain = (
+            process_audio.s(str(meeting_id), str(workspace_id), str(audio_path))
+            | generate_summary.s(str(meeting_id), str(workspace_id))
+            | build_embeddings.s(str(meeting_id), str(workspace_id))
+        )
+        chain.apply_async()
