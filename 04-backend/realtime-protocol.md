@@ -1,9 +1,9 @@
 ---
 Title: MeetingMind - Real-Time Capture Protocol
-Version: 1.0.0
+Version: 1.0.1
 Status: Approved
 Owner: Lead Backend and Extension Engineers
-Last Updated: 2026-07-10
+Last Updated: 2026-10-17
 Dependencies: 08-resources/decisions-log.md, 02-engineering/jira-api-contracts.md
 Related Documents:
   - 03-design/pages/extension-capture.md
@@ -26,10 +26,13 @@ Minimum supported Chrome version: 116.
 1. A user clicks Start Capture in the popup or side panel.
 2. The service worker verifies the detected target tab, ensures one `offscreen.html` document exists with reason `USER_MEDIA`, and calls `chrome.tabCapture.getMediaStreamId({targetTabId})` within the user gesture lifecycle.
 3. The service worker immediately sends the one-use stream ID to the offscreen document.
-4. The offscreen document consumes it through `getUserMedia`, owns the `MediaStream`, AudioContext/AudioWorklet, WebSocket, heartbeat, and replay buffer.
-5. Because tab capture can suppress normal tab output, the offscreen AudioContext MUST route the captured source to the default destination so meeting audio remains audible.
-6. Content scripts only detect supported pages and collect visible metadata. They MUST NOT receive auth tokens or raw audio.
-7. The service worker and UI reflect state received from the offscreen owner. Closing the popup or side panel MUST NOT stop capture.
+4. The offscreen document consumes it through `getUserMedia` using the tab stream ID and separately obtains the local microphone with `getUserMedia({audio: true})`; it owns both streams, AudioContext/AudioWorklet, WebSocket, heartbeat, and replay buffer. Both sources feed the AudioWorklet input.
+5. Because tab capture can suppress normal tab output, the offscreen AudioContext MUST route the captured tab source to the default destination so meeting audio remains audible. The microphone source MUST NOT connect to the destination, preventing feedback. Both tracks MUST be stopped during cleanup.
+6. Microphone permission is explicit and required. If microphone acquisition fails, capture MUST stop safely and the service worker MUST open the extension's permission guidance page; the UI must offer a clear retry after permission is granted.
+7. Content scripts only detect supported pages and collect visible metadata. They MUST NOT receive auth tokens or raw audio.
+8. The service worker and UI reflect state received from the offscreen owner. Closing the popup or side panel MUST NOT stop capture.
+
+The toolbar action handler opens the side panel directly, without awaiting other work before `sidePanel.open()`. The toolbar invocation grants access to the selected tab; pressing Start inside a previously opened panel does not grant access to a different tab. Acquire the stream ID in the service worker with an explicit `targetTabId`, after backend session preparation and offscreen creation, and immediately send it to the offscreen owner. Do not acquire the ID in the panel or hold it across network requests: it is single-use and expires within seconds.
 
 Required manifest permissions are `activeTab`, `tabCapture`, `offscreen`, `storage`, and the narrow backend/meeting-app host permissions required by the build. Permission rationale and store disclosures are documented before distribution.
 
@@ -44,6 +47,8 @@ The offscreen AudioWorklet MUST produce:
 - maximum PCM payload of 16,000 bytes for a 500 ms frame.
 
 Browser-native sample rates are resampled before transmission. Clipping, resampler failure, lost input tracks, and permission revocation produce explicit error/control events.
+
+The worklet input is a mix of the captured meeting-tab stream and the user's local microphone stream, so speech from a solo Meet user is included. The offscreen owner emits PCM-derived audio-level events for the capture UI. Input ownership and audibility are independent: only tab audio is routed to the local destination; microphone audio is never routed there.
 
 Each WebSocket binary message is self-contained:
 
@@ -149,7 +154,9 @@ Client control messages:
 
 ## 9. Server Event Registry
 
-Every server event contains `type`, `event_id`, `meeting_id`, and `emitted_at`. Events that persist an entity include its UUID and source citations.
+Every pipeline event contains `type`, `event_id`, `meeting_id`, `emitted_at`, and a `data` object. Event-specific fields belong inside `data`; persisted entities include their UUID and source citations.
+
+After an authenticated pipeline event subscription starts, the server replays the meeting's persisted final transcript segments from canonical database rows before forwarding live events. Final transcript `event_id` values are stable for each stream sequence, so clients must deduplicate replay/live overlap by event ID. Interim transcript events remain ephemeral and may be missed while disconnected.
 
 Required v1 events:
 
@@ -168,6 +175,8 @@ Required v1 events:
 - `error`
 
 Entity and citation payloads reuse the schemas in `02-engineering/jira-api-contracts.md`. `meeting_completed` includes final status and counts; it does not imply retained audio exists.
+
+AI summary, action-item, decision, and completion events are published only after the corresponding database transaction commits. Their payloads describe persisted entities and use stable event IDs derived from the meeting, event type, and entity UUID. Pipeline events are live notifications, not a durable event log: a disconnected client can miss them. Meeting detail must therefore refresh all meeting-derived queries on reconnect and use bounded meeting-status polling while status is `transcribed`, `analyzing`, or `summarizing`; when a terminal status is observed, it refreshes transcript, summary, action-item, and decision queries. Persisted final transcript replay remains the transcript recovery source.
 
 ## 10. Errors and Close Codes
 
@@ -189,6 +198,9 @@ The server sends an `error` event before closing when possible. Error payloads c
 
 - Chrome service-worker restart and popup/side-panel close do not stop offscreen capture.
 - Tab audio remains audible locally during capture.
+- Solo user speech from the local microphone and remote meeting speech from the tab both contribute to non-silent PCM frames; microphone audio is never routed to the destination.
+- Microphone permission denial stops both acquired streams, opens the permission guidance page through the service worker, and allows a retry after grant.
+- Audio-level UI events reflect worklet PCM levels rather than a constant placeholder.
 - Resampling produces 16 kHz mono PCM within tolerance.
 - Meetings continue beyond 15 minutes and reconnect using a freshly minted handshake token.
 - Duplicate/replayed/out-of-order frames do not duplicate persisted transcript input.

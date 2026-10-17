@@ -1,9 +1,9 @@
 ---
 Title: MeetingMind — Resources: Architecture Decision Log
-Version: 1.3.0
+Version: 1.5.0
 Status: Approved
 Owner: Lead Architect
-Last Updated: 2026-07-15
+Last Updated: 2026-10-17
 Dependencies: None
 ---
 
@@ -217,16 +217,16 @@ This document records all significant architectural decisions made during the de
 * **Date:** 2026-07-11
 * **Status:** Accepted
 * **Owner:** Engineering and DevOps
-* **Context:** Developers need a consistent shared PostgreSQL environment and staging database without each team member maintaining divergent local database state. Supabase is already connected as project-scoped engineering tooling, but MeetingMind must not accidentally adopt Supabase Auth, Storage, Realtime, Edge Functions, or other services, and the production database decision is not yet made.
+* **Context:** Developers need a consistent shared PostgreSQL environment and staging database without each team member maintaining divergent local database state. Supabase is already connected as project-scoped engineering tooling, but MeetingMind must not accidentally adopt Supabase Auth, Storage, Realtime, Edge Functions, or other services. Production database hosting was unresolved when this ADR was accepted; ADR 016 records the later production decision.
 * **Alternatives Considered:**
   * Require every developer to use only a local PostgreSQL container. Rejected for the current team workflow because schema/data drift makes shared integration work harder.
   * Adopt the complete Supabase platform. Rejected because MeetingMind already owns authentication, storage, real-time transport, functions/jobs, and privacy boundaries.
-  * Decide the production database now. Deferred explicitly; development/staging convenience does not determine the production architecture.
-* **Decision:** Development and staging use only the managed PostgreSQL service (including pgvector) in the configured Supabase project. Supabase Auth, Storage, Realtime, Edge Functions, and application SDK coupling are out of scope. The shared project uses isolated `meetingmind_dev` and `meetingmind_staging` schemas with separate least-privilege application credentials; both schemas include the shared `extensions` schema in `search_path` for pgvector. CI continues to use disposable local PostgreSQL. Only synthetic, generated, or explicitly approved non-production meeting data may be stored in Supabase. All schema changes are authored as reviewed Alembic migrations; developers must not make untracked dashboard/MCP DDL changes. Staging receives migrations only through the controlled promotion workflow. Production PostgreSQL hosting remains unresolved and ADR 013 continues to define the current production target until a later explicit decision supersedes it.
+  * Decide the production database now. Deferred at the time of this ADR; development/staging convenience does not determine the production architecture.
+* **Decision:** Development and staging use only the managed PostgreSQL service (including pgvector) in the configured Supabase project. Supabase Auth, Storage, Realtime, Edge Functions, and application SDK coupling are out of scope. The shared project uses isolated `meetingmind_dev` and `meetingmind_staging` schemas with separate least-privilege application credentials; both schemas include the shared `extensions` schema in `search_path` for pgvector. CI continues to use disposable local PostgreSQL. Only synthetic, generated, or explicitly approved non-production meeting data may be stored in Supabase. All schema changes are authored as reviewed Alembic migrations; developers must not make untracked dashboard/MCP DDL changes. Staging receives migrations only through the controlled promotion workflow. ADR 016 resolves production hosting separately as operator-controlled PostgreSQL 16 with pgvector in the production Compose stack.
 * **Consequences:**
   * *Positive:* The team shares consistent PostgreSQL/pgvector behavior for development and staging.
   * *Positive:* Application code remains portable SQLAlchemy/PostgreSQL code without Supabase-specific auth/storage/runtime dependencies.
-  * *Positive:* The production decision remains independent and reversible.
+  * *Positive:* Production hosting remains governed separately by ADR 016 and does not change shared development/staging policy.
   * *Negative:* Development/staging database traffic and approved test data leave local machines and are subject to Supabase availability, access control, and retention.
   * *Negative:* Schema/credential isolation and migration ownership are required to prevent developers or staging from interfering with one another.
   * *Negative:* Supabase dashboard/MCP access is privileged engineering access and must be least-privilege, audited, and never embedded in client code.
@@ -250,3 +250,35 @@ This document records all significant architectural decisions made during the de
   * *Positive:* Jira ticket history and acceptance criteria remain stable while schedules can be replanned.
   * *Negative:* Sprint planning must maintain phase status, handoff evidence, and dependency readiness.
   * *Negative:* Oversized cross-phase tickets such as MM-104 require explicit subtasks and do not earn points until the parent acceptance criteria pass.
+
+---
+
+## ADR 016: Self-Hosted PostgreSQL for Production v1
+
+* **Date:** 2026-10-02
+* **Status:** Accepted
+* **Owner:** Engineering and DevOps
+* **Context:** The production v1 release plan requires an operator-controlled Compose deployment. The production database decision was left open by ADR 014, while development and staging already use isolated Supabase-managed PostgreSQL schemas.
+* **Alternatives Considered:**
+  * Use Supabase-managed PostgreSQL for production. Rejected for v1 because it would move production meeting data outside the operator-controlled deployment boundary.
+  * Use a separate managed PostgreSQL provider. Deferred; no provider is required for the self-hosted v1 target.
+* **Decision:** Production v1 uses operator-controlled PostgreSQL 16 with pgvector in the independent [`docker-compose.production.yml`](../docker-compose.production.yml) stack. Development and staging continue to use only their isolated Supabase-managed PostgreSQL/pgvector schemas and roles under ADR 014. CI continues to use disposable local PostgreSQL. This decision does not adopt any Supabase product in production.
+* **Consequences:**
+  * *Positive:* Production meeting data and database operations remain inside infrastructure controlled by the operator.
+  * *Positive:* Production database schema continues to use PostgreSQL and pgvector without Supabase SDK or service coupling.
+  * *Negative:* Operators own database availability, security updates, capacity, backups, and tested restores.
+  * *Negative:* The Compose artifact still requires clean-host and restore verification before production release.
+
+---
+
+## ADR 017: Include Local Microphone in Extension Capture
+
+* **Date:** 2026-10-17
+* **Status:** Accepted
+* **Owner:** Product and Extension Engineering
+* **Context:** Tab-only capture omits the local user's speech when they are alone in a Google Meet call or when their microphone audio is not returned through the captured tab. Users need their own speech included without losing audible meeting playback or creating microphone feedback.
+* **Decision:** Extension capture mixes Google Meet tab audio and the explicitly permissioned local microphone into the offscreen AudioWorklet input. The service worker obtains the tab stream ID through `chrome.tabCapture.getMediaStreamId`; offscreen consumes that source and separately calls `getUserMedia({audio: true})` for the microphone. Captured tab audio remains routed to the local audio destination. Microphone audio MUST NOT be routed to that destination. Microphone permission failure stops capture safely and asks the service worker to open the existing permission guidance page. Cleanup stops both streams.
+* **Consequences:**
+  * *Positive:* Solo users' speech is included in transcription while the meeting remains audible locally.
+  * *Positive:* Keeping the microphone isolated from the audio destination prevents feedback.
+  * *Negative:* Capture requires explicit microphone permission in addition to tab access; denial requires the user to grant permission and retry.

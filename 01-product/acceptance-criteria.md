@@ -1,9 +1,9 @@
 ---
 Title: MeetingMind — Acceptance Criteria
-Version: 1.1.0
+Version: 1.1.1
 Status: Approved
 Owner: Quality Assurance Lead
-Last Updated: 2026-07-10
+Last Updated: 2026-10-17
 Dependencies: 01-product/functional-requirements.md
 ---
 
@@ -71,9 +71,12 @@ Before a feature can be merged to the `main` branch, it must meet the following 
 * **Scenario: Start Google Meet Capture**
   * Given the user has installed and connected the MeetingMind Chrome extension
   * And they are inside an active Google Meet tab
-  * When they click "Start Capture" in the extension and grant tab audio permission
+  * When they click "Start Capture" in the extension and grant tab access and microphone permission
   * Then a meeting record is created in the deployment's default workspace
   * And the extension transitions to a "Recording" state within 2 seconds.
+  * And both meeting-tab audio and local microphone speech are included in the live transcript input.
+  * And meeting-tab audio remains audible while the microphone source is never routed to local speakers.
+  * And if microphone permission is denied, capture does not start and the extension opens actionable permission guidance.
 
 * **Scenario: Live Transcript Appears**
   * Given an extension capture session is active
